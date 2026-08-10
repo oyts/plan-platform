@@ -1,0 +1,6 @@
+<script setup lang="ts">
+import { ref } from 'vue'; import { useRouter } from 'vue-router'; import { apiMessage } from '@/api/client'; import { useAuthStore } from '@/stores/auth';
+const displayName=ref(''); const email=ref(''); const password=ref(''); const error=ref(''); const busy=ref(false); const auth=useAuthStore(); const router=useRouter();
+async function submit(){busy.value=true;error.value='';try{await auth.register(email.value,password.value,displayName.value);await router.push('/');}catch(e){error.value=apiMessage(e);}finally{busy.value=false;}}
+</script>
+<template><div class="auth-page"><section class="auth-mark"><strong>02</strong><h1>建立属于自己的长期计划系统。</h1><p>每位用户的数据严格隔离，后端统一负责并发与持久化。</p></section><form class="auth-card" @submit.prevent="submit"><p class="eyebrow">ACCOUNT / REGISTER</p><h2>创建账号</h2><label>显示名称<input v-model="displayName" maxlength="80" required /></label><label>邮箱<input v-model="email" type="email" autocomplete="email" required /></label><label>密码<input v-model="password" type="password" minlength="8" autocomplete="new-password" required /></label><p v-if="error" class="error-text">{{ error }}</p><button class="btn primary" :disabled="busy">{{ busy?'正在创建…':'创建账号' }}</button><router-link to="/login">已有账号？返回登录</router-link></form></div></template>

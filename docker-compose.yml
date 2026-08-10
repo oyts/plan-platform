@@ -1,0 +1,34 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: plan_platform
+      MYSQL_USER: plan_app
+      MYSQL_PASSWORD: ${DB_PASSWORD:-plan_app}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-me-root}
+      TZ: Asia/Shanghai
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    volumes: ["plan-mysql-data:/var/lib/mysql"]
+    healthcheck: { test: ["CMD", "mysqladmin", "ping", "-h", "localhost"], interval: 10s, timeout: 5s, retries: 15 }
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/plan_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      DB_USERNAME: plan_app
+      DB_PASSWORD: ${DB_PASSWORD:-plan_app}
+      JWT_SECRET: ${JWT_SECRET:?请在.env中设置至少32位JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:43127}
+    depends_on: { mysql: { condition: service_healthy } }
+    healthcheck: { test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness || exit 1"], interval: 10s, timeout: 5s, retries: 15 }
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    ports: ["43127:80"]
+    depends_on: { backend: { condition: service_healthy } }
+
+volumes:
+  plan-mysql-data:

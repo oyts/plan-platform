@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: plan-platform-api
+  profiles:
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+app:
+  cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:*,http://127.0.0.1:*}
+  jwt:
+    issuer: plan-platform
+    secret: ${JWT_SECRET:change-this-development-secret-at-least-32-bytes}
+    access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:120}
+    refresh-token-days: ${JWT_REFRESH_TOKEN_DAYS:30}

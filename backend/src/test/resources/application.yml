@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:plan_platform_test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+app:
+  cors-allowed-origins: http://localhost:43128
+  jwt:
+    issuer: plan-platform-test
+    secret: test-secret-that-is-definitely-longer-than-32-bytes
+    access-token-minutes: 120
+    refresh-token-days: 30
