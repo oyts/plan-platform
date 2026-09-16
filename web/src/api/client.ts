@@ -19,7 +19,12 @@ api.interceptors.response.use((response) => response, async (error: AxiosError) 
   refreshing ??= axios.post<TokenResponse>(`${api.defaults.baseURL}/auth/refresh`, { refreshToken })
     .then(({ data }) => { saveTokens(data); return data.accessToken; })
     .finally(() => { refreshing = null; });
-  request.headers.Authorization = `Bearer ${await refreshing}`;
+  try {
+    request.headers.Authorization = `Bearer ${await refreshing}`;
+  } catch (refreshError) {
+    clearTokens();
+    throw refreshError;
+  }
   return api(request);
 });
 

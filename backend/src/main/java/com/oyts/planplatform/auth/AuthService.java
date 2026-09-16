@@ -1,6 +1,7 @@
 package com.oyts.planplatform.auth;
 
 import com.oyts.planplatform.common.ConflictException;
+import com.oyts.planplatform.common.UnauthorizedException;
 import com.oyts.planplatform.config.JwtProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -48,7 +49,7 @@ public class AuthService {
         UserAccount user = users.findByEmailIgnoreCase(request.email().trim())
             .filter(UserAccount::isEnabled)
             .filter(candidate -> passwordEncoder.matches(request.password(), candidate.getPasswordHash()))
-            .orElseThrow(() -> new IllegalArgumentException("邮箱或密码不正确。"));
+            .orElseThrow(() -> new UnauthorizedException("邮箱或密码不正确。"));
         return issueTokens(user);
     }
 
@@ -56,7 +57,7 @@ public class AuthService {
     public AuthDtos.TokenResponse refresh(AuthDtos.RefreshRequest request) {
         RefreshToken stored = refreshTokens.findByTokenHash(hash(request.refreshToken()))
             .filter(token -> token.getRevokedAt() == null && token.getExpiresAt().isAfter(Instant.now()))
-            .orElseThrow(() -> new IllegalArgumentException("刷新凭证无效或已经过期。"));
+            .orElseThrow(() -> new UnauthorizedException("刷新凭证无效或已经过期。"));
         stored.revoke();
         return issueTokens(stored.getUser());
     }

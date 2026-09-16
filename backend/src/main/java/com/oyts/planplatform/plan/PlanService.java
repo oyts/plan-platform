@@ -19,6 +19,7 @@ import com.oyts.planplatform.plan.repository.PlanTagRepository;
 import com.oyts.planplatform.plan.repository.PlanTaskRepository;
 import com.oyts.planplatform.plan.repository.TaskProgressRepository;
 import com.oyts.planplatform.plan.repository.TimeEntryRepository;
+import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -40,12 +41,13 @@ public class PlanService {
     private final TimeEntryRepository timeEntries;
     private final DailyReflectionRepository reflections;
     private final ObjectMapper objectMapper;
+    private final EntityManager entityManager;
 
     public PlanService(UserAccountRepository users, PlanRepository plans, PlanTagRepository tags, PlanTaskRepository tasks,
                        TaskProgressRepository progress, TimeEntryRepository timeEntries,
-                       DailyReflectionRepository reflections, ObjectMapper objectMapper) {
+                       DailyReflectionRepository reflections, ObjectMapper objectMapper, EntityManager entityManager) {
         this.users = users; this.plans = plans; this.tags = tags; this.tasks = tasks; this.progress = progress;
-        this.timeEntries = timeEntries; this.reflections = reflections; this.objectMapper = objectMapper;
+        this.timeEntries = timeEntries; this.reflections = reflections; this.objectMapper = objectMapper; this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -68,6 +70,7 @@ public class PlanService {
         Plan plan = ownedPlan(userId, planId);
         checkVersion(plan.getVersion(), request.version());
         plan.update(request.name(), request.description(), request.startDate(), request.endDate());
+        flushAndRefresh(plan);
         return toPlan(plan);
     }
 
@@ -91,6 +94,7 @@ public class PlanService {
         PlanTag tag = ownedTag(userId, tagId);
         checkVersion(tag.getVersion(), request.version());
         tag.update(request.name(), request.color());
+        flushAndRefresh(tag);
         return toTag(tag);
     }
 
@@ -129,6 +133,7 @@ public class PlanService {
         PlanTag tag = request.tagId() == null ? null : ownedTag(userId, request.tagId());
         if (tag != null && !tag.getPlan().getId().equals(task.getPlan().getId())) throw new IllegalArgumentException("标签不属于当前计划。");
         applyTask(task, tag, request);
+        flushAndRefresh(task);
         return toTask(task);
     }
 
@@ -141,6 +146,7 @@ public class PlanService {
         TaskProgress current = progressFor(taskId);
         checkVersion(current.getVersion(), request.version());
         current.update(request.status(), request.note(), json(request.acceptanceChecks()), request.deferTo(), request.skipReason());
+        flushAndRefresh(current);
         return toProgress(current);
     }
 
@@ -150,6 +156,7 @@ public class PlanService {
         TaskProgress current = progressFor(taskId);
         checkVersion(current.getVersion(), version);
         current.start(Instant.now());
+        flushAndRefresh(current);
         return toProgress(current);
     }
 
@@ -162,6 +169,7 @@ public class PlanService {
         Instant ended = Instant.now();
         long seconds = current.pause(ended);
         if (started != null && seconds > 0) timeEntries.save(new TimeEntry(current, started, ended, seconds, "TIMER"));
+        flushAndRefresh(current);
         return toProgress(current);
     }
 
@@ -177,6 +185,7 @@ public class PlanService {
             if (seconds > 0) timeEntries.save(new TimeEntry(current, started, ended, seconds, "TIMER"));
         }
         current.complete(request.note(), json(request.acceptanceChecks()), ended);
+        flushAndRefresh(current);
         return toProgress(current);
     }
 
@@ -188,6 +197,7 @@ public class PlanService {
         current.addSeconds(request.seconds());
         Instant now = Instant.now();
         if (request.seconds() != 0) timeEntries.save(new TimeEntry(current, now, now, request.seconds(), "MANUAL"));
+        flushAndRefresh(current);
         return toProgress(current);
     }
 
@@ -204,7 +214,9 @@ public class PlanService {
         DailyReflection reflection = reflections.findByPlanIdAndDate(planId, date).orElseGet(() -> new DailyReflection(plan, date));
         checkVersion(reflection.getVersion(), request.version());
         reflection.update(request.completedSummary(), request.unfinishedSummary(), request.blockers(), request.firstTaskTomorrow(), request.energy(), request.note());
-        return toReflection(reflections.save(reflection));
+        reflections.save(reflection);
+        flushAndRefresh(reflection);
+        return toReflection(reflection);
     }
 
     @Transactional(readOnly = true)
@@ -242,6 +254,7 @@ public class PlanService {
         if (requested != null && requested != current) throw new ConflictException("数据已经被其他设备修改，请刷新后重试。");
     }
     private boolean blank(String value) { return value == null || value.isBlank(); }
+    private void flushAndRefresh(Object entity) { entityManager.flush(); entityManager.refresh(entity); }
     private String json(Object value) {
         try { return objectMapper.writeValueAsString(value == null ? List.of() : value); }
         catch (JsonProcessingException exception) { throw new IllegalArgumentException("列表数据无法序列化。", exception); }
