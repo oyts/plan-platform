@@ -61,6 +61,17 @@ public class TaskProgress extends BaseEntity {
         if (status != Status.COMPLETED) completedAt = null;
     }
     public void addSeconds(long seconds) { accumulatedSeconds = Math.max(0, accumulatedSeconds + seconds); }
+    public void importState(Status status, long accumulatedSeconds, Instant startedAt, Instant completedAt,
+                            String acceptanceJson, String note, LocalDate deferTo, String skipReason) {
+        this.status = status.name();
+        this.accumulatedSeconds = Math.max(0, accumulatedSeconds);
+        this.startedAt = startedAt;
+        this.completedAt = completedAt;
+        this.acceptanceJson = acceptanceJson == null ? "[]" : acceptanceJson;
+        this.note = note == null ? "" : note.trim();
+        this.deferTo = deferTo;
+        this.skipReason = skipReason == null ? "" : skipReason.trim();
+    }
 
     public PlanTask getTask() { return task; }
     public Status getStatus() { return Status.valueOf(status); }

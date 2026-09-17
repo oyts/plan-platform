@@ -92,6 +92,57 @@ class AuthPlanIntegrationTest {
             .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack() throws Exception {
+        String token = register("migration@example.com", "迁移测试账号");
+        String backup = """
+            {
+              "schemaVersion":6,"planVersion":"1.10.1","exportedAt":"2026-09-17T08:00:00Z",
+              "migrationCatalog":{
+                "defaultPlan":{"id":"summer-plan","name":"暑假计划","startDate":"2026-09-17","endDate":"2026-09-30","overallTagId":"all","tags":[{"id":"all","name":"总计","color":"#002FA7","isOverall":true}],"tasks":[{"id":"task-a","date":"2026-09-17","startTime":"09:00","endTime":"10:00","plannedMinutes":60,"category":"java","title":"Java 学习","description":"完成章节","acceptance":["提交笔记"],"required":true,"sourceRef":"https://example.com"}]},
+                "builtInMainlines":[{"id":"guitar","name":"吉他主线","description":"顺序学习","color":"#16A34A","items":[{"id":"step-a","date":"2026-09-17","startTime":"10:00","endTime":"10:30","plannedMinutes":30,"category":"guitar","title":"第一关","description":"基础练习","acceptance":["完成录音"],"required":false,"sourceRef":""}]}]
+              },
+              "progress":{
+                "task-a":{"taskId":"task-a","status":"completed","accumulatedSeconds":600,"startedAt":null,"completedAt":"2026-09-17T08:10:00Z","timeEntries":[{"id":"entry-a","taskId":"task-a","startedAt":"2026-09-17T08:00:00Z","endedAt":"2026-09-17T08:10:00Z","seconds":600,"source":"timer"}],"acceptanceChecks":[true],"note":"完成","deferTo":null,"skipReason":null,"updatedAt":"2026-09-17T08:10:00Z"},
+                "step-a":{"taskId":"step-a","status":"completed","accumulatedSeconds":300,"startedAt":null,"completedAt":"2026-09-17T08:20:00Z","timeEntries":[],"acceptanceChecks":[true],"note":"通过","deferTo":null,"skipReason":null,"updatedAt":"2026-09-17T08:20:00Z"}
+              },
+              "reflections":{"2026-09-17":{"date":"2026-09-17","completedSummary":"完成学习","unfinishedSummary":"","blockers":"","firstTaskTomorrow":"继续","energy":4,"note":"状态良好","updatedAt":"2026-09-17T12:00:00Z"}},
+              "gates":{"G1":{"gateId":"G1","checks":{},"note":"","reviewedAt":null}},
+              "workspace":{"activePlanId":"summer-plan","defaultPlanTags":[{"id":"all","name":"总计","color":"#002FA7","isOverall":true}],"customPlans":[],"customMainlines":[],"taskTemplates":[],"trash":[],"deletionMarkers":[],"updatedAt":"2026-09-17T12:00:00Z"}
+            }
+            """;
+
+        mvc.perform(post("/api/migrations/legacy/preview").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content(backup))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.ready").value(true))
+            .andExpect(jsonPath("$.plans").value(1)).andExpect(jsonPath("$.mainlines").value(1));
+        String importedBody = mvc.perform(post("/api/migrations/legacy/import").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content(backup))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.tasks").value(1))
+            .andExpect(jsonPath("$.timeEntries").value(1)).andExpect(jsonPath("$.mainlineItems").value(1))
+            .andReturn().getResponse().getContentAsString();
+        String importId = objectMapper.readTree(importedBody).get("importId").asText();
+
+        mvc.perform(post("/api/migrations/legacy/import").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content(backup))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.importId").value(importId));
+        mvc.perform(get("/api/plans").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(get("/api/mainlines").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+
+        mvc.perform(post("/api/migrations/legacy/{importId}/rollback", importId).header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ROLLED_BACK"));
+        mvc.perform(get("/api/plans").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/mainlines").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+
+        mvc.perform(post("/api/migrations/legacy/import").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content(backup))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
     private String register(String email, String displayName) throws Exception {
         String body = objectMapper.writeValueAsString(new RegisterBody(email, "password123", displayName));
         String response = mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))

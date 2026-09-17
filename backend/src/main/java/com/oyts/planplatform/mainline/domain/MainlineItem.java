@@ -8,7 +8,7 @@ import java.time.Instant;
 @Entity
 @Table(name = "mainline_items")
 public class MainlineItem extends BaseEntity {
-    public enum Status { PENDING, RUNNING, PAUSED, COMPLETED }
+    public enum Status { PENDING, RUNNING, PAUSED, COMPLETED, PARTIAL, SKIPPED, DEFERRED }
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "mainline_id") private Mainline mainline;
     @Column(nullable = false, length = 180) private String title;
     @Column(nullable = false, length = 2000) private String description = "";
@@ -30,6 +30,10 @@ public class MainlineItem extends BaseEntity {
     public void start() { status = Status.RUNNING.name(); startedAt = Instant.now(); }
     public void pause() { if (startedAt != null) accumulatedSeconds += Math.max(0, Duration.between(startedAt, Instant.now()).getSeconds()); startedAt = null; status = Status.PAUSED.name(); }
     public void complete(String note) { if (startedAt != null) pause(); status = Status.COMPLETED.name(); completedAt = Instant.now(); this.note = note == null ? "" : note.trim(); }
+    public void importState(Status status, long accumulatedSeconds, String note, Instant startedAt, Instant completedAt) {
+        this.status = status.name(); this.accumulatedSeconds = Math.max(0, accumulatedSeconds);
+        this.note = note == null ? "" : note.trim(); this.startedAt = startedAt; this.completedAt = completedAt;
+    }
     public Mainline getMainline() { return mainline; } public String getTitle() { return title; }
     public String getDescription() { return description; } public String getAcceptanceJson() { return acceptanceJson; }
     public int getPlannedMinutes() { return plannedMinutes; } public int getSortOrder() { return sortOrder; }
