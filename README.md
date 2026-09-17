@@ -8,7 +8,7 @@
 
 > **第一阶段基线验收完成（2026-09-17）**
 >
-> 已完成 Spring Boot 集成测试、Vue 生产构建与本地真实 HTTP 验收；认证、用户隔离、计划/任务/计时/统计、主线顺序锁和乐观锁均已验证。旧版 JSON 已支持预检、幂等关系型导入、迁移报告和批次回滚；下一阶段为账号安全与数据隔离强化。
+> 已完成 Spring Boot 集成测试、Vue 生产构建与本地真实 HTTP 验收；旧版 JSON 已支持预检、幂等关系型导入、迁移报告和批次回滚。账号系统已完成 HttpOnly 刷新 Cookie、令牌轮换、登录限流、会话管理、注册开关和跨用户越权测试；下一阶段为旧版业务功能对等迁移。
 
 ## 技术栈
 
@@ -21,7 +21,7 @@
 
 ## 已实现
 
-- 邮箱注册、登录、JWT Access Token、可撤销 Refresh Token、退出登录。
+- 邮箱注册开关、登录限流、15 分钟 JWT Access Token、HttpOnly Refresh Cookie、令牌轮换与多设备会话管理。
 - 用户级数据隔离，任何计划、标签、任务和主线查询都包含所有权条件。
 - 计划、标签、任务的增删改查与输入校验。
 - 任务开始、暂停、完成、手工补录、验收结果、结果备注与计时流水。
@@ -82,7 +82,7 @@ docker compose up -d --build
 
 访问：http://localhost:43127
 
-生产环境必须修改 `JWT_SECRET`、数据库密码和允许跨域的域名。阿里云部署时建议使用 HTTPS、独立数据库备份、日志采集和安全组最小开放原则。
+本地 Docker 首次体验可临时设置 `REGISTRATION_ENABLED=true`，创建账号后再关闭。生产环境必须修改 `JWT_SECRET`、数据库密码和允许跨域的域名，并设置 `REFRESH_COOKIE_SECURE=true`；阿里云部署时建议使用 HTTPS、独立数据库备份、日志采集和安全组最小开放原则。
 
 ## 目录
 
@@ -110,7 +110,7 @@ plan-platform/
 3. Android APK：先用 Capacitor 快速复用 Vue；需要深入原生学习时再迁移 Kotlin。
 4. 微信小程序：独立页面层，复用账号、计划、任务、主线和统计 API。
 
-详细设计见 [架构说明](docs/architecture.md) 和 [学习路线](docs/learning-guide.md)。
+详细设计见 [架构说明](docs/architecture.md)、[账号与会话安全](docs/account-security.md) 和 [学习路线](docs/learning-guide.md)。
 
 ## 旧版迁移边界
 

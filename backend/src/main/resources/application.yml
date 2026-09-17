@@ -33,5 +33,13 @@ app:
   jwt:
     issuer: plan-platform
     secret: ${JWT_SECRET:change-this-development-secret-at-least-32-bytes}
-    access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:120}
+    access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:15}
     refresh-token-days: ${JWT_REFRESH_TOKEN_DAYS:30}
+  security:
+    registration-enabled: ${REGISTRATION_ENABLED:false}
+    refresh-cookie-name: ${REFRESH_COOKIE_NAME:plan_refresh}
+    refresh-cookie-secure: ${REFRESH_COOKIE_SECURE:false}
+    refresh-cookie-same-site: ${REFRESH_COOKIE_SAME_SITE:Strict}
+    max-login-attempts: ${MAX_LOGIN_ATTEMPTS:5}
+    login-window-seconds: ${LOGIN_WINDOW_SECONDS:900}
+    max-sessions: ${MAX_SESSIONS:5}

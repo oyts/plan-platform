@@ -26,10 +26,11 @@ flowchart LR
 
 ## 3. 认证
 
-- Access Token：JWT HS256，默认 120 分钟。
-- Refresh Token：随机不可预测字符串，数据库只存 SHA-256 摘要，可撤销并轮换。
+- Access Token：JWT HS256，默认 15 分钟，仅保存在 Web 客户端内存中。
+- Refresh Token：随机不可预测字符串，数据库只存 SHA-256 摘要，通过 `HttpOnly + SameSite=Strict` Cookie 传输，可撤销并轮换。
 - 密码：BCrypt cost 12。
-- Web 使用 Bearer Token；后续可以升级为同站点 HttpOnly Cookie，降低 XSS 窃取风险。
+- Web 刷新页面时使用同站点 Cookie 静默换取新的 Access Token；Refresh Token 不暴露给 JavaScript。
+- 公开注册默认关闭；登录失败执行账号与来源地址双维度限流，单账号最多 5 个活跃刷新会话。
 
 ## 4. 离线与多端
 

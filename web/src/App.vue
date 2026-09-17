@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 const auth = useAuthStore(); const router = useRouter();
-onMounted(auth.bootstrap);
 async function logout() { await auth.logout(); await router.push('/login'); }
 </script>
 <template>

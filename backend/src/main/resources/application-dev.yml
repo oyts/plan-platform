@@ -8,3 +8,6 @@ spring:
     console:
       enabled: true
       path: /h2-console
+app:
+  security:
+    registration-enabled: true

@@ -14,5 +14,13 @@ app:
   jwt:
     issuer: plan-platform-test
     secret: test-secret-that-is-definitely-longer-than-32-bytes
-    access-token-minutes: 120
+    access-token-minutes: 15
     refresh-token-days: 30
+  security:
+    registration-enabled: true
+    refresh-cookie-name: plan_refresh
+    refresh-cookie-secure: false
+    refresh-cookie-same-site: Strict
+    max-login-attempts: 3
+    login-window-seconds: 900
+    max-sessions: 5

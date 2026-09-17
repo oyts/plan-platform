@@ -1,12 +1,17 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { api, clearTokens, getRefreshToken, hasToken, saveTokens } from '@/api/client';
+import { api, clearTokens, saveTokens } from '@/api/client';
 import type { TokenResponse, User } from '@/types';
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null); const ready = ref(false);
-  async function bootstrap() { if (hasToken()) { try { user.value = (await api.get<User>('/auth/me')).data; } catch { clearTokens(); } } ready.value = true; }
+  const user = ref<User | null>(null); const ready = ref(false); const registrationEnabled = ref(false);
+  async function bootstrap() {
+    try { registrationEnabled.value = (await api.get<{registrationEnabled:boolean}>('/auth/config')).data.registrationEnabled; } catch { registrationEnabled.value = false; }
+    try { const { data } = await api.post<TokenResponse>('/auth/refresh'); saveTokens(data); user.value = data.user; } catch { clearTokens(); user.value = null; }
+    ready.value = true;
+  }
   async function login(email: string, password: string) { const { data } = await api.post<TokenResponse>('/auth/login', { email, password }); saveTokens(data); user.value = data.user; }
   async function register(email: string, password: string, displayName: string) { const { data } = await api.post<TokenResponse>('/auth/register', { email, password, displayName }); saveTokens(data); user.value = data.user; }
-  async function logout() { const refreshToken = getRefreshToken(); try { if (refreshToken) await api.post('/auth/logout', { refreshToken }); } finally { clearTokens(); user.value = null; } }
-  return { user, ready, bootstrap, login, register, logout };
+  async function logout() { try { await api.post('/auth/logout'); } finally { clearTokens(); user.value = null; } }
+  async function logoutAll() { try { await api.post('/auth/logout-all'); } finally { clearTokens(); user.value = null; } }
+  return { user, ready, registrationEnabled, bootstrap, login, register, logout, logoutAll };
 });

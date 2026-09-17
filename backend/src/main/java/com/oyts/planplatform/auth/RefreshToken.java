@@ -49,8 +49,10 @@ public class RefreshToken {
     }
 
     public UserAccount getUser() { return user; }
+    public String getId() { return id; }
     public String getTokenHash() { return tokenHash; }
     public Instant getExpiresAt() { return expiresAt; }
     public Instant getRevokedAt() { return revokedAt; }
+    public Instant getCreatedAt() { return createdAt; }
     public void revoke() { revokedAt = Instant.now(); }
 }

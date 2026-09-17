@@ -28,6 +28,16 @@ public class ApiExceptionHandler {
         return error(HttpStatus.UNAUTHORIZED, exception.getMessage());
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    ResponseEntity<?> forbidden(ForbiddenException exception) {
+        return error(HttpStatus.FORBIDDEN, exception.getMessage());
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    ResponseEntity<?> tooManyRequests(TooManyRequestsException exception) {
+        return error(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage());
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     ResponseEntity<?> forbidden(AccessDeniedException exception) {
         return error(HttpStatus.FORBIDDEN, "没有权限访问这条数据。");

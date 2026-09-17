@@ -1,5 +1,6 @@
 export interface User { id: string; email: string; displayName: string; role: string }
-export interface TokenResponse { accessToken: string; refreshToken: string; expiresInSeconds: number; user: User }
+export interface TokenResponse { accessToken: string; expiresInSeconds: number; user: User }
+export interface SessionInfo { id: string; createdAt: string; expiresAt: string; current: boolean }
 export interface Plan { id: string; name: string; description: string; startDate: string; endDate: string; archived: boolean; version: number; taskCount: number; completedCount: number; updatedAt: string }
 export interface Tag { id: string; name: string; color: string; overall: boolean; version: number }
 export interface Progress { status: string; accumulatedSeconds: number; startedAt: string | null; completedAt: string | null; acceptanceChecks: boolean[]; note: string; deferTo: string | null; skipReason: string; version: number }

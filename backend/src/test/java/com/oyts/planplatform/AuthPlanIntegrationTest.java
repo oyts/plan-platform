@@ -7,13 +7,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import jakarta.servlet.http.Cookie;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -24,7 +27,7 @@ class AuthPlanIntegrationTest {
     @Test
     void registrationPlanCreationAndUserIsolationWorkTogether() throws Exception {
         String ownerToken = register("owner@example.com", "计划负责人");
-        mvc.perform(post("/api/plans")
+        String planBody = mvc.perform(post("/api/plans")
                 .header("Authorization", "Bearer " + ownerToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -32,7 +35,8 @@ class AuthPlanIntegrationTest {
                     """))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.name").value("Java 求职计划"))
-            .andExpect(jsonPath("$.taskCount").value(0));
+            .andExpect(jsonPath("$.taskCount").value(0)).andReturn().getResponse().getContentAsString();
+        String planId = objectMapper.readTree(planBody).get("id").asText();
 
         mvc.perform(get("/api/plans").header("Authorization", "Bearer " + ownerToken))
             .andExpect(status().isOk()).andExpect(jsonPath("$[0].name").value("Java 求职计划"));
@@ -40,6 +44,24 @@ class AuthPlanIntegrationTest {
         String friendToken = register("friend@example.com", "朋友账号");
         mvc.perform(get("/api/plans").header("Authorization", "Bearer " + friendToken))
             .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/plans/{planId}/tasks", planId).header("Authorization", "Bearer " + friendToken))
+            .andExpect(status().isNotFound());
+        mvc.perform(post("/api/plans/{planId}/tags", planId).header("Authorization", "Bearer " + friendToken)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"越权标签\",\"color\":\"#000000\"}"))
+            .andExpect(status().isNotFound());
+        mvc.perform(put("/api/plans/{planId}", planId).header("Authorization", "Bearer " + friendToken)
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"name":"越权修改","description":"","startDate":"2026-08-10","endDate":"2026-09-30","overallTagName":"总计","overallTagColor":"#002FA7","version":0}
+                    """))
+            .andExpect(status().isNotFound());
+
+        String lineBody = mvc.perform(post("/api/mainlines").header("Authorization", "Bearer " + ownerToken)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"私有主线\",\"description\":\"\",\"color\":\"#002FA7\"}"))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String lineId = objectMapper.readTree(lineBody).get("id").asText();
+        mvc.perform(post("/api/mainlines/{lineId}/items", lineId).header("Authorization", "Bearer " + friendToken)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"越权步骤\",\"description\":\"\",\"acceptance\":[],\"plannedMinutes\":10,\"sortOrder\":0}"))
+            .andExpect(status().isNotFound());
     }
 
     @Test
@@ -80,16 +102,46 @@ class AuthPlanIntegrationTest {
     @Test
     void revokedRefreshTokenReturnsUnauthorized() throws Exception {
         String body = objectMapper.writeValueAsString(new RegisterBody("logout@example.com", "password123", "退出测试账号"));
-        JsonNode tokens = objectMapper.readTree(mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
-            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
-        String refreshToken = tokens.get("refreshToken").asText();
+        MvcResult registration = mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.refreshToken").doesNotExist())
+            .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.allOf(
+                org.hamcrest.Matchers.containsString("HttpOnly"), org.hamcrest.Matchers.containsString("SameSite=Strict"))))
+            .andReturn();
+        Cookie refreshCookie = registration.getResponse().getCookie("plan_refresh");
 
-        mvc.perform(post("/api/auth/logout").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+        mvc.perform(post("/api/auth/logout").cookie(refreshCookie))
             .andExpect(status().isNoContent());
-        mvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+        mvc.perform(post("/api/auth/refresh").cookie(refreshCookie))
             .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refreshCookieRotatesAndOldCookieCannotBeReused() throws Exception {
+        String body = objectMapper.writeValueAsString(new RegisterBody("rotate@example.com", "password123", "轮换测试账号"));
+        MvcResult registration = mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isCreated()).andReturn();
+        Cookie firstCookie = registration.getResponse().getCookie("plan_refresh");
+        MvcResult refreshed = mvc.perform(post("/api/auth/refresh").cookie(firstCookie))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.accessToken").isNotEmpty()).andReturn();
+        Cookie secondCookie = refreshed.getResponse().getCookie("plan_refresh");
+        org.junit.jupiter.api.Assertions.assertNotEquals(firstCookie.getValue(), secondCookie.getValue());
+        mvc.perform(post("/api/auth/refresh").cookie(firstCookie)).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/refresh").cookie(secondCookie)).andExpect(status().isOk());
+    }
+
+    @Test
+    void loginRateLimitAndProtectedSessionEndpointsWork() throws Exception {
+        String token = register("limited@example.com", "限流测试账号");
+        String invalid = "{\"email\":\"limited@example.com\",\"password\":\"wrong-pass-1\"}";
+        for (int attempt = 0; attempt < 3; attempt++) {
+            mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(invalid))
+                .andExpect(status().isUnauthorized());
+        }
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(invalid))
+            .andExpect(status().isTooManyRequests());
+        mvc.perform(get("/api/auth/sessions")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/auth/sessions").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
     }
 
     @Test
@@ -152,4 +204,20 @@ class AuthPlanIntegrationTest {
     }
 
     private record RegisterBody(String email, String password, String displayName) {}
+}
+
+@SpringBootTest(properties = "app.security.registration-enabled=false")
+@AutoConfigureMockMvc
+class RegistrationPolicyIntegrationTest {
+    @Autowired MockMvc mvc;
+
+    @Test
+    void closedRegistrationIsPublishedAndEnforcedByBackend() throws Exception {
+        mvc.perform(get("/api/auth/config"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.registrationEnabled").value(false));
+        mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content("""
+                {"email":"closed@example.com","password":"password123","displayName":"关闭注册测试"}
+                """))
+            .andExpect(status().isForbidden());
+    }
 }

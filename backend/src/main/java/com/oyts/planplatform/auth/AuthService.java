@@ -1,14 +1,17 @@
 package com.oyts.planplatform.auth;
 
 import com.oyts.planplatform.common.ConflictException;
+import com.oyts.planplatform.common.ForbiddenException;
 import com.oyts.planplatform.common.UnauthorizedException;
 import com.oyts.planplatform.config.JwtProperties;
+import com.oyts.planplatform.config.SecurityProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -26,18 +29,24 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtEncoder jwtEncoder;
     private final JwtProperties jwtProperties;
+    private final SecurityProperties securityProperties;
+    private final LoginAttemptService loginAttempts;
 
     public AuthService(UserAccountRepository users, RefreshTokenRepository refreshTokens, PasswordEncoder passwordEncoder,
-                       JwtEncoder jwtEncoder, JwtProperties jwtProperties) {
+                       JwtEncoder jwtEncoder, JwtProperties jwtProperties, SecurityProperties securityProperties,
+                       LoginAttemptService loginAttempts) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;
         this.jwtProperties = jwtProperties;
+        this.securityProperties = securityProperties;
+        this.loginAttempts = loginAttempts;
     }
 
     @Transactional
-    public AuthDtos.TokenResponse register(AuthDtos.RegisterRequest request) {
+    public IssuedTokens register(AuthDtos.RegisterRequest request) {
+        if (!securityProperties.registrationEnabled()) throw new ForbiddenException("当前未开放公开注册，请联系管理员创建账号。");
         String email = request.email().trim().toLowerCase();
         if (users.existsByEmailIgnoreCase(email)) throw new ConflictException("该邮箱已经注册。");
         UserAccount user = users.save(new UserAccount(email, passwordEncoder.encode(request.password()), request.displayName().trim()));
@@ -45,17 +54,22 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthDtos.TokenResponse login(AuthDtos.LoginRequest request) {
-        UserAccount user = users.findByEmailIgnoreCase(request.email().trim())
-            .filter(UserAccount::isEnabled)
-            .filter(candidate -> passwordEncoder.matches(request.password(), candidate.getPasswordHash()))
-            .orElseThrow(() -> new UnauthorizedException("邮箱或密码不正确。"));
+    public IssuedTokens login(AuthDtos.LoginRequest request, String clientAddress) {
+        loginAttempts.check(request.email(), clientAddress);
+        UserAccount user = users.findByEmailIgnoreCase(request.email().trim()).filter(UserAccount::isEnabled)
+            .filter(candidate -> passwordEncoder.matches(request.password(), candidate.getPasswordHash())).orElse(null);
+        if (user == null) {
+            loginAttempts.failed(request.email(), clientAddress);
+            throw new UnauthorizedException("邮箱或密码不正确。");
+        }
+        loginAttempts.succeeded(request.email(), clientAddress);
         return issueTokens(user);
     }
 
     @Transactional
-    public AuthDtos.TokenResponse refresh(AuthDtos.RefreshRequest request) {
-        RefreshToken stored = refreshTokens.findByTokenHash(hash(request.refreshToken()))
+    public IssuedTokens refresh(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) throw new UnauthorizedException("刷新凭证无效或已经过期。");
+        RefreshToken stored = refreshTokens.findByTokenHash(hash(rawToken))
             .filter(token -> token.getRevokedAt() == null && token.getExpiresAt().isAfter(Instant.now()))
             .orElseThrow(() -> new UnauthorizedException("刷新凭证无效或已经过期。"));
         stored.revoke();
@@ -63,8 +77,29 @@ public class AuthService {
     }
 
     @Transactional
-    public void logout(AuthDtos.LogoutRequest request) {
-        refreshTokens.findByTokenHash(hash(request.refreshToken())).ifPresent(RefreshToken::revoke);
+    public void logout(String rawToken) {
+        if (rawToken != null && !rawToken.isBlank()) refreshTokens.findByTokenHash(hash(rawToken)).ifPresent(RefreshToken::revoke);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuthDtos.SessionResponse> sessions(String userId, String currentRawToken) {
+        String currentHash = currentRawToken == null ? "" : hash(currentRawToken);
+        return refreshTokens.findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(userId, Instant.now()).stream()
+            .map(token -> new AuthDtos.SessionResponse(token.getId(), token.getCreatedAt(), token.getExpiresAt(), token.getTokenHash().equals(currentHash))).toList();
+    }
+
+    @Transactional
+    public boolean revokeSession(String userId, String sessionId, String currentRawToken) {
+        RefreshToken token = refreshTokens.findByIdAndUserId(sessionId, userId).orElse(null);
+        if (token == null) return false;
+        boolean current = currentRawToken != null && token.getTokenHash().equals(hash(currentRawToken));
+        token.revoke();
+        return current;
+    }
+
+    @Transactional
+    public void logoutAll(String userId) {
+        refreshTokens.findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(userId, Instant.now()).forEach(RefreshToken::revoke);
     }
 
     @Transactional(readOnly = true)
@@ -72,7 +107,7 @@ public class AuthService {
         return users.findById(userId).map(this::toUser).orElseThrow(() -> new IllegalArgumentException("用户不存在。"));
     }
 
-    private AuthDtos.TokenResponse issueTokens(UserAccount user) {
+    private IssuedTokens issueTokens(UserAccount user) {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(jwtProperties.accessTokenMinutes(), ChronoUnit.MINUTES);
         JwtClaimsSet claims = JwtClaimsSet.builder()
@@ -80,8 +115,10 @@ public class AuthService {
             .claim("email", user.getEmail()).claim("name", user.getDisplayName()).claim("role", user.getRole()).build();
         String accessToken = jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
         String rawRefresh = UUID.randomUUID() + "." + UUID.randomUUID();
+        List<RefreshToken> active = refreshTokens.findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(user.getId(), now);
+        for (int index = securityProperties.maxSessions() - 1; index < active.size(); index++) active.get(index).revoke();
         refreshTokens.save(new RefreshToken(user, hash(rawRefresh), now.plus(jwtProperties.refreshTokenDays(), ChronoUnit.DAYS)));
-        return new AuthDtos.TokenResponse(accessToken, rawRefresh, jwtProperties.accessTokenMinutes() * 60, toUser(user));
+        return new IssuedTokens(new AuthDtos.TokenResponse(accessToken, jwtProperties.accessTokenMinutes() * 60, toUser(user)), rawRefresh);
     }
 
     private AuthDtos.UserResponse toUser(UserAccount user) {
@@ -95,4 +132,6 @@ public class AuthService {
             throw new IllegalStateException(exception);
         }
     }
+
+    record IssuedTokens(AuthDtos.TokenResponse response, String refreshToken) {}
 }
