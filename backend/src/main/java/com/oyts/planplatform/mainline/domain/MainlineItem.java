@@ -20,6 +20,7 @@ public class MainlineItem extends BaseEntity {
     @Column(nullable = false, length = 2000) private String note = "";
     private Instant startedAt;
     private Instant completedAt;
+    @Column(name = "deleted_at") private Instant deletedAt;
     protected MainlineItem() {}
     public MainlineItem(Mainline mainline) { this.mainline = mainline; }
     public void update(String title, String description, String acceptanceJson, int plannedMinutes, int sortOrder) {
@@ -34,9 +35,12 @@ public class MainlineItem extends BaseEntity {
         this.status = status.name(); this.accumulatedSeconds = Math.max(0, accumulatedSeconds);
         this.note = note == null ? "" : note.trim(); this.startedAt = startedAt; this.completedAt = completedAt;
     }
+    public void trash() { if (startedAt != null) pause(); deletedAt = Instant.now(); }
+    public void restore() { deletedAt = null; }
     public Mainline getMainline() { return mainline; } public String getTitle() { return title; }
     public String getDescription() { return description; } public String getAcceptanceJson() { return acceptanceJson; }
     public int getPlannedMinutes() { return plannedMinutes; } public int getSortOrder() { return sortOrder; }
     public Status getStatus() { return Status.valueOf(status); } public long getAccumulatedSeconds() { return accumulatedSeconds; }
     public String getNote() { return note; } public Instant getStartedAt() { return startedAt; } public Instant getCompletedAt() { return completedAt; }
+    public Instant getDeletedAt() { return deletedAt; }
 }

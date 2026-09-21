@@ -19,7 +19,7 @@ async function loadPlanOptions() {
 async function download() { try { const { page: ignoredPage, size: ignoredSize, ...params } = filterParams(); const response = await api.get('/time-entries/export', { params, responseType: 'blob' }); const url = URL.createObjectURL(response.data as Blob); const link = document.createElement('a'); link.href = url; link.download = `plan-time-ledger-${from.value}-${to.value}.csv`; link.click(); URL.revokeObjectURL(url); } catch (exception) { error.value = apiMessage(exception); } }
 async function restore(item: TrashItem) { busy.value = true; try { await api.post(`/trash/${item.type}/${item.id}/restore`); await Promise.all([loadTrash(), loadLedger(), loadPlans()]); } catch (exception) { error.value = apiMessage(exception); } finally { busy.value = false; } }
 async function purge(item: TrashItem) { if (!confirm(`永久删除“${item.title}”？此操作无法恢复。`)) return; busy.value = true; try { await api.delete(`/trash/${item.type}/${item.id}`); await loadTrash(); } catch (exception) { error.value = apiMessage(exception); } finally { busy.value = false; } }
-function typeLabel(type: TrashItem['type']) { return type === 'TASK' ? '任务' : type === 'MILESTONE' ? '里程碑' : type === 'TEMPLATE' ? '模板' : type === 'PLAN' ? '计划' : '标签'; }
+function typeLabel(type: TrashItem['type']) { return type === 'TASK' ? '任务' : type === 'MILESTONE' ? '里程碑' : type === 'TEMPLATE' ? '模板' : type === 'PLAN' ? '计划' : type === 'TAG' ? '标签' : type === 'MAINLINE' ? '主线' : '主线步骤'; }
 watch(planId, async () => { await loadPlanOptions(); page.value = 0; await loadLedger(); }); watch([from, to, page, size, tagId, taskId, source], loadLedger); onMounted(() => Promise.all([loadLedger(), loadTrash(), loadPlans()]));
 </script>
 

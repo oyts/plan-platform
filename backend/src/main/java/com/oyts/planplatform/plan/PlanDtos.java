@@ -62,6 +62,10 @@ public final class PlanDtos {
     public record DeferRequest(@NotNull LocalDate deferTo, @Size(max = 2000) String note, Long version) {}
     public enum RecurrenceMode { DAILY, WEEKDAYS, WEEKLY }
     public record RecurringTaskRequest(@NotNull @Valid TaskRequest task, @NotNull RecurrenceMode mode, @NotNull LocalDate until) {}
+    public record RecurrenceBatchResponse(String recurrenceId, String title, String category, LocalDate firstDate, LocalDate lastDate,
+                                          long taskCount, long completedCount, long openCount) {}
+    public record StopRecurrenceRequest(@NotNull LocalDate from, @Size(max = 1000) String reason) {}
+    public record StopRecurrenceResponse(String recurrenceId, long stoppedCount) {}
 
     public record MilestoneRequest(@NotBlank @Size(max = 120) String name, @NotNull LocalDate date,
                                    @Size(max = 1000) String description, List<@NotBlank @Size(max = 500) String> acceptance, Long version) {}

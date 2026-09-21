@@ -249,6 +249,33 @@ public class PlanController {
         return service.stats(jwt.getSubject(), planId, from, to);
     }
 
+    @GetMapping(value = "/plans/{planId}/tasks/export", produces = "text/csv;charset=UTF-8")
+    ResponseEntity<String> exportTasks(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=plan-tasks.csv")
+            .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8")).body("\uFEFF" + service.taskExport(jwt.getSubject(), planId, from, to));
+    }
+
+    @GetMapping(value = "/plans/{planId}/stats/export", produces = "text/csv;charset=UTF-8")
+    ResponseEntity<String> exportStats(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=plan-statistics.csv")
+            .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8")).body("\uFEFF" + service.statsExport(jwt.getSubject(), planId, from, to));
+    }
+
+    @GetMapping("/plans/{planId}/recurrences")
+    List<PlanDtos.RecurrenceBatchResponse> recurrences(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId) {
+        return service.recurrenceBatches(jwt.getSubject(), planId);
+    }
+
+    @PostMapping("/plans/{planId}/recurrences/{recurrenceId}/stop")
+    PlanDtos.StopRecurrenceResponse stopRecurrence(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId, @PathVariable String recurrenceId,
+            @Valid @RequestBody PlanDtos.StopRecurrenceRequest request) {
+        return service.stopRecurrence(jwt.getSubject(), planId, recurrenceId, request);
+    }
+
     @GetMapping("/plans/{planId}/stats/daily")
     PlanDtos.PageResponse<PlanDtos.DailyStat> dailyStats(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,

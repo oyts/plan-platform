@@ -12,6 +12,8 @@ import org.springframework.data.domain.Pageable;
 public interface PlanTaskRepository extends JpaRepository<PlanTask, String> {
     @EntityGraph(attributePaths = {"tag"})
     List<PlanTask> findByPlanIdAndDeletedAtIsNullOrderByDateAscSortOrderAsc(String planId);
+    @EntityGraph(attributePaths = {"tag", "progress"})
+    List<PlanTask> findByPlanIdAndRecurrenceIdAndDeletedAtIsNullOrderByDateAscSortOrderAsc(String planId, String recurrenceId);
     @EntityGraph(attributePaths = {"tag"})
     Page<PlanTask> findByPlanIdAndDeletedAtIsNullAndDateBetweenOrderByDateAscSortOrderAsc(String planId, LocalDate from, LocalDate to, Pageable pageable);
     @EntityGraph(attributePaths = {"tag"})

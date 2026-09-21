@@ -13,7 +13,8 @@ export interface Milestone { id: string; planId: string; name: string; date: str
 export interface TaskTemplate { id: string; name: string; category: string; title: string; description: string; plannedMinutes: number; acceptance: string[]; resourceUrl: string; required: boolean; version: number }
 export interface Reflection { id: string; date: string; completedSummary: string; unfinishedSummary: string; blockers: string; firstTaskTomorrow: string; energy: number | null; note: string; version: number }
 export interface TimeEntry { id: string; planId: string; taskId: string; taskTitle: string; tagName: string; tagColor: string | null; startedAt: string; endedAt: string; seconds: number; source: string }
-export interface TrashItem { type: 'TASK' | 'MILESTONE' | 'TEMPLATE' | 'PLAN' | 'TAG'; id: string; title: string; detail: string; deletedAt: string }
+export interface TrashItem { type: 'TASK' | 'MILESTONE' | 'TEMPLATE' | 'PLAN' | 'TAG' | 'MAINLINE' | 'MAINLINE_ITEM'; id: string; title: string; detail: string; deletedAt: string }
 export interface Today { date: string; tasks: Task[]; total: number; completed: number; plannedMinutes: number; actualSeconds: number }
 export interface MainlineItem { id: string; title: string; description: string; acceptance: string[]; plannedMinutes: number; sortOrder: number; status: string; unlocked: boolean; accumulatedSeconds: number; note: string; startedAt: string | null; completedAt: string | null; version: number }
 export interface Mainline { id: string; name: string; description: string; color: string; version: number; completed: number; total: number; items: MainlineItem[] }
+export interface RecurrenceBatch { recurrenceId: string; title: string; category: string; firstDate: string; lastDate: string; taskCount: number; completedCount: number; openCount: number }

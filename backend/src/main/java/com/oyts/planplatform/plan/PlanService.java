@@ -7,6 +7,10 @@ import com.oyts.planplatform.auth.UserAccount;
 import com.oyts.planplatform.auth.UserAccountRepository;
 import com.oyts.planplatform.common.ConflictException;
 import com.oyts.planplatform.common.NotFoundException;
+import com.oyts.planplatform.mainline.MainlineItemRepository;
+import com.oyts.planplatform.mainline.MainlineRepository;
+import com.oyts.planplatform.mainline.domain.Mainline;
+import com.oyts.planplatform.mainline.domain.MainlineItem;
 import com.oyts.planplatform.plan.domain.DailyReflection;
 import com.oyts.planplatform.plan.domain.Plan;
 import com.oyts.planplatform.plan.domain.PlanMilestone;
@@ -50,14 +54,17 @@ public class PlanService {
     private final TaskProgressRepository progress;
     private final TimeEntryRepository timeEntries;
     private final DailyReflectionRepository reflections;
+    private final MainlineRepository mainlines;
+    private final MainlineItemRepository mainlineItems;
     private final ObjectMapper objectMapper;
     private final EntityManager entityManager;
 
     public PlanService(UserAccountRepository users, PlanRepository plans, PlanMilestoneRepository milestones, PlanTagRepository tags, PlanTaskRepository tasks, TaskTemplateRepository templates,
                        TaskProgressRepository progress, TimeEntryRepository timeEntries,
-                       DailyReflectionRepository reflections, ObjectMapper objectMapper, EntityManager entityManager) {
+                       DailyReflectionRepository reflections, MainlineRepository mainlines, MainlineItemRepository mainlineItems,
+                       ObjectMapper objectMapper, EntityManager entityManager) {
         this.users = users; this.plans = plans; this.milestones = milestones; this.tags = tags; this.tasks = tasks; this.templates = templates; this.progress = progress;
-        this.timeEntries = timeEntries; this.reflections = reflections; this.objectMapper = objectMapper; this.entityManager = entityManager;
+        this.timeEntries = timeEntries; this.reflections = reflections; this.mainlines = mainlines; this.mainlineItems = mainlineItems; this.objectMapper = objectMapper; this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -166,6 +173,42 @@ public class PlanService {
         }
         if (created.isEmpty()) throw new IllegalArgumentException("重复规则没有在当前计划范围内生成任务。");
         return created;
+    }
+
+    @Transactional(readOnly = true)
+    public List<PlanDtos.RecurrenceBatchResponse> recurrenceBatches(String userId, String planId) {
+        ownedPlan(userId, planId);
+        Map<String, List<PlanTask>> batches = new LinkedHashMap<>();
+        tasks.findByPlanIdAndDeletedAtIsNullOrderByDateAscSortOrderAsc(planId).stream().filter(task -> task.getRecurrenceId() != null)
+            .forEach(task -> batches.computeIfAbsent(task.getRecurrenceId(), ignored -> new ArrayList<>()).add(task));
+        return batches.entrySet().stream().map(entry -> {
+            List<PlanTask> rows = entry.getValue(); PlanTask first = rows.getFirst();
+            long completed = rows.stream().filter(row -> progressFor(row.getId()).getStatus() == TaskProgress.Status.COMPLETED).count();
+            long open = rows.stream().filter(row -> { TaskProgress.Status state = progressFor(row.getId()).getStatus(); return state != TaskProgress.Status.COMPLETED && state != TaskProgress.Status.SKIPPED; }).count();
+            return new PlanDtos.RecurrenceBatchResponse(entry.getKey(), first.getTitle(), first.getCategory(), first.getDate(), rows.getLast().getDate(), rows.size(), completed, open);
+        }).toList();
+    }
+
+    /** Repeated tasks are materialized up-front. Stopping a batch preserves history and marks only future unfinished rows as skipped. */
+    @Transactional
+    public PlanDtos.StopRecurrenceResponse stopRecurrence(String userId, String planId, String recurrenceId, PlanDtos.StopRecurrenceRequest request) {
+        ownedPlan(userId, planId);
+        List<PlanTask> rows = tasks.findByPlanIdAndRecurrenceIdAndDeletedAtIsNullOrderByDateAscSortOrderAsc(planId, recurrenceId);
+        if (rows.isEmpty()) throw new NotFoundException("重复任务批次不存在。");
+        long stopped = 0;
+        for (PlanTask task : rows) {
+            if (task.getDate().isBefore(request.from())) continue;
+            TaskProgress item = progressFor(task.getId());
+            if (item.getStatus() == TaskProgress.Status.COMPLETED || item.getStatus() == TaskProgress.Status.SKIPPED) continue;
+            if (item.getStartedAt() != null) {
+                Instant ended = Instant.now(); long seconds = Math.max(0, java.time.Duration.between(item.getStartedAt(), ended).getSeconds());
+                if (seconds > 0) timeEntries.save(new TimeEntry(item, item.getStartedAt(), ended, seconds, "TIMER"));
+            }
+            item.update(TaskProgress.Status.SKIPPED, item.getNote(), item.getAcceptanceJson(), null,
+                blank(request.reason()) ? "重复任务批次已停止" : request.reason());
+            stopped++;
+        }
+        return new PlanDtos.StopRecurrenceResponse(recurrenceId, stopped);
     }
 
     @Transactional
@@ -430,6 +473,8 @@ public class PlanService {
         templates.findByOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(item -> rows.add(new PlanDtos.TrashResponse("TEMPLATE", item.getId(), item.getName(), item.getTitle(), item.getDeletedAt())));
         plans.findByOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(item -> rows.add(new PlanDtos.TrashResponse("PLAN", item.getId(), item.getName(), item.getStartDate() + " — " + item.getEndDate(), item.getDeletedAt())));
         tags.findByPlanOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(item -> rows.add(new PlanDtos.TrashResponse("TAG", item.getId(), item.getName(), item.getPlan().getName(), item.getDeletedAt())));
+        mainlines.findByOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(item -> rows.add(new PlanDtos.TrashResponse("MAINLINE", item.getId(), item.getName(), "主线 · " + item.getDescription(), item.getDeletedAt())));
+        mainlineItems.findByMainlineOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(item -> rows.add(new PlanDtos.TrashResponse("MAINLINE_ITEM", item.getId(), item.getTitle(), item.getMainline().getName() + " · 第 " + (item.getSortOrder() + 1) + " 步", item.getDeletedAt())));
         rows.sort(java.util.Comparator.comparing(PlanDtos.TrashResponse::deletedAt).reversed());
         return rows;
     }
@@ -442,6 +487,8 @@ public class PlanService {
             case "TEMPLATE" -> { TaskTemplate item = templates.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站模板不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
             case "PLAN" -> { Plan item = plans.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站计划不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
             case "TAG" -> { PlanTag item = tags.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站标签不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
+            case "MAINLINE" -> { Mainline item = mainlines.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站主线不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
+            case "MAINLINE_ITEM" -> { MainlineItem item = mainlineItems.findByIdAndMainlineOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站主线步骤不存在。")); requireTrashed(item.getDeletedAt()); if (item.getMainline().getDeletedAt() != null) throw new ConflictException("请先恢复所属主线。"); item.restore(); }
             default -> throw new IllegalArgumentException("不支持的回收站类型。");
         }
     }
@@ -454,6 +501,8 @@ public class PlanService {
             case "TEMPLATE" -> { TaskTemplate item = templates.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站模板不存在。")); requireTrashed(item.getDeletedAt()); templates.delete(item); }
             case "PLAN" -> { Plan item = plans.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站计划不存在。")); requireTrashed(item.getDeletedAt()); plans.delete(item); }
             case "TAG" -> { PlanTag item = tags.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站标签不存在。")); requireTrashed(item.getDeletedAt()); tags.delete(item); }
+            case "MAINLINE" -> { Mainline item = mainlines.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站主线不存在。")); requireTrashed(item.getDeletedAt()); mainlines.delete(item); }
+            case "MAINLINE_ITEM" -> { MainlineItem item = mainlineItems.findByIdAndMainlineOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站主线步骤不存在。")); requireTrashed(item.getDeletedAt()); mainlineItems.delete(item); }
             default -> throw new IllegalArgumentException("不支持的回收站类型。");
         }
     }
@@ -476,6 +525,30 @@ public class PlanService {
         }).toList();
         return new PlanDtos.StatsResponse(from, to, rows.size(), rows.stream().filter(row -> row.progress().status().equals("COMPLETED")).count(),
             rows.stream().mapToLong(PlanDtos.TaskResponse::plannedMinutes).sum(), rows.stream().mapToLong(row -> row.progress().accumulatedSeconds()).sum(), tagStats);
+    }
+
+    @Transactional(readOnly = true)
+    public String taskExport(String userId, String planId, LocalDate from, LocalDate to) {
+        ownedPlan(userId, planId); validateRange(from, to);
+        StringBuilder csv = new StringBuilder("日期,开始,结束,任务,分类,标签,计划分钟,状态,实际秒数,重复批次\n");
+        tasks.findByPlanIdAndDeletedAtIsNullOrderByDateAscSortOrderAsc(planId).stream()
+            .filter(item -> !item.getDate().isBefore(from) && !item.getDate().isAfter(to)).forEach(item -> {
+                PlanDtos.TaskResponse row = toTask(item);
+                csv.append(csvCell(row.date().toString())).append(',').append(csvCell(row.startTime() == null ? "" : row.startTime().toString())).append(',')
+                    .append(csvCell(row.endTime() == null ? "" : row.endTime().toString())).append(',').append(csvCell(row.title())).append(',')
+                    .append(csvCell(row.category())).append(',').append(csvCell(row.tagName())).append(',').append(row.plannedMinutes()).append(',')
+                    .append(csvCell(row.progress().status())).append(',').append(row.progress().accumulatedSeconds()).append(',').append(csvCell(row.recurrenceId())).append('\n');
+            });
+        return csv.toString();
+    }
+
+    @Transactional(readOnly = true)
+    public String statsExport(String userId, String planId, LocalDate from, LocalDate to) {
+        PlanDtos.StatsResponse summary = stats(userId, planId, from, to);
+        StringBuilder csv = new StringBuilder("开始日期,结束日期,任务数,已完成,计划分钟,实际秒数\n");
+        csv.append(summary.from()).append(',').append(summary.to()).append(',').append(summary.taskCount()).append(',').append(summary.completedCount()).append(',').append(summary.plannedMinutes()).append(',').append(summary.actualSeconds()).append("\n\n标签,任务数,已完成,计划分钟,实际秒数\n");
+        summary.tags().forEach(row -> csv.append(csvCell(row.tagName())).append(',').append(row.taskCount()).append(',').append(row.completedCount()).append(',').append(row.plannedMinutes()).append(',').append(row.actualSeconds()).append('\n'));
+        return csv.toString();
     }
 
     @Transactional(readOnly = true)

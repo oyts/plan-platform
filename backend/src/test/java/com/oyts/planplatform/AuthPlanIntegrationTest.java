@@ -148,11 +148,20 @@ class AuthPlanIntegrationTest {
         mvc.perform(post("/api/templates/{templateId}/instantiate", templateId).header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{" + "\"planId\":\"" + planId + "\",\"date\":\"2026-09-01\",\"sortOrder\":0}"))
             .andExpect(status().isCreated()).andExpect(jsonPath("$.templateId").value(templateId));
-        mvc.perform(post("/api/plans/{planId}/tasks/recurring", planId).header("Authorization", "Bearer " + token)
+        JsonNode recurring = objectMapper.readTree(mvc.perform(post("/api/plans/{planId}/tasks/recurring", planId).header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("""
                     {"task":{"date":"2026-09-02","plannedMinutes":30,"category":"ALGORITHM","title":"重复练习","description":"","acceptance":[],"resourceUrl":"","required":true,"sortOrder":1},"mode":"WEEKDAYS","until":"2026-09-04"}
                     """))
-            .andExpect(status().isCreated()).andExpect(jsonPath("$.length()").value(3)).andExpect(jsonPath("$[0].recurrenceId").isNotEmpty());
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.length()").value(3)).andExpect(jsonPath("$[0].recurrenceId").isNotEmpty())
+            .andReturn().getResponse().getContentAsString());
+        String recurrenceId = recurring.get(0).get("recurrenceId").asText();
+        mvc.perform(get("/api/plans/{planId}/recurrences", planId).header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].recurrenceId").value(recurrenceId)).andExpect(jsonPath("$[0].taskCount").value(3));
+        mvc.perform(post("/api/plans/{planId}/recurrences/{recurrenceId}/stop", planId, recurrenceId).header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"from\":\"2026-09-03\",\"reason\":\"本轮结束\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.stoppedCount").value(2));
+        mvc.perform(get("/api/plans/{planId}/tasks/export", planId).header("Authorization", "Bearer " + token).param("from", "2026-09-01").param("to", "2026-09-30"))
+            .andExpect(status().isOk()).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("重复练习")));
         JsonNode milestone = objectMapper.readTree(mvc.perform(post("/api/plans/{planId}/milestones", planId).header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("""
                     {"name":"第一阶段验收","date":"2026-09-05","description":"检查基础完成度","acceptance":["任务完成","复盘已写"]}
