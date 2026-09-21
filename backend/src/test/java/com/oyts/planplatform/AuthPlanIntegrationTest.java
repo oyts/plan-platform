@@ -131,6 +131,40 @@ class AuthPlanIntegrationTest {
     }
 
     @Test
+    void milestonesTemplatesAndRecurringTasksArePrivateAndUsable() throws Exception {
+        String token = register("studio@example.com", "工作台测试账号");
+        JsonNode plan = objectMapper.readTree(mvc.perform(post("/api/plans").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"name":"工作台计划","description":"","startDate":"2026-09-01","endDate":"2026-09-30","overallTagName":"总计","overallTagColor":"#002FA7"}
+                    """)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String planId = plan.get("id").asText();
+        JsonNode template = objectMapper.readTree(mvc.perform(post("/api/templates").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"name":"算法日练","category":"ALGORITHM","title":"一道算法题","description":"记录思路","plannedMinutes":30,"acceptance":["提交笔记"],"resourceUrl":"","required":true}
+                    """)).andExpect(status().isCreated()).andExpect(jsonPath("$.name").value("算法日练"))
+            .andReturn().getResponse().getContentAsString());
+        String templateId = template.get("id").asText();
+        mvc.perform(post("/api/templates/{templateId}/instantiate", templateId).header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{" + "\"planId\":\"" + planId + "\",\"date\":\"2026-09-01\",\"sortOrder\":0}"))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.templateId").value(templateId));
+        mvc.perform(post("/api/plans/{planId}/tasks/recurring", planId).header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"task":{"date":"2026-09-02","plannedMinutes":30,"category":"ALGORITHM","title":"重复练习","description":"","acceptance":[],"resourceUrl":"","required":true,"sortOrder":1},"mode":"WEEKDAYS","until":"2026-09-04"}
+                    """))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.length()").value(3)).andExpect(jsonPath("$[0].recurrenceId").isNotEmpty());
+        JsonNode milestone = objectMapper.readTree(mvc.perform(post("/api/plans/{planId}/milestones", planId).header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"name":"第一阶段验收","date":"2026-09-05","description":"检查基础完成度","acceptance":["任务完成","复盘已写"]}
+                    """)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String milestoneId = milestone.get("id").asText();
+        mvc.perform(put("/api/milestones/{milestoneId}/progress", milestoneId).header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"checks\":[true,true],\"note\":\"已验收\",\"version\":0}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.checks[1]").value(true)).andExpect(jsonPath("$.note").value("已验收"));
+        mvc.perform(get("/api/plans/{planId}/milestones", planId).header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].name").value("第一阶段验收"));
+    }
+
+    @Test
     void revokedRefreshTokenReturnsUnauthorized() throws Exception {
         String body = objectMapper.writeValueAsString(new RegisterBody("logout@example.com", "password123", "退出测试账号"));
         MvcResult registration = mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))

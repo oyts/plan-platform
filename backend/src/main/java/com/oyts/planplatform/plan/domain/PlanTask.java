@@ -42,6 +42,10 @@ public class PlanTask extends BaseEntity {
     private boolean required = true;
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
+    @Column(name = "recurrence_id", length = 36)
+    private String recurrenceId;
+    @Column(name = "template_id", length = 36)
+    private String templateId;
 
     @OneToOne(mappedBy = "task", fetch = FetchType.LAZY)
     private TaskProgress progress;
@@ -81,4 +85,8 @@ public class PlanTask extends BaseEntity {
     public String getResourceUrl() { return resourceUrl; }
     public boolean isRequired() { return required; }
     public int getSortOrder() { return sortOrder; }
+    public void assignRecurrence(String recurrenceId) { this.recurrenceId = recurrenceId; }
+    public void assignTemplate(String templateId) { this.templateId = templateId; }
+    public String getRecurrenceId() { return recurrenceId; }
+    public String getTemplateId() { return templateId; }
 }

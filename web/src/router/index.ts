@@ -8,6 +8,7 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/schedule', component: () => import('@/views/ScheduleView.vue') },
   { path: '/plans', component: () => import('@/views/PlansView.vue') },
   { path: '/plans/:id', component: () => import('@/views/PlanDetailView.vue') },
+  { path: '/plans/:id/studio', component: () => import('@/views/PlanStudioView.vue') },
   { path: '/stats', component: () => import('@/views/StatsView.vue') },
   { path: '/mainlines', component: () => import('@/views/MainlinesView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },

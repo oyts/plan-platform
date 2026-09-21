@@ -1,6 +1,7 @@
 package com.oyts.planplatform.plan;
 
 import com.oyts.planplatform.plan.domain.TaskProgress;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -49,7 +50,7 @@ public final class PlanDtos {
     public record TaskResponse(String id, String planId, String tagId, String tagName, String tagColor, LocalDate date,
                                LocalTime startTime, LocalTime endTime, int plannedMinutes, String category, String title,
                                String description, List<String> acceptance, String resourceUrl, boolean required,
-                               int sortOrder, long version, ProgressResponse progress) {}
+                               int sortOrder, String recurrenceId, String templateId, long version, ProgressResponse progress) {}
 
     /** A stable, zero-based page contract for long-running plans. */
     public record PageResponse<T>(List<T> content, int page, int size, long totalElements, int totalPages) {}
@@ -59,6 +60,23 @@ public final class PlanDtos {
     public record CompleteRequest(@Size(max = 2000) String note, List<Boolean> acceptanceChecks, Long version) {}
     public record ManualTimeRequest(long seconds, Long version) {}
     public record DeferRequest(@NotNull LocalDate deferTo, @Size(max = 2000) String note, Long version) {}
+    public enum RecurrenceMode { DAILY, WEEKDAYS, WEEKLY }
+    public record RecurringTaskRequest(@NotNull @Valid TaskRequest task, @NotNull RecurrenceMode mode, @NotNull LocalDate until) {}
+
+    public record MilestoneRequest(@NotBlank @Size(max = 120) String name, @NotNull LocalDate date,
+                                   @Size(max = 1000) String description, List<@NotBlank @Size(max = 500) String> acceptance, Long version) {}
+    public record MilestoneProgressRequest(List<Boolean> checks, @Size(max = 2000) String note, Long version) {}
+    public record MilestoneResponse(String id, String planId, String name, LocalDate date, String description,
+                                    List<String> acceptance, List<Boolean> checks, String note, Instant reviewedAt, long version) {}
+
+    public record TemplateRequest(@NotBlank @Size(max = 80) String name, @NotBlank @Size(max = 40) String category,
+                                  @NotBlank @Size(max = 180) String title, @Size(max = 2000) String description,
+                                  @Min(1) @Max(1440) int plannedMinutes, List<@NotBlank @Size(max = 500) String> acceptance,
+                                  @Size(max = 1000) String resourceUrl, boolean required, Long version) {}
+    public record TemplateResponse(String id, String name, String category, String title, String description, int plannedMinutes,
+                                   List<String> acceptance, String resourceUrl, boolean required, long version) {}
+    public record InstantiateTemplateRequest(@NotBlank String planId, String tagId, @NotNull LocalDate date, LocalTime startTime,
+                                             LocalTime endTime, Integer sortOrder) {}
 
     public record ReflectionRequest(@Size(max = 2000) String completedSummary, @Size(max = 2000) String unfinishedSummary,
                                     @Size(max = 2000) String blockers, @Size(max = 1000) String firstTaskTomorrow,

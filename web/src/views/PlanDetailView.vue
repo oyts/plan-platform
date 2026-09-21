@@ -60,7 +60,7 @@ onMounted(() => load().then(resetTask).catch(exception => error.value = apiMessa
 
 <template>
   <div class="page">
-    <section class="page-head"><div><p class="eyebrow">PLAN / DETAIL</p><h1>{{ plan?.name ?? '读取计划中…' }}</h1></div><p>{{ plan?.startDate }}—{{ plan?.endDate }} · {{ tasks.length }} 项任务</p></section>
+    <section class="page-head"><div><p class="eyebrow">PLAN / DETAIL</p><h1>{{ plan?.name ?? '读取计划中…' }}</h1></div><div><p>{{ plan?.startDate }}—{{ plan?.endDate }} · {{ tasks.length }} 项任务</p><router-link class="btn" :to="`/plans/${planId}/studio`">阶段与模板</router-link></div></section>
     <p v-if="error" class="error-text">{{ error }}</p>
     <section class="tag-strip" aria-label="计划标签">
       <span v-for="tag in tags" :key="tag.id" class="tag-tool"><span class="tag" :style="{ color: tag.color, borderColor: tag.color }">{{ tag.name }}{{ tag.overall ? ' · 总计' : '' }}</span><button class="text-btn" type="button" @click="editTag(tag)">编辑</button><button v-if="!tag.overall" class="text-btn danger-text" type="button" @click="removeTag(tag)">删除</button></span>

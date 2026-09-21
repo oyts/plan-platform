@@ -9,14 +9,18 @@ import com.oyts.planplatform.common.ConflictException;
 import com.oyts.planplatform.common.NotFoundException;
 import com.oyts.planplatform.plan.domain.DailyReflection;
 import com.oyts.planplatform.plan.domain.Plan;
+import com.oyts.planplatform.plan.domain.PlanMilestone;
 import com.oyts.planplatform.plan.domain.PlanTag;
 import com.oyts.planplatform.plan.domain.PlanTask;
+import com.oyts.planplatform.plan.domain.TaskTemplate;
 import com.oyts.planplatform.plan.domain.TaskProgress;
 import com.oyts.planplatform.plan.domain.TimeEntry;
 import com.oyts.planplatform.plan.repository.DailyReflectionRepository;
 import com.oyts.planplatform.plan.repository.PlanRepository;
+import com.oyts.planplatform.plan.repository.PlanMilestoneRepository;
 import com.oyts.planplatform.plan.repository.PlanTagRepository;
 import com.oyts.planplatform.plan.repository.PlanTaskRepository;
+import com.oyts.planplatform.plan.repository.TaskTemplateRepository;
 import com.oyts.planplatform.plan.repository.TaskProgressRepository;
 import com.oyts.planplatform.plan.repository.TimeEntryRepository;
 import jakarta.persistence.EntityManager;
@@ -26,6 +30,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -38,18 +43,20 @@ public class PlanService {
     private static final TypeReference<List<Boolean>> BOOLEAN_LIST = new TypeReference<>() {};
     private final UserAccountRepository users;
     private final PlanRepository plans;
+    private final PlanMilestoneRepository milestones;
     private final PlanTagRepository tags;
     private final PlanTaskRepository tasks;
+    private final TaskTemplateRepository templates;
     private final TaskProgressRepository progress;
     private final TimeEntryRepository timeEntries;
     private final DailyReflectionRepository reflections;
     private final ObjectMapper objectMapper;
     private final EntityManager entityManager;
 
-    public PlanService(UserAccountRepository users, PlanRepository plans, PlanTagRepository tags, PlanTaskRepository tasks,
+    public PlanService(UserAccountRepository users, PlanRepository plans, PlanMilestoneRepository milestones, PlanTagRepository tags, PlanTaskRepository tasks, TaskTemplateRepository templates,
                        TaskProgressRepository progress, TimeEntryRepository timeEntries,
                        DailyReflectionRepository reflections, ObjectMapper objectMapper, EntityManager entityManager) {
-        this.users = users; this.plans = plans; this.tags = tags; this.tasks = tasks; this.progress = progress;
+        this.users = users; this.plans = plans; this.milestones = milestones; this.tags = tags; this.tasks = tasks; this.templates = templates; this.progress = progress;
         this.timeEntries = timeEntries; this.reflections = reflections; this.objectMapper = objectMapper; this.entityManager = entityManager;
     }
 
@@ -137,11 +144,28 @@ public class PlanService {
         validateTaskDate(plan, request.date());
         PlanTag tag = request.tagId() == null ? null : ownedTag(userId, request.tagId());
         if (tag != null && !tag.getPlan().getId().equals(planId)) throw new IllegalArgumentException("标签不属于当前计划。");
-        PlanTask task = new PlanTask(plan);
-        applyTask(task, tag, request);
-        tasks.save(task);
-        progress.save(new TaskProgress(task));
-        return toTask(task);
+        return createTask(plan, tag, request, null, null);
+    }
+
+    @Transactional
+    public List<PlanDtos.TaskResponse> createRecurringTasks(String userId, String planId, PlanDtos.RecurringTaskRequest request) {
+        Plan plan = ownedPlan(userId, planId);
+        PlanDtos.TaskRequest taskRequest = request.task();
+        validateTaskDate(plan, taskRequest.date());
+        if (request.until().isBefore(taskRequest.date())) throw new IllegalArgumentException("重复结束日期不能早于首次日期。");
+        PlanTag tag = taskRequest.tagId() == null ? null : ownedTag(userId, taskRequest.tagId());
+        if (tag != null && !tag.getPlan().getId().equals(planId)) throw new IllegalArgumentException("标签不属于当前计划。");
+        String recurrenceId = UUID.randomUUID().toString();
+        List<PlanDtos.TaskResponse> created = new ArrayList<>();
+        for (LocalDate date = taskRequest.date(); !date.isAfter(request.until()) && !date.isAfter(plan.getEndDate()); date = date.plusDays(1)) {
+            if (!matchesRecurrence(taskRequest.date(), date, request.mode())) continue;
+            if (created.size() >= 366) throw new IllegalArgumentException("一次最多创建 366 个重复任务。");
+            PlanDtos.TaskRequest copy = new PlanDtos.TaskRequest(taskRequest.tagId(), date, taskRequest.startTime(), taskRequest.endTime(), taskRequest.plannedMinutes(),
+                taskRequest.category(), taskRequest.title(), taskRequest.description(), taskRequest.acceptance(), taskRequest.resourceUrl(), taskRequest.required(), taskRequest.sortOrder(), null);
+            created.add(createTask(plan, tag, copy, recurrenceId, null));
+        }
+        if (created.isEmpty()) throw new IllegalArgumentException("重复规则没有在当前计划范围内生成任务。");
+        return created;
     }
 
     @Transactional
@@ -158,6 +182,77 @@ public class PlanService {
 
     @Transactional
     public void deleteTask(String userId, String taskId) { tasks.delete(ownedTask(userId, taskId)); }
+
+    @Transactional(readOnly = true)
+    public List<PlanDtos.MilestoneResponse> listMilestones(String userId, String planId) {
+        ownedPlan(userId, planId);
+        return milestones.findByPlanIdOrderByDateAscCreatedAtAsc(planId).stream().map(this::toMilestone).toList();
+    }
+
+    @Transactional
+    public PlanDtos.MilestoneResponse createMilestone(String userId, String planId, PlanDtos.MilestoneRequest request) {
+        Plan plan = ownedPlan(userId, planId);
+        validateTaskDate(plan, request.date());
+        return toMilestone(milestones.save(new PlanMilestone(plan, request.name(), request.date(), request.description(), json(request.acceptance()))));
+    }
+
+    @Transactional
+    public PlanDtos.MilestoneResponse updateMilestone(String userId, String milestoneId, PlanDtos.MilestoneRequest request) {
+        PlanMilestone milestone = ownedMilestone(userId, milestoneId);
+        checkVersion(milestone.getVersion(), request.version());
+        validateTaskDate(milestone.getPlan(), request.date());
+        milestone.update(request.name(), request.date(), request.description(), json(request.acceptance()));
+        flushAndRefresh(milestone);
+        return toMilestone(milestone);
+    }
+
+    @Transactional
+    public PlanDtos.MilestoneResponse updateMilestoneProgress(String userId, String milestoneId, PlanDtos.MilestoneProgressRequest request) {
+        PlanMilestone milestone = ownedMilestone(userId, milestoneId);
+        checkVersion(milestone.getVersion(), request.version());
+        milestone.record(json(request.checks()), request.note(), Instant.now());
+        flushAndRefresh(milestone);
+        return toMilestone(milestone);
+    }
+
+    @Transactional
+    public void deleteMilestone(String userId, String milestoneId) { milestones.delete(ownedMilestone(userId, milestoneId)); }
+
+    @Transactional(readOnly = true)
+    public List<PlanDtos.TemplateResponse> listTemplates(String userId) { return templates.findByOwnerIdOrderByCreatedAtDesc(userId).stream().map(this::toTemplate).toList(); }
+
+    @Transactional
+    public PlanDtos.TemplateResponse createTemplate(String userId, PlanDtos.TemplateRequest request) {
+        UserAccount owner = users.findById(userId).orElseThrow(() -> new NotFoundException("用户不存在。"));
+        if (templates.existsByOwnerIdAndNameIgnoreCase(userId, request.name().trim())) throw new ConflictException("已存在同名任务模板。");
+        return toTemplate(templates.save(new TaskTemplate(owner, request.name(), request.category(), request.title(), request.description(), request.plannedMinutes(), json(request.acceptance()), request.resourceUrl(), request.required())));
+    }
+
+    @Transactional
+    public PlanDtos.TemplateResponse updateTemplate(String userId, String templateId, PlanDtos.TemplateRequest request) {
+        TaskTemplate template = ownedTemplate(userId, templateId);
+        checkVersion(template.getVersion(), request.version());
+        if (!template.getName().equalsIgnoreCase(request.name().trim()) && templates.existsByOwnerIdAndNameIgnoreCase(userId, request.name().trim())) throw new ConflictException("已存在同名任务模板。");
+        template.update(request.name(), request.category(), request.title(), request.description(), request.plannedMinutes(), json(request.acceptance()), request.resourceUrl(), request.required());
+        flushAndRefresh(template);
+        return toTemplate(template);
+    }
+
+    @Transactional
+    public void deleteTemplate(String userId, String templateId) { templates.delete(ownedTemplate(userId, templateId)); }
+
+    @Transactional
+    public PlanDtos.TaskResponse instantiateTemplate(String userId, String templateId, PlanDtos.InstantiateTemplateRequest request) {
+        TaskTemplate template = ownedTemplate(userId, templateId);
+        Plan plan = ownedPlan(userId, request.planId());
+        validateTaskDate(plan, request.date());
+        PlanTag tag = request.tagId() == null ? null : ownedTag(userId, request.tagId());
+        if (tag != null && !tag.getPlan().getId().equals(plan.getId())) throw new IllegalArgumentException("标签不属于当前计划。");
+        PlanDtos.TaskRequest taskRequest = new PlanDtos.TaskRequest(request.tagId(), request.date(), request.startTime(), request.endTime(), template.getPlannedMinutes(),
+            template.getCategory(), template.getTitle(), template.getDescription(), read(template.getAcceptanceJson(), STRING_LIST), template.getResourceUrl(), template.isRequired(),
+            request.sortOrder() == null ? 0 : request.sortOrder(), null);
+        return createTask(plan, tag, taskRequest, null, template.getId());
+    }
 
     @Transactional
     public PlanDtos.ProgressResponse updateProgress(String userId, String taskId, PlanDtos.ProgressRequest request) {
@@ -307,7 +402,26 @@ public class PlanService {
     private Plan ownedPlan(String userId, String planId) { return plans.findByIdAndOwnerId(planId, userId).orElseThrow(() -> new NotFoundException("计划不存在。")); }
     private PlanTag ownedTag(String userId, String tagId) { return tags.findByIdAndPlanOwnerId(tagId, userId).orElseThrow(() -> new NotFoundException("标签不存在。")); }
     private PlanTask ownedTask(String userId, String taskId) { return tasks.findByIdAndPlanOwnerId(taskId, userId).orElseThrow(() -> new NotFoundException("任务不存在。")); }
+    private PlanMilestone ownedMilestone(String userId, String milestoneId) { return milestones.findByIdAndPlanOwnerId(milestoneId, userId).orElseThrow(() -> new NotFoundException("里程碑不存在。")); }
+    private TaskTemplate ownedTemplate(String userId, String templateId) { return templates.findByIdAndOwnerId(templateId, userId).orElseThrow(() -> new NotFoundException("任务模板不存在。")); }
     private TaskProgress progressFor(String taskId) { return progress.findByTaskId(taskId).orElseThrow(() -> new NotFoundException("任务进度不存在。")); }
+
+    private PlanDtos.TaskResponse createTask(Plan plan, PlanTag tag, PlanDtos.TaskRequest request, String recurrenceId, String templateId) {
+        PlanTask task = new PlanTask(plan);
+        applyTask(task, tag, request);
+        task.assignRecurrence(recurrenceId);
+        task.assignTemplate(templateId);
+        tasks.save(task);
+        progress.save(new TaskProgress(task));
+        return toTask(task);
+    }
+    private boolean matchesRecurrence(LocalDate firstDate, LocalDate candidate, PlanDtos.RecurrenceMode mode) {
+        return switch (mode) {
+            case DAILY -> true;
+            case WEEKDAYS -> candidate.getDayOfWeek().getValue() <= 5;
+            case WEEKLY -> java.time.temporal.ChronoUnit.DAYS.between(firstDate, candidate) % 7 == 0;
+        };
+    }
 
     private void applyTask(PlanTask task, PlanTag tag, PlanDtos.TaskRequest request) {
         task.update(tag, request.date(), request.startTime(), request.endTime(), request.plannedMinutes(), request.category().trim().toUpperCase(),
@@ -361,7 +475,7 @@ public class PlanService {
         PlanTag tag = task.getTag();
         return new PlanDtos.TaskResponse(task.getId(), task.getPlan().getId(), tag == null ? null : tag.getId(), tag == null ? null : tag.getName(), tag == null ? null : tag.getColor(),
             task.getDate(), task.getStartTime(), task.getEndTime(), task.getPlannedMinutes(), task.getCategory(), task.getTitle(), task.getDescription(),
-            read(task.getAcceptanceJson(), STRING_LIST), task.getResourceUrl(), task.isRequired(), task.getSortOrder(), task.getVersion(), toProgress(progressFor(task.getId())));
+            read(task.getAcceptanceJson(), STRING_LIST), task.getResourceUrl(), task.isRequired(), task.getSortOrder(), task.getRecurrenceId(), task.getTemplateId(), task.getVersion(), toProgress(progressFor(task.getId())));
     }
     private PlanDtos.ProgressResponse toProgress(TaskProgress item) {
         return new PlanDtos.ProgressResponse(item.getStatus().name(), item.getAccumulatedSeconds(), item.getStartedAt(), item.getCompletedAt(),
@@ -369,5 +483,13 @@ public class PlanService {
     }
     private PlanDtos.ReflectionResponse toReflection(DailyReflection item) {
         return new PlanDtos.ReflectionResponse(item.getId(), item.getDate(), item.getCompletedSummary(), item.getUnfinishedSummary(), item.getBlockers(), item.getFirstTaskTomorrow(), item.getEnergy(), item.getNote(), item.getVersion());
+    }
+    private PlanDtos.MilestoneResponse toMilestone(PlanMilestone item) {
+        return new PlanDtos.MilestoneResponse(item.getId(), item.getPlan().getId(), item.getName(), item.getDate(), item.getDescription(),
+            read(item.getAcceptanceJson(), STRING_LIST), read(item.getChecksJson(), BOOLEAN_LIST), item.getNote(), item.getReviewedAt(), item.getVersion());
+    }
+    private PlanDtos.TemplateResponse toTemplate(TaskTemplate item) {
+        return new PlanDtos.TemplateResponse(item.getId(), item.getName(), item.getCategory(), item.getTitle(), item.getDescription(), item.getPlannedMinutes(),
+            read(item.getAcceptanceJson(), STRING_LIST), item.getResourceUrl(), item.isRequired(), item.getVersion());
     }
 }

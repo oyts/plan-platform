@@ -78,6 +78,13 @@ public class PlanController {
         return service.createTask(jwt.getSubject(), planId, request);
     }
 
+    @PostMapping("/plans/{planId}/tasks/recurring")
+    @ResponseStatus(HttpStatus.CREATED)
+    List<PlanDtos.TaskResponse> createRecurringTasks(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId,
+                                                       @Valid @RequestBody PlanDtos.RecurringTaskRequest request) {
+        return service.createRecurringTasks(jwt.getSubject(), planId, request);
+    }
+
     @PutMapping("/tasks/{taskId}")
     PlanDtos.TaskResponse updateTask(@AuthenticationPrincipal Jwt jwt, @PathVariable String taskId, @Valid @RequestBody PlanDtos.TaskRequest request) {
         return service.updateTask(jwt.getSubject(), taskId, request);
@@ -86,6 +93,51 @@ public class PlanController {
     @DeleteMapping("/tasks/{taskId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void deleteTask(@AuthenticationPrincipal Jwt jwt, @PathVariable String taskId) { service.deleteTask(jwt.getSubject(), taskId); }
+
+    @GetMapping("/plans/{planId}/milestones")
+    List<PlanDtos.MilestoneResponse> milestones(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId) { return service.listMilestones(jwt.getSubject(), planId); }
+
+    @PostMapping("/plans/{planId}/milestones")
+    @ResponseStatus(HttpStatus.CREATED)
+    PlanDtos.MilestoneResponse createMilestone(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId, @Valid @RequestBody PlanDtos.MilestoneRequest request) {
+        return service.createMilestone(jwt.getSubject(), planId, request);
+    }
+
+    @PutMapping("/milestones/{milestoneId}")
+    PlanDtos.MilestoneResponse updateMilestone(@AuthenticationPrincipal Jwt jwt, @PathVariable String milestoneId, @Valid @RequestBody PlanDtos.MilestoneRequest request) {
+        return service.updateMilestone(jwt.getSubject(), milestoneId, request);
+    }
+
+    @PutMapping("/milestones/{milestoneId}/progress")
+    PlanDtos.MilestoneResponse updateMilestoneProgress(@AuthenticationPrincipal Jwt jwt, @PathVariable String milestoneId, @Valid @RequestBody PlanDtos.MilestoneProgressRequest request) {
+        return service.updateMilestoneProgress(jwt.getSubject(), milestoneId, request);
+    }
+
+    @DeleteMapping("/milestones/{milestoneId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deleteMilestone(@AuthenticationPrincipal Jwt jwt, @PathVariable String milestoneId) { service.deleteMilestone(jwt.getSubject(), milestoneId); }
+
+    @GetMapping("/templates")
+    List<PlanDtos.TemplateResponse> templates(@AuthenticationPrincipal Jwt jwt) { return service.listTemplates(jwt.getSubject()); }
+
+    @PostMapping("/templates")
+    @ResponseStatus(HttpStatus.CREATED)
+    PlanDtos.TemplateResponse createTemplate(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PlanDtos.TemplateRequest request) { return service.createTemplate(jwt.getSubject(), request); }
+
+    @PutMapping("/templates/{templateId}")
+    PlanDtos.TemplateResponse updateTemplate(@AuthenticationPrincipal Jwt jwt, @PathVariable String templateId, @Valid @RequestBody PlanDtos.TemplateRequest request) {
+        return service.updateTemplate(jwt.getSubject(), templateId, request);
+    }
+
+    @DeleteMapping("/templates/{templateId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deleteTemplate(@AuthenticationPrincipal Jwt jwt, @PathVariable String templateId) { service.deleteTemplate(jwt.getSubject(), templateId); }
+
+    @PostMapping("/templates/{templateId}/instantiate")
+    @ResponseStatus(HttpStatus.CREATED)
+    PlanDtos.TaskResponse instantiateTemplate(@AuthenticationPrincipal Jwt jwt, @PathVariable String templateId, @Valid @RequestBody PlanDtos.InstantiateTemplateRequest request) {
+        return service.instantiateTemplate(jwt.getSubject(), templateId, request);
+    }
 
     @PutMapping("/tasks/{taskId}/progress")
     PlanDtos.ProgressResponse updateProgress(@AuthenticationPrincipal Jwt jwt, @PathVariable String taskId, @Valid @RequestBody PlanDtos.ProgressRequest request) {

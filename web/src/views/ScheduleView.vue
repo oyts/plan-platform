@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, apiMessage } from '@/api/client';
-import type { Plan, Progress, Task, PageResponse } from '@/types';
+import type { Milestone, Plan, Progress, Task, PageResponse } from '@/types';
 
 const route = useRoute();
 const router = useRouter();
@@ -10,6 +10,7 @@ const plans = ref<Plan[]>([]);
 const planId = ref(typeof route.query.plan === 'string' ? route.query.plan : '');
 const anchor = ref(new Date().toLocaleDateString('sv-SE'));
 const tasks = ref<Task[]>([]);
+const milestones = ref<Milestone[]>([]);
 const error = ref('');
 const loading = ref(false);
 const busy = ref(false);
@@ -24,6 +25,14 @@ function dayLabel(value: string) { return dateFrom(value).toLocaleDateString('zh
 function isRestDay(value: string) { const day = dateFrom(value).getDay(); return day === 0 || day === 6; }
 const dates = computed(() => Array.from({ length: 7 }, (_, index) => shiftDate(anchor.value, index)));
 const activePlan = computed(() => plans.value.find(plan => plan.id === planId.value) ?? null);
+const milestonesByDate = computed(() => {
+  const groups = new Map<string, Milestone[]>();
+  for (const milestone of milestones.value) {
+    const rows = groups.get(milestone.date) ?? [];
+    rows.push(milestone); groups.set(milestone.date, rows);
+  }
+  return groups;
+});
 const tasksByDate = computed(() => {
   const groups = new Map(dates.value.map(date => [date, [] as Task[]]));
   for (const task of tasks.value) {
@@ -44,11 +53,13 @@ async function loadSchedule() {
   if (!planId.value) { tasks.value = []; return; }
   loading.value = true; error.value = '';
   try {
-    const [planned, carryover] = await Promise.all([
+    const [planned, carryover, milestoneRows] = await Promise.all([
       api.get<PageResponse<Task>>(`/plans/${planId.value}/tasks/page`, { params: { from: dates.value[0], to: dates.value[dates.value.length - 1], page: 0, size: 100 } }),
       api.get<Task[]>('/tasks/carryover', { params: { from: dates.value[0], to: dates.value[dates.value.length - 1] } }),
+      api.get<Milestone[]>(`/plans/${planId.value}/milestones`),
     ]);
     tasks.value = Array.from(new Map([...planned.data.content, ...carryover.data].map(task => [task.id, task])).values());
+    milestones.value = milestoneRows.data;
     if (selected.value) selected.value = tasks.value.find(task => task.id === selected.value?.id) ?? null;
   } catch (exception) { error.value = apiMessage(exception); }
   finally { loading.value = false; }
@@ -126,7 +137,7 @@ onMounted(async () => { try { await loadPlans(); await loadSchedule(); } catch (
       <div class="schedule-layout">
         <section class="date-rail" aria-label="七日日程">
           <article v-for="date in dates" :key="date" class="rail-day" :class="{ 'rail-day--today': date === new Date().toLocaleDateString('sv-SE'), 'rail-day--rest': isRestDay(date) }">
-            <header><span>{{ dayLabel(date) }}</span><strong>{{ date.slice(5).replace('-', '.') }}</strong><small>{{ isRestDay(date) ? '休息日 / 可补做' : '计划日' }}</small></header>
+            <header><span>{{ dayLabel(date) }}</span><strong>{{ date.slice(5).replace('-', '.') }}</strong><small>{{ isRestDay(date) ? '休息日 / 可补做' : '计划日' }}</small><em v-for="milestone in milestonesByDate.get(date)" :key="milestone.id" class="rail-milestone">{{ milestone.name }}</em></header>
             <div v-if="tasksByDate.get(date)?.length" class="rail-tasks">
               <button v-for="task in tasksByDate.get(date)" :key="task.id" class="rail-task" :class="{ active: selected?.id === task.id, deferred: Boolean(task.progress.deferTo) }" type="button" @click="select(task)">
                 <span>{{ task.startTime?.slice(0, 5) ?? '弹性' }}</span><b :style="{ background: task.tagColor ?? '#002FA7' }" /><strong>{{ task.title }}</strong><small>{{ task.progress.status }} · {{ duration(task.progress.accumulatedSeconds) }}</small>
