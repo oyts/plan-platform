@@ -10,4 +10,6 @@ public interface TaskProgressRepository extends JpaRepository<TaskProgress, Stri
     Optional<TaskProgress> findByTaskId(String taskId);
     @EntityGraph(attributePaths = {"task", "task.plan", "task.tag"})
     List<TaskProgress> findByTaskPlanId(String planId);
+    @EntityGraph(attributePaths = {"task", "task.plan", "task.tag"})
+    List<TaskProgress> findByTaskPlanOwnerId(String ownerId);
 }

@@ -100,6 +100,37 @@ class AuthPlanIntegrationTest {
     }
 
     @Test
+    void longPlanTasksCanBePagedAndDeferredIntoTheCatchUpRail() throws Exception {
+        String token = register("schedule@example.com", "日程测试账号");
+        JsonNode plan = objectMapper.readTree(mvc.perform(post("/api/plans").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"name":"长计划","description":"","startDate":"2026-09-01","endDate":"2026-10-31","overallTagName":"总计","overallTagColor":"#002FA7"}
+                    """)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String planId = plan.get("id").asText();
+        JsonNode task = objectMapper.readTree(mvc.perform(post("/api/plans/{planId}/tasks", planId)
+                .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("""
+                    {"date":"2026-09-18","plannedMinutes":45,"category":"JAVA","title":"可补做任务","description":"","acceptance":[],"resourceUrl":"","required":true,"sortOrder":0}
+                    """)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String taskId = task.get("id").asText();
+
+        mvc.perform(get("/api/plans/{planId}/tasks/page", planId).header("Authorization", "Bearer " + token)
+                .param("from", "2026-09-15").param("to", "2026-09-21").param("page", "0").param("size", "5"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.content[0].title").value("可补做任务"));
+        mvc.perform(post("/api/tasks/{taskId}/defer", taskId).header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{" + "\"deferTo\":\"2026-09-20\",\"note\":\"周末补做\",\"version\":0}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DEFERRED"))
+            .andExpect(jsonPath("$.deferTo").value("2026-09-20"));
+        mvc.perform(get("/api/tasks/carryover").header("Authorization", "Bearer " + token)
+                .param("from", "2026-09-20").param("to", "2026-09-20"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(taskId));
+        mvc.perform(get("/api/plans/{planId}/stats/daily", planId).header("Authorization", "Bearer " + token)
+                .param("from", "2026-09-18").param("to", "2026-09-20").param("page", "0").param("size", "2"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(3))
+            .andExpect(jsonPath("$.content[0].date").value("2026-09-18"));
+    }
+
+    @Test
     void revokedRefreshTokenReturnsUnauthorized() throws Exception {
         String body = objectMapper.writeValueAsString(new RegisterBody("logout@example.com", "password123", "退出测试账号"));
         MvcResult registration = mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))

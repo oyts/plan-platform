@@ -64,6 +64,14 @@ public class PlanController {
     @GetMapping("/plans/{planId}/tasks")
     List<PlanDtos.TaskResponse> tasks(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId) { return service.listTasks(jwt.getSubject(), planId); }
 
+    @GetMapping("/plans/{planId}/tasks/page")
+    PlanDtos.PageResponse<PlanDtos.TaskResponse> taskPage(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int size) {
+        return service.taskPage(jwt.getSubject(), planId, from, to, page, size);
+    }
+
     @PostMapping("/plans/{planId}/tasks")
     @ResponseStatus(HttpStatus.CREATED)
     PlanDtos.TaskResponse createTask(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId, @Valid @RequestBody PlanDtos.TaskRequest request) {
@@ -104,6 +112,18 @@ public class PlanController {
         return service.addManualTime(jwt.getSubject(), taskId, request);
     }
 
+    @PostMapping("/tasks/{taskId}/defer")
+    PlanDtos.ProgressResponse defer(@AuthenticationPrincipal Jwt jwt, @PathVariable String taskId, @Valid @RequestBody PlanDtos.DeferRequest request) {
+        return service.defer(jwt.getSubject(), taskId, request);
+    }
+
+    @GetMapping("/tasks/carryover")
+    List<PlanDtos.TaskResponse> carryover(@AuthenticationPrincipal Jwt jwt,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return service.carryover(jwt.getSubject(), from, to);
+    }
+
     @GetMapping("/dashboard/today")
     PlanDtos.TodayResponse today(@AuthenticationPrincipal Jwt jwt,
                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -122,5 +142,13 @@ public class PlanController {
                                  @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                  @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return service.stats(jwt.getSubject(), planId, from, to);
+    }
+
+    @GetMapping("/plans/{planId}/stats/daily")
+    PlanDtos.PageResponse<PlanDtos.DailyStat> dailyStats(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return service.dailyStats(jwt.getSubject(), planId, from, to, page, size);
     }
 }

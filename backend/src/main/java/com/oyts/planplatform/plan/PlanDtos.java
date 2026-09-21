@@ -51,10 +51,14 @@ public final class PlanDtos {
                                String description, List<String> acceptance, String resourceUrl, boolean required,
                                int sortOrder, long version, ProgressResponse progress) {}
 
+    /** A stable, zero-based page contract for long-running plans. */
+    public record PageResponse<T>(List<T> content, int page, int size, long totalElements, int totalPages) {}
+
     public record ProgressRequest(@NotNull TaskProgress.Status status, @Size(max = 2000) String note,
                                   List<Boolean> acceptanceChecks, LocalDate deferTo, @Size(max = 1000) String skipReason, Long version) {}
     public record CompleteRequest(@Size(max = 2000) String note, List<Boolean> acceptanceChecks, Long version) {}
     public record ManualTimeRequest(long seconds, Long version) {}
+    public record DeferRequest(@NotNull LocalDate deferTo, @Size(max = 2000) String note, Long version) {}
 
     public record ReflectionRequest(@Size(max = 2000) String completedSummary, @Size(max = 2000) String unfinishedSummary,
                                     @Size(max = 2000) String blockers, @Size(max = 1000) String firstTaskTomorrow,
@@ -68,4 +72,6 @@ public final class PlanDtos {
                                 long plannedMinutes, long actualSeconds, List<TagStat> tags) {}
     public record TagStat(String tagId, String tagName, String color, long taskCount, long completedCount,
                           long plannedMinutes, long actualSeconds) {}
+    public record DailyStat(String date, long taskCount, long completedCount, long partialCount, long skippedCount,
+                            long deferredCount, long plannedMinutes, long actualSeconds) {}
 }

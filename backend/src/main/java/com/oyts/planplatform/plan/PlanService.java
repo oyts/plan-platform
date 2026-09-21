@@ -26,6 +26,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -110,6 +113,22 @@ public class PlanService {
     public List<PlanDtos.TaskResponse> listTasks(String userId, String planId) {
         ownedPlan(userId, planId);
         return tasks.findByPlanIdOrderByDateAscSortOrderAsc(planId).stream().map(this::toTask).toList();
+    }
+
+    /**
+     * The full task ledger is useful for exports, but the schedule UI must not load an entire long-term plan.
+     * Keep both endpoints: this query is bounded by a date window and uses a database page.
+     */
+    @Transactional(readOnly = true)
+    public PlanDtos.PageResponse<PlanDtos.TaskResponse> taskPage(String userId, String planId, LocalDate from, LocalDate to, int page, int size) {
+        Plan plan = ownedPlan(userId, planId);
+        validateRange(from, to);
+        LocalDate boundedFrom = from.isBefore(plan.getStartDate()) ? plan.getStartDate() : from;
+        LocalDate boundedTo = to.isAfter(plan.getEndDate()) ? plan.getEndDate() : to;
+        if (boundedFrom.isAfter(boundedTo)) return new PlanDtos.PageResponse<>(List.of(), normalizePage(page), normalizeSize(size), 0, 0);
+        Page<PlanTask> result = tasks.findByPlanIdAndDateBetweenOrderByDateAscSortOrderAsc(
+            planId, boundedFrom, boundedTo, PageRequest.of(normalizePage(page), normalizeSize(size), Sort.unsorted()));
+        return new PlanDtos.PageResponse<>(result.getContent().stream().map(this::toTask).toList(), result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }
 
     @Transactional
@@ -201,6 +220,35 @@ public class PlanService {
         return toProgress(current);
     }
 
+    /** Move an unfinished task onto a concrete catch-up date. Works for ordinary and rest days alike. */
+    @Transactional
+    public PlanDtos.ProgressResponse defer(String userId, String taskId, PlanDtos.DeferRequest request) {
+        PlanTask task = ownedTask(userId, taskId);
+        if (request.deferTo().isBefore(task.getDate())) throw new IllegalArgumentException("补做日期不能早于原计划日期。");
+        TaskProgress current = progressFor(taskId);
+        checkVersion(current.getVersion(), request.version());
+        if (current.getStatus() == TaskProgress.Status.COMPLETED || current.getStatus() == TaskProgress.Status.SKIPPED) {
+            throw new ConflictException("已完成或已跳过的任务不能安排补做。");
+        }
+        current.update(TaskProgress.Status.DEFERRED,
+            request.note() == null ? current.getNote() : request.note(), current.getAcceptanceJson(), request.deferTo(), "");
+        flushAndRefresh(current);
+        return toProgress(current);
+    }
+
+    /** Returns only tasks explicitly scheduled for catch-up in the requested date rail. */
+    @Transactional(readOnly = true)
+    public List<PlanDtos.TaskResponse> carryover(String userId, LocalDate from, LocalDate to) {
+        validateRange(from, to);
+        return progress.findByTaskPlanOwnerId(userId).stream()
+            .filter(item -> item.getStatus() == TaskProgress.Status.DEFERRED && item.getDeferTo() != null)
+            .filter(item -> !item.getDeferTo().isBefore(from) && !item.getDeferTo().isAfter(to))
+            .sorted(java.util.Comparator.comparing(TaskProgress::getDeferTo)
+                .thenComparing(item -> item.getTask().getStartTime(), java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                .thenComparing(item -> item.getTask().getSortOrder()))
+            .map(item -> toTask(item.getTask())).toList();
+    }
+
     @Transactional(readOnly = true)
     public PlanDtos.TodayResponse today(String userId, LocalDate date) {
         List<PlanDtos.TaskResponse> rows = tasks.findByPlanOwnerIdAndDateOrderByStartTimeAsc(userId, date).stream().map(this::toTask).toList();
@@ -222,6 +270,7 @@ public class PlanService {
     @Transactional(readOnly = true)
     public PlanDtos.StatsResponse stats(String userId, String planId, LocalDate from, LocalDate to) {
         ownedPlan(userId, planId);
+        validateRange(from, to);
         List<PlanDtos.TaskResponse> rows = tasks.findByPlanIdOrderByDateAscSortOrderAsc(planId).stream()
             .filter(task -> !task.getDate().isBefore(from) && !task.getDate().isAfter(to)).map(this::toTask).toList();
         Map<String, List<PlanDtos.TaskResponse>> byTag = new LinkedHashMap<>();
@@ -238,6 +287,23 @@ public class PlanService {
             rows.stream().mapToLong(PlanDtos.TaskResponse::plannedMinutes).sum(), rows.stream().mapToLong(row -> row.progress().accumulatedSeconds()).sum(), tagStats);
     }
 
+    @Transactional(readOnly = true)
+    public PlanDtos.PageResponse<PlanDtos.DailyStat> dailyStats(String userId, String planId, LocalDate from, LocalDate to, int page, int size) {
+        ownedPlan(userId, planId);
+        validateRange(from, to);
+        Map<LocalDate, List<PlanDtos.TaskResponse>> byDate = new LinkedHashMap<>();
+        for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) byDate.put(date, new ArrayList<>());
+        tasks.findByPlanIdOrderByDateAscSortOrderAsc(planId).stream()
+            .filter(task -> !task.getDate().isBefore(from) && !task.getDate().isAfter(to))
+            .map(this::toTask).forEach(task -> byDate.get(task.date()).add(task));
+        List<PlanDtos.DailyStat> rows = byDate.entrySet().stream().map(entry -> dailyStat(entry.getKey(), entry.getValue())).toList();
+        int normalizedSize = normalizeSize(size);
+        int normalizedPage = normalizePage(page);
+        int start = Math.min(normalizedPage * normalizedSize, rows.size());
+        int end = Math.min(start + normalizedSize, rows.size());
+        return new PlanDtos.PageResponse<>(rows.subList(start, end), normalizedPage, normalizedSize, rows.size(), (int) Math.ceil((double) rows.size() / normalizedSize));
+    }
+
     private Plan ownedPlan(String userId, String planId) { return plans.findByIdAndOwnerId(planId, userId).orElseThrow(() -> new NotFoundException("计划不存在。")); }
     private PlanTag ownedTag(String userId, String tagId) { return tags.findByIdAndPlanOwnerId(tagId, userId).orElseThrow(() -> new NotFoundException("标签不存在。")); }
     private PlanTask ownedTask(String userId, String taskId) { return tasks.findByIdAndPlanOwnerId(taskId, userId).orElseThrow(() -> new NotFoundException("任务不存在。")); }
@@ -249,6 +315,27 @@ public class PlanService {
     }
     private void validateTaskDate(Plan plan, LocalDate date) {
         if (date.isBefore(plan.getStartDate()) || date.isAfter(plan.getEndDate())) throw new IllegalArgumentException("任务日期必须位于计划日期范围内。");
+    }
+    private void validateRange(LocalDate from, LocalDate to) {
+        if (from.isAfter(to)) throw new IllegalArgumentException("开始日期不能晚于结束日期。");
+        if (java.time.temporal.ChronoUnit.DAYS.between(from, to) > 366) throw new IllegalArgumentException("一次最多查询 367 天的数据。");
+    }
+    private int normalizePage(int page) {
+        if (page < 0) throw new IllegalArgumentException("页码不能小于 0。");
+        return page;
+    }
+    private int normalizeSize(int size) {
+        if (size < 1 || size > 100) throw new IllegalArgumentException("每页数量必须在 1 到 100 之间。");
+        return size;
+    }
+    private PlanDtos.DailyStat dailyStat(LocalDate date, List<PlanDtos.TaskResponse> rows) {
+        return new PlanDtos.DailyStat(date.toString(), rows.size(),
+            rows.stream().filter(row -> row.progress().status().equals("COMPLETED")).count(),
+            rows.stream().filter(row -> row.progress().status().equals("PARTIAL")).count(),
+            rows.stream().filter(row -> row.progress().status().equals("SKIPPED")).count(),
+            rows.stream().filter(row -> row.progress().status().equals("DEFERRED")).count(),
+            rows.stream().mapToLong(PlanDtos.TaskResponse::plannedMinutes).sum(),
+            rows.stream().mapToLong(row -> row.progress().accumulatedSeconds()).sum());
     }
     private void checkVersion(long current, Long requested) {
         if (requested != null && requested != current) throw new ConflictException("数据已经被其他设备修改，请刷新后重试。");
