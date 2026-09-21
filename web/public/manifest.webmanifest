@@ -1,0 +1,15 @@
+{
+  "name": "计划平台",
+  "short_name": "计划平台",
+  "description": "长期计划、顺序主线与任务计时平台。",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F7F7F8",
+  "theme_color": "#002FA7",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

@@ -32,6 +32,7 @@
 - Flyway 数据库版本管理；H2/MySQL 共用迁移脚本。
 - 旧版 1.x JSON 预检、原始快照、关系型导入、幂等控制、迁移报告与批次回滚。
 - Docker Compose 一键启动 MySQL、Spring Boot、Vue/Nginx。
+- PWA 安装、应用壳离线缓存、版本更新提示与移动端响应式布局；私有 API 数据不做离线缓存。
 
 ## 本地运行
 
@@ -86,6 +87,8 @@ docker compose up -d --build
 本地 Docker 首次体验可临时设置 `REGISTRATION_ENABLED=true`，创建账号后再关闭。生产环境必须修改 `JWT_SECRET`、数据库密码和允许跨域的域名，并设置 `REFRESH_COOKIE_SECURE=true`；阿里云部署时建议使用 HTTPS、独立数据库备份、日志采集和安全组最小开放原则。
 
 部署前、上线和回滚检查见 [部署清单](docs/deployment-checklist.md)。接口契约见 [OpenAPI 文档](docs/openapi.yaml)。
+
+PWA 能力边界、手机回归步骤和自动检查见 [PWA 与跨端测试](docs/pwa-and-cross-client-testing.md)。
 
 ## 目录
 

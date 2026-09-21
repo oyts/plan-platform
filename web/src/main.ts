@@ -4,6 +4,7 @@ import App from './App.vue';
 import router from './router';
 import { useAuthStore } from '@/stores/auth';
 import './style.css';
+import { setupPwa } from './pwa';
 const app = createApp(App);
 const pinia = createPinia();
 app.use(pinia);
@@ -14,3 +15,4 @@ async function bootstrap(): Promise<void> {
   app.mount('#app');
 }
 void bootstrap();
+setupPwa();
