@@ -5,6 +5,9 @@ import java.time.LocalDate;
 import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -188,6 +191,41 @@ public class PlanController {
                                            @Valid @RequestBody PlanDtos.ReflectionRequest request) {
         return service.saveReflection(jwt.getSubject(), planId, date, request);
     }
+
+    @GetMapping("/plans/{planId}/reflections/page")
+    PlanDtos.PageResponse<PlanDtos.ReflectionResponse> reflectionPage(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return service.reflectionPage(jwt.getSubject(), planId, from, to, page, size);
+    }
+
+    @GetMapping("/time-entries")
+    PlanDtos.PageResponse<PlanDtos.TimeEntryResponse> timeLedger(@AuthenticationPrincipal Jwt jwt,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return service.timeLedger(jwt.getSubject(), from, to, page, size);
+    }
+
+    @GetMapping(value = "/time-entries/export", produces = "text/csv;charset=UTF-8")
+    ResponseEntity<String> exportTimeLedger(@AuthenticationPrincipal Jwt jwt,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=plan-time-ledger.csv")
+            .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8")).body("\uFEFF" + service.timeLedgerCsv(jwt.getSubject(), from, to));
+    }
+
+    @GetMapping("/trash")
+    List<PlanDtos.TrashResponse> trash(@AuthenticationPrincipal Jwt jwt) { return service.trash(jwt.getSubject()); }
+
+    @PostMapping("/trash/{type}/{id}/restore")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void restoreTrash(@AuthenticationPrincipal Jwt jwt, @PathVariable String type, @PathVariable String id) { service.restoreTrash(jwt.getSubject(), type, id); }
+
+    @DeleteMapping("/trash/{type}/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void purgeTrash(@AuthenticationPrincipal Jwt jwt, @PathVariable String type, @PathVariable String id) { service.purgeTrash(jwt.getSubject(), type, id); }
 
     @GetMapping("/plans/{planId}/stats")
     PlanDtos.StatsResponse stats(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId,

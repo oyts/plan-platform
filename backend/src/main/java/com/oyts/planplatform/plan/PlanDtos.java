@@ -83,6 +83,9 @@ public final class PlanDtos {
                                     @Min(1) @Max(5) Integer energy, @Size(max = 2000) String note, Long version) {}
     public record ReflectionResponse(String id, LocalDate date, String completedSummary, String unfinishedSummary,
                                      String blockers, String firstTaskTomorrow, Integer energy, String note, long version) {}
+    public record TimeEntryResponse(String id, String planId, String taskId, String taskTitle, String tagName, String tagColor,
+                                    Instant startedAt, Instant endedAt, long seconds, String source) {}
+    public record TrashResponse(String type, String id, String title, String detail, Instant deletedAt) {}
 
     public record TodayResponse(LocalDate date, List<TaskResponse> tasks, long total, long completed,
                                 long plannedMinutes, long actualSeconds) {}

@@ -32,4 +32,5 @@ public class TimeEntry {
     public Instant getEndedAt() { return endedAt; }
     public long getSeconds() { return seconds; }
     public String getSource() { return source; }
+    public TaskProgress getProgress() { return progress; }
 }

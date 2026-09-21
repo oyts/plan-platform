@@ -6,7 +6,9 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TaskTemplateRepository extends JpaRepository<TaskTemplate, String> {
-    List<TaskTemplate> findByOwnerIdOrderByCreatedAtDesc(String ownerId);
+    List<TaskTemplate> findByOwnerIdAndDeletedAtIsNullOrderByCreatedAtDesc(String ownerId);
+    Optional<TaskTemplate> findByIdAndOwnerIdAndDeletedAtIsNull(String id, String ownerId);
     Optional<TaskTemplate> findByIdAndOwnerId(String id, String ownerId);
-    boolean existsByOwnerIdAndNameIgnoreCase(String ownerId, String name);
+    boolean existsByOwnerIdAndDeletedAtIsNullAndNameIgnoreCase(String ownerId, String name);
+    List<TaskTemplate> findByOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(String ownerId);
 }

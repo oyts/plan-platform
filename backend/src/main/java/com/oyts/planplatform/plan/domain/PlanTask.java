@@ -8,6 +8,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -46,6 +47,7 @@ public class PlanTask extends BaseEntity {
     private String recurrenceId;
     @Column(name = "template_id", length = 36)
     private String templateId;
+    @Column(name = "deleted_at") private Instant deletedAt;
 
     @OneToOne(mappedBy = "task", fetch = FetchType.LAZY)
     private TaskProgress progress;
@@ -89,4 +91,7 @@ public class PlanTask extends BaseEntity {
     public void assignTemplate(String templateId) { this.templateId = templateId; }
     public String getRecurrenceId() { return recurrenceId; }
     public String getTemplateId() { return templateId; }
+    public void trash() { deletedAt = Instant.now(); }
+    public void restore() { deletedAt = null; }
+    public Instant getDeletedAt() { return deletedAt; }
 }

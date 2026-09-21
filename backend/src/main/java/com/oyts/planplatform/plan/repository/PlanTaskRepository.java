@@ -11,12 +11,15 @@ import org.springframework.data.domain.Pageable;
 
 public interface PlanTaskRepository extends JpaRepository<PlanTask, String> {
     @EntityGraph(attributePaths = {"tag"})
-    List<PlanTask> findByPlanIdOrderByDateAscSortOrderAsc(String planId);
+    List<PlanTask> findByPlanIdAndDeletedAtIsNullOrderByDateAscSortOrderAsc(String planId);
     @EntityGraph(attributePaths = {"tag"})
-    Page<PlanTask> findByPlanIdAndDateBetweenOrderByDateAscSortOrderAsc(String planId, LocalDate from, LocalDate to, Pageable pageable);
+    Page<PlanTask> findByPlanIdAndDeletedAtIsNullAndDateBetweenOrderByDateAscSortOrderAsc(String planId, LocalDate from, LocalDate to, Pageable pageable);
     @EntityGraph(attributePaths = {"tag"})
-    List<PlanTask> findByPlanOwnerIdAndDateOrderByStartTimeAsc(String ownerId, LocalDate date);
+    List<PlanTask> findByPlanOwnerIdAndDeletedAtIsNullAndDateOrderByStartTimeAsc(String ownerId, LocalDate date);
     @EntityGraph(attributePaths = {"plan", "tag"})
+    Optional<PlanTask> findByIdAndPlanOwnerIdAndDeletedAtIsNull(String id, String ownerId);
+    @EntityGraph(attributePaths = {"plan", "tag"})
+    List<PlanTask> findByPlanOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(String ownerId);
     Optional<PlanTask> findByIdAndPlanOwnerId(String id, String ownerId);
-    long countByTagId(String tagId);
+    long countByTagIdAndDeletedAtIsNull(String tagId);
 }

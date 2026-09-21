@@ -21,6 +21,7 @@ public class PlanMilestone extends BaseEntity {
     @Column(name = "checks_json", nullable = false, columnDefinition = "text") private String checksJson = "[]";
     @Column(nullable = false, length = 2000) private String note = "";
     private Instant reviewedAt;
+    @Column(name = "deleted_at") private Instant deletedAt;
 
     protected PlanMilestone() {}
     public PlanMilestone(Plan plan, String name, LocalDate date, String description, String acceptanceJson) {
@@ -36,4 +37,5 @@ public class PlanMilestone extends BaseEntity {
     public Plan getPlan() { return plan; } public String getName() { return name; } public LocalDate getDate() { return date; }
     public String getDescription() { return description; } public String getAcceptanceJson() { return acceptanceJson; }
     public String getChecksJson() { return checksJson; } public String getNote() { return note; } public Instant getReviewedAt() { return reviewedAt; }
+    public void trash() { deletedAt = Instant.now(); } public void restore() { deletedAt = null; } public Instant getDeletedAt() { return deletedAt; }
 }

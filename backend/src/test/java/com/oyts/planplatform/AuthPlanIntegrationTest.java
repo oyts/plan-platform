@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -162,6 +163,37 @@ class AuthPlanIntegrationTest {
             .andExpect(status().isOk()).andExpect(jsonPath("$.checks[1]").value(true)).andExpect(jsonPath("$.note").value("已验收"));
         mvc.perform(get("/api/plans/{planId}/milestones", planId).header("Authorization", "Bearer " + token))
             .andExpect(status().isOk()).andExpect(jsonPath("$[0].name").value("第一阶段验收"));
+    }
+
+    @Test
+    void reflectionLedgerAndRecycleBinKeepPersonalRecordsRecoverable() throws Exception {
+        String token = register("evidence@example.com", "证据测试账号");
+        JsonNode plan = objectMapper.readTree(mvc.perform(post("/api/plans").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"name":"证据计划","description":"","startDate":"2026-09-01","endDate":"2026-09-30","overallTagName":"总计","overallTagColor":"#002FA7"}
+                    """)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String planId = plan.get("id").asText();
+        JsonNode task = objectMapper.readTree(mvc.perform(post("/api/plans/{planId}/tasks", planId).header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"date":"2026-09-03","plannedMinutes":20,"category":"JAVA","title":"可恢复任务","description":"","acceptance":[],"resourceUrl":"","required":true,"sortOrder":0}
+                    """)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String taskId = task.get("id").asText();
+        mvc.perform(post("/api/tasks/{taskId}/manual-time", taskId).header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"seconds\":600,\"version\":0}"))
+            .andExpect(status().isOk());
+        mvc.perform(get("/api/time-entries").header("Authorization", "Bearer " + token).param("from", "2026-09-01").param("to", "2026-09-30"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].taskTitle").value("可恢复任务"));
+        mvc.perform(put("/api/plans/{planId}/reflections/{date}", planId, "2026-09-03").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"completedSummary\":\"完成任务\",\"unfinishedSummary\":\"\",\"blockers\":\"\",\"firstTaskTomorrow\":\"复习\",\"energy\":4,\"note\":\"\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.energy").value(4));
+        mvc.perform(get("/api/plans/{planId}/reflections/page", planId).header("Authorization", "Bearer " + token).param("from", "2026-09-01").param("to", "2026-09-30"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].completedSummary").value("完成任务"));
+        mvc.perform(delete("/api/tasks/{taskId}", taskId).header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/trash").header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].type").value("TASK")).andExpect(jsonPath("$[0].id").value(taskId));
+        mvc.perform(post("/api/trash/TASK/{taskId}/restore", taskId).header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/plans/{planId}/tasks", planId).header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(taskId));
     }
 
     @Test

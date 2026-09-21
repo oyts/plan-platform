@@ -8,6 +8,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.Instant;
 
 @Entity
 @Table(name = "task_templates")
@@ -21,6 +22,7 @@ public class TaskTemplate extends BaseEntity {
     @Column(name = "acceptance_json", nullable = false, columnDefinition = "text") private String acceptanceJson = "[]";
     @Column(name = "resource_url", nullable = false, length = 1000) private String resourceUrl = "";
     @Column(name = "required_task", nullable = false) private boolean required = true;
+    @Column(name = "deleted_at") private Instant deletedAt;
 
     protected TaskTemplate() {}
     public TaskTemplate(UserAccount owner, String name, String category, String title, String description, int plannedMinutes, String acceptanceJson, String resourceUrl, boolean required) {
@@ -34,4 +36,5 @@ public class TaskTemplate extends BaseEntity {
     public UserAccount getOwner() { return owner; } public String getName() { return name; } public String getCategory() { return category; }
     public String getTitle() { return title; } public String getDescription() { return description; } public int getPlannedMinutes() { return plannedMinutes; }
     public String getAcceptanceJson() { return acceptanceJson; } public String getResourceUrl() { return resourceUrl; } public boolean isRequired() { return required; }
+    public void trash() { deletedAt = Instant.now(); } public void restore() { deletedAt = null; } public Instant getDeletedAt() { return deletedAt; }
 }

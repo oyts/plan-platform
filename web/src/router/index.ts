@@ -10,6 +10,8 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/plans/:id', component: () => import('@/views/PlanDetailView.vue') },
   { path: '/plans/:id/studio', component: () => import('@/views/PlanStudioView.vue') },
   { path: '/stats', component: () => import('@/views/StatsView.vue') },
+  { path: '/reviews', component: () => import('@/views/ReviewView.vue') },
+  { path: '/records', component: () => import('@/views/RecordsView.vue') },
   { path: '/mainlines', component: () => import('@/views/MainlinesView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },
 ] });

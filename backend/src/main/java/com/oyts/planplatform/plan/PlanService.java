@@ -112,14 +112,14 @@ public class PlanService {
     public void deleteTag(String userId, String tagId) {
         PlanTag tag = ownedTag(userId, tagId);
         if (tag.isOverall()) throw new IllegalArgumentException("总标签不能删除。");
-        if (tasks.countByTagId(tagId) > 0) throw new ConflictException("该标签仍被任务使用，请先修改任务标签。");
+        if (tasks.countByTagIdAndDeletedAtIsNull(tagId) > 0) throw new ConflictException("该标签仍被任务使用，请先修改任务标签。");
         tags.delete(tag);
     }
 
     @Transactional(readOnly = true)
     public List<PlanDtos.TaskResponse> listTasks(String userId, String planId) {
         ownedPlan(userId, planId);
-        return tasks.findByPlanIdOrderByDateAscSortOrderAsc(planId).stream().map(this::toTask).toList();
+        return tasks.findByPlanIdAndDeletedAtIsNullOrderByDateAscSortOrderAsc(planId).stream().map(this::toTask).toList();
     }
 
     /**
@@ -133,7 +133,7 @@ public class PlanService {
         LocalDate boundedFrom = from.isBefore(plan.getStartDate()) ? plan.getStartDate() : from;
         LocalDate boundedTo = to.isAfter(plan.getEndDate()) ? plan.getEndDate() : to;
         if (boundedFrom.isAfter(boundedTo)) return new PlanDtos.PageResponse<>(List.of(), normalizePage(page), normalizeSize(size), 0, 0);
-        Page<PlanTask> result = tasks.findByPlanIdAndDateBetweenOrderByDateAscSortOrderAsc(
+        Page<PlanTask> result = tasks.findByPlanIdAndDeletedAtIsNullAndDateBetweenOrderByDateAscSortOrderAsc(
             planId, boundedFrom, boundedTo, PageRequest.of(normalizePage(page), normalizeSize(size), Sort.unsorted()));
         return new PlanDtos.PageResponse<>(result.getContent().stream().map(this::toTask).toList(), result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }
@@ -181,12 +181,12 @@ public class PlanService {
     }
 
     @Transactional
-    public void deleteTask(String userId, String taskId) { tasks.delete(ownedTask(userId, taskId)); }
+    public void deleteTask(String userId, String taskId) { ownedTask(userId, taskId).trash(); }
 
     @Transactional(readOnly = true)
     public List<PlanDtos.MilestoneResponse> listMilestones(String userId, String planId) {
         ownedPlan(userId, planId);
-        return milestones.findByPlanIdOrderByDateAscCreatedAtAsc(planId).stream().map(this::toMilestone).toList();
+        return milestones.findByPlanIdAndDeletedAtIsNullOrderByDateAscCreatedAtAsc(planId).stream().map(this::toMilestone).toList();
     }
 
     @Transactional
@@ -216,15 +216,15 @@ public class PlanService {
     }
 
     @Transactional
-    public void deleteMilestone(String userId, String milestoneId) { milestones.delete(ownedMilestone(userId, milestoneId)); }
+    public void deleteMilestone(String userId, String milestoneId) { ownedMilestone(userId, milestoneId).trash(); }
 
     @Transactional(readOnly = true)
-    public List<PlanDtos.TemplateResponse> listTemplates(String userId) { return templates.findByOwnerIdOrderByCreatedAtDesc(userId).stream().map(this::toTemplate).toList(); }
+    public List<PlanDtos.TemplateResponse> listTemplates(String userId) { return templates.findByOwnerIdAndDeletedAtIsNullOrderByCreatedAtDesc(userId).stream().map(this::toTemplate).toList(); }
 
     @Transactional
     public PlanDtos.TemplateResponse createTemplate(String userId, PlanDtos.TemplateRequest request) {
         UserAccount owner = users.findById(userId).orElseThrow(() -> new NotFoundException("用户不存在。"));
-        if (templates.existsByOwnerIdAndNameIgnoreCase(userId, request.name().trim())) throw new ConflictException("已存在同名任务模板。");
+        if (templates.existsByOwnerIdAndDeletedAtIsNullAndNameIgnoreCase(userId, request.name().trim())) throw new ConflictException("已存在同名任务模板。");
         return toTemplate(templates.save(new TaskTemplate(owner, request.name(), request.category(), request.title(), request.description(), request.plannedMinutes(), json(request.acceptance()), request.resourceUrl(), request.required())));
     }
 
@@ -232,14 +232,14 @@ public class PlanService {
     public PlanDtos.TemplateResponse updateTemplate(String userId, String templateId, PlanDtos.TemplateRequest request) {
         TaskTemplate template = ownedTemplate(userId, templateId);
         checkVersion(template.getVersion(), request.version());
-        if (!template.getName().equalsIgnoreCase(request.name().trim()) && templates.existsByOwnerIdAndNameIgnoreCase(userId, request.name().trim())) throw new ConflictException("已存在同名任务模板。");
+        if (!template.getName().equalsIgnoreCase(request.name().trim()) && templates.existsByOwnerIdAndDeletedAtIsNullAndNameIgnoreCase(userId, request.name().trim())) throw new ConflictException("已存在同名任务模板。");
         template.update(request.name(), request.category(), request.title(), request.description(), request.plannedMinutes(), json(request.acceptance()), request.resourceUrl(), request.required());
         flushAndRefresh(template);
         return toTemplate(template);
     }
 
     @Transactional
-    public void deleteTemplate(String userId, String templateId) { templates.delete(ownedTemplate(userId, templateId)); }
+    public void deleteTemplate(String userId, String templateId) { ownedTemplate(userId, templateId).trash(); }
 
     @Transactional
     public PlanDtos.TaskResponse instantiateTemplate(String userId, String templateId, PlanDtos.InstantiateTemplateRequest request) {
@@ -336,6 +336,7 @@ public class PlanService {
     public List<PlanDtos.TaskResponse> carryover(String userId, LocalDate from, LocalDate to) {
         validateRange(from, to);
         return progress.findByTaskPlanOwnerId(userId).stream()
+            .filter(item -> item.getTask().getDeletedAt() == null)
             .filter(item -> item.getStatus() == TaskProgress.Status.DEFERRED && item.getDeferTo() != null)
             .filter(item -> !item.getDeferTo().isBefore(from) && !item.getDeferTo().isAfter(to))
             .sorted(java.util.Comparator.comparing(TaskProgress::getDeferTo)
@@ -346,7 +347,7 @@ public class PlanService {
 
     @Transactional(readOnly = true)
     public PlanDtos.TodayResponse today(String userId, LocalDate date) {
-        List<PlanDtos.TaskResponse> rows = tasks.findByPlanOwnerIdAndDateOrderByStartTimeAsc(userId, date).stream().map(this::toTask).toList();
+        List<PlanDtos.TaskResponse> rows = tasks.findByPlanOwnerIdAndDeletedAtIsNullAndDateOrderByStartTimeAsc(userId, date).stream().map(this::toTask).toList();
         return new PlanDtos.TodayResponse(date, rows, rows.size(), rows.stream().filter(row -> row.progress().status().equals("COMPLETED")).count(),
             rows.stream().mapToLong(PlanDtos.TaskResponse::plannedMinutes).sum(), rows.stream().mapToLong(row -> row.progress().accumulatedSeconds()).sum());
     }
@@ -354,6 +355,7 @@ public class PlanService {
     @Transactional
     public PlanDtos.ReflectionResponse saveReflection(String userId, String planId, LocalDate date, PlanDtos.ReflectionRequest request) {
         Plan plan = ownedPlan(userId, planId);
+        validateTaskDate(plan, date);
         DailyReflection reflection = reflections.findByPlanIdAndDate(planId, date).orElseGet(() -> new DailyReflection(plan, date));
         checkVersion(reflection.getVersion(), request.version());
         reflection.update(request.completedSummary(), request.unfinishedSummary(), request.blockers(), request.firstTaskTomorrow(), request.energy(), request.note());
@@ -363,10 +365,74 @@ public class PlanService {
     }
 
     @Transactional(readOnly = true)
+    public PlanDtos.PageResponse<PlanDtos.ReflectionResponse> reflectionPage(String userId, String planId, LocalDate from, LocalDate to, int page, int size) {
+        ownedPlan(userId, planId);
+        validateRange(from, to);
+        Page<DailyReflection> result = reflections.findByPlanIdAndDateBetweenOrderByDateDesc(planId, from, to,
+            PageRequest.of(normalizePage(page), normalizeSize(size)));
+        return new PlanDtos.PageResponse<>(result.getContent().stream().map(this::toReflection).toList(), result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
+    }
+
+    @Transactional(readOnly = true)
+    public PlanDtos.PageResponse<PlanDtos.TimeEntryResponse> timeLedger(String userId, LocalDate from, LocalDate to, int page, int size) {
+        validateRange(from, to);
+        Instant rangeStart = from.atStartOfDay(java.time.ZoneId.of("Asia/Shanghai")).toInstant();
+        Instant rangeEnd = to.plusDays(1).atStartOfDay(java.time.ZoneId.of("Asia/Shanghai")).toInstant();
+        Page<TimeEntry> result = timeEntries.findByProgressTaskPlanOwnerIdAndStartedAtBetweenOrderByStartedAtDesc(userId, rangeStart, rangeEnd,
+            PageRequest.of(normalizePage(page), normalizeSize(size)));
+        return new PlanDtos.PageResponse<>(result.getContent().stream().map(this::toTimeEntry).toList(), result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
+    }
+
+    @Transactional(readOnly = true)
+    public String timeLedgerCsv(String userId, LocalDate from, LocalDate to) {
+        validateRange(from, to);
+        Instant rangeStart = from.atStartOfDay(java.time.ZoneId.of("Asia/Shanghai")).toInstant();
+        Instant rangeEnd = to.plusDays(1).atStartOfDay(java.time.ZoneId.of("Asia/Shanghai")).toInstant();
+        StringBuilder csv = new StringBuilder("开始时间,结束时间,计划,任务,标签,秒数,来源\n");
+        timeEntries.findByProgressTaskPlanOwnerIdAndStartedAtBetweenOrderByStartedAtDesc(userId, rangeStart, rangeEnd).forEach(entry -> {
+            PlanDtos.TimeEntryResponse row = toTimeEntry(entry);
+            csv.append(csvCell(row.startedAt().toString())).append(',').append(csvCell(row.endedAt().toString())).append(',')
+                .append(csvCell(row.planId())).append(',').append(csvCell(row.taskTitle())).append(',').append(csvCell(row.tagName()))
+                .append(',').append(row.seconds()).append(',').append(csvCell(row.source())).append('\n');
+        });
+        return csv.toString();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PlanDtos.TrashResponse> trash(String userId) {
+        List<PlanDtos.TrashResponse> rows = new ArrayList<>();
+        tasks.findByPlanOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(task -> rows.add(new PlanDtos.TrashResponse("TASK", task.getId(), task.getTitle(), task.getPlan().getName() + " · " + task.getDate(), task.getDeletedAt())));
+        milestones.findByPlanOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(item -> rows.add(new PlanDtos.TrashResponse("MILESTONE", item.getId(), item.getName(), item.getPlan().getName() + " · " + item.getDate(), item.getDeletedAt())));
+        templates.findByOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(item -> rows.add(new PlanDtos.TrashResponse("TEMPLATE", item.getId(), item.getName(), item.getTitle(), item.getDeletedAt())));
+        rows.sort(java.util.Comparator.comparing(PlanDtos.TrashResponse::deletedAt).reversed());
+        return rows;
+    }
+
+    @Transactional
+    public void restoreTrash(String userId, String type, String id) {
+        switch (type.toUpperCase()) {
+            case "TASK" -> { PlanTask item = tasks.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站任务不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
+            case "MILESTONE" -> { PlanMilestone item = milestones.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站里程碑不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
+            case "TEMPLATE" -> { TaskTemplate item = templates.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站模板不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
+            default -> throw new IllegalArgumentException("不支持的回收站类型。");
+        }
+    }
+
+    @Transactional
+    public void purgeTrash(String userId, String type, String id) {
+        switch (type.toUpperCase()) {
+            case "TASK" -> { PlanTask item = tasks.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站任务不存在。")); requireTrashed(item.getDeletedAt()); tasks.delete(item); }
+            case "MILESTONE" -> { PlanMilestone item = milestones.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站里程碑不存在。")); requireTrashed(item.getDeletedAt()); milestones.delete(item); }
+            case "TEMPLATE" -> { TaskTemplate item = templates.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站模板不存在。")); requireTrashed(item.getDeletedAt()); templates.delete(item); }
+            default -> throw new IllegalArgumentException("不支持的回收站类型。");
+        }
+    }
+
+    @Transactional(readOnly = true)
     public PlanDtos.StatsResponse stats(String userId, String planId, LocalDate from, LocalDate to) {
         ownedPlan(userId, planId);
         validateRange(from, to);
-        List<PlanDtos.TaskResponse> rows = tasks.findByPlanIdOrderByDateAscSortOrderAsc(planId).stream()
+        List<PlanDtos.TaskResponse> rows = tasks.findByPlanIdAndDeletedAtIsNullOrderByDateAscSortOrderAsc(planId).stream()
             .filter(task -> !task.getDate().isBefore(from) && !task.getDate().isAfter(to)).map(this::toTask).toList();
         Map<String, List<PlanDtos.TaskResponse>> byTag = new LinkedHashMap<>();
         rows.forEach(row -> byTag.computeIfAbsent(row.tagId() == null ? "untagged" : row.tagId(), ignored -> new ArrayList<>()).add(row));
@@ -388,7 +454,7 @@ public class PlanService {
         validateRange(from, to);
         Map<LocalDate, List<PlanDtos.TaskResponse>> byDate = new LinkedHashMap<>();
         for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) byDate.put(date, new ArrayList<>());
-        tasks.findByPlanIdOrderByDateAscSortOrderAsc(planId).stream()
+        tasks.findByPlanIdAndDeletedAtIsNullOrderByDateAscSortOrderAsc(planId).stream()
             .filter(task -> !task.getDate().isBefore(from) && !task.getDate().isAfter(to))
             .map(this::toTask).forEach(task -> byDate.get(task.date()).add(task));
         List<PlanDtos.DailyStat> rows = byDate.entrySet().stream().map(entry -> dailyStat(entry.getKey(), entry.getValue())).toList();
@@ -401,9 +467,9 @@ public class PlanService {
 
     private Plan ownedPlan(String userId, String planId) { return plans.findByIdAndOwnerId(planId, userId).orElseThrow(() -> new NotFoundException("计划不存在。")); }
     private PlanTag ownedTag(String userId, String tagId) { return tags.findByIdAndPlanOwnerId(tagId, userId).orElseThrow(() -> new NotFoundException("标签不存在。")); }
-    private PlanTask ownedTask(String userId, String taskId) { return tasks.findByIdAndPlanOwnerId(taskId, userId).orElseThrow(() -> new NotFoundException("任务不存在。")); }
-    private PlanMilestone ownedMilestone(String userId, String milestoneId) { return milestones.findByIdAndPlanOwnerId(milestoneId, userId).orElseThrow(() -> new NotFoundException("里程碑不存在。")); }
-    private TaskTemplate ownedTemplate(String userId, String templateId) { return templates.findByIdAndOwnerId(templateId, userId).orElseThrow(() -> new NotFoundException("任务模板不存在。")); }
+    private PlanTask ownedTask(String userId, String taskId) { return tasks.findByIdAndPlanOwnerIdAndDeletedAtIsNull(taskId, userId).orElseThrow(() -> new NotFoundException("任务不存在。")); }
+    private PlanMilestone ownedMilestone(String userId, String milestoneId) { return milestones.findByIdAndPlanOwnerIdAndDeletedAtIsNull(milestoneId, userId).orElseThrow(() -> new NotFoundException("里程碑不存在。")); }
+    private TaskTemplate ownedTemplate(String userId, String templateId) { return templates.findByIdAndOwnerIdAndDeletedAtIsNull(templateId, userId).orElseThrow(() -> new NotFoundException("任务模板不存在。")); }
     private TaskProgress progressFor(String taskId) { return progress.findByTaskId(taskId).orElseThrow(() -> new NotFoundException("任务进度不存在。")); }
 
     private PlanDtos.TaskResponse createTask(Plan plan, PlanTag tag, PlanDtos.TaskRequest request, String recurrenceId, String templateId) {
@@ -454,6 +520,9 @@ public class PlanService {
     private void checkVersion(long current, Long requested) {
         if (requested != null && requested != current) throw new ConflictException("数据已经被其他设备修改，请刷新后重试。");
     }
+    private void requireTrashed(Instant deletedAt) {
+        if (deletedAt == null) throw new ConflictException("该记录不在回收站中。");
+    }
     private boolean blank(String value) { return value == null || value.isBlank(); }
     private void flushAndRefresh(Object entity) { entityManager.flush(); entityManager.refresh(entity); }
     private String json(Object value) {
@@ -466,7 +535,7 @@ public class PlanService {
     }
 
     private PlanDtos.PlanResponse toPlan(Plan plan) {
-        List<PlanTask> planTasks = tasks.findByPlanIdOrderByDateAscSortOrderAsc(plan.getId());
+        List<PlanTask> planTasks = tasks.findByPlanIdAndDeletedAtIsNullOrderByDateAscSortOrderAsc(plan.getId());
         long completed = planTasks.stream().filter(task -> progress.findByTaskId(task.getId()).map(item -> item.getStatus() == TaskProgress.Status.COMPLETED).orElse(false)).count();
         return new PlanDtos.PlanResponse(plan.getId(), plan.getName(), plan.getDescription(), plan.getStartDate(), plan.getEndDate(), plan.isArchived(), plan.getVersion(), planTasks.size(), completed, plan.getUpdatedAt());
     }
@@ -491,5 +560,16 @@ public class PlanService {
     private PlanDtos.TemplateResponse toTemplate(TaskTemplate item) {
         return new PlanDtos.TemplateResponse(item.getId(), item.getName(), item.getCategory(), item.getTitle(), item.getDescription(), item.getPlannedMinutes(),
             read(item.getAcceptanceJson(), STRING_LIST), item.getResourceUrl(), item.isRequired(), item.getVersion());
+    }
+    private PlanDtos.TimeEntryResponse toTimeEntry(TimeEntry entry) {
+        PlanTask task = entry.getProgress().getTask();
+        PlanTag tag = task.getTag();
+        return new PlanDtos.TimeEntryResponse(entry.getId(), task.getPlan().getId(), task.getId(), task.getTitle(), tag == null ? "未分类" : tag.getName(),
+            tag == null ? null : tag.getColor(), entry.getStartedAt(), entry.getEndedAt(), entry.getSeconds(), entry.getSource());
+    }
+    private String csvCell(String value) {
+        String clean = value == null ? "" : value.replace("\"", "\"\"");
+        if (!clean.isEmpty() && "=+-@".indexOf(clean.charAt(0)) >= 0) clean = "'" + clean;
+        return "\"" + clean + "\"";
     }
 }
