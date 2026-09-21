@@ -6,7 +6,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record SecurityProperties(boolean registrationEnabled, String refreshCookieName,
                                  boolean refreshCookieSecure, String refreshCookieSameSite,
                                  int maxLoginAttempts, long loginWindowSeconds, int maxSessions,
-                                 boolean passwordResetEnabled, long passwordResetMinutes) {
+                                 boolean passwordResetEnabled, long passwordResetMinutes,
+                                 boolean invitationEnabled, long invitationHours, boolean emailVerificationEnabled, long emailVerificationMinutes,
+                                 String bootstrapAdminEmail) {
     public SecurityProperties {
         if (refreshCookieName == null || refreshCookieName.isBlank()) refreshCookieName = "plan_refresh";
         if (refreshCookieSameSite == null || refreshCookieSameSite.isBlank()) refreshCookieSameSite = "Strict";
@@ -14,5 +16,7 @@ public record SecurityProperties(boolean registrationEnabled, String refreshCook
         if (loginWindowSeconds < 60) loginWindowSeconds = 900;
         if (maxSessions < 1) maxSessions = 5;
         if (passwordResetMinutes < 10) passwordResetMinutes = 60;
+        if (invitationHours < 1) invitationHours = 168;
+        if (emailVerificationMinutes < 10) emailVerificationMinutes = 60;
     }
 }

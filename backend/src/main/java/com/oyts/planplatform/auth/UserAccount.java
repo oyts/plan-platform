@@ -4,6 +4,7 @@ import com.oyts.planplatform.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import java.time.Instant;
 
 @Entity
 @Table(name = "users")
@@ -22,6 +23,7 @@ public class UserAccount extends BaseEntity {
 
     @Column(nullable = false)
     private boolean enabled = true;
+    @Column(name = "email_verified_at") private Instant emailVerifiedAt;
 
     protected UserAccount() {}
 
@@ -32,10 +34,13 @@ public class UserAccount extends BaseEntity {
     }
     public void updateDisplayName(String displayName) { this.displayName = displayName.trim(); }
     public void changePassword(String passwordHash) { this.passwordHash = passwordHash; }
+    public void verifyEmail() { emailVerifiedAt = Instant.now(); }
+    public void makeAdmin() { role = "ADMIN"; }
 
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
     public String getDisplayName() { return displayName; }
     public String getRole() { return role; }
     public boolean isEnabled() { return enabled; }
+    public boolean isEmailVerified() { return emailVerifiedAt != null; }
 }

@@ -24,3 +24,8 @@ app:
     max-login-attempts: 3
     login-window-seconds: 900
     max-sessions: 5
+    invitation-enabled: true
+    invitation-hours: 168
+    email-verification-enabled: false
+    email-verification-minutes: 60
+    bootstrap-admin-email:

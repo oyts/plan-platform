@@ -2,6 +2,7 @@ package com.oyts.planplatform;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.oyts.planplatform.auth.UserAccountRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -24,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthPlanIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper objectMapper;
+    @Autowired UserAccountRepository users;
 
     @Test
     void registrationPlanCreationAndUserIsolationWorkTogether() throws Exception {
@@ -118,6 +120,18 @@ class AuthPlanIntegrationTest {
         mvc.perform(post("/api/auth/password-reset/request").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"not-an-account@example.com\"}"))
             .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void onlyAdministratorsCanCreateOrReadInvitations() throws Exception {
+        String initialToken = register("admin@example.com", "管理员账号");
+        var administrator = users.findByEmailIgnoreCase("admin@example.com").orElseThrow(); administrator.makeAdmin(); users.save(administrator);
+        String adminToken = login("admin@example.com", "password123");
+        mvc.perform(post("/api/admin/invitations").header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"invited@example.com\",\"expiresInHours\":24}"))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.email").value("invited@example.com"));
+        mvc.perform(get("/api/admin/invitations").header("Authorization", "Bearer " + initialToken))
+            .andExpect(status().isForbidden());
     }
 
     @Test
@@ -342,6 +356,13 @@ class AuthPlanIntegrationTest {
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         JsonNode json = objectMapper.readTree(response);
         return json.get("accessToken").asText();
+    }
+
+    private String login(String email, String password) throws Exception {
+        String response = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}"))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(response).get("accessToken").asText();
     }
 
     private record RegisterBody(String email, String password, String displayName) {}

@@ -20,14 +20,27 @@ class PasswordResetMailService {
                              @Value("${app.mail-from:}") String from) { this.senders = senders; this.publicUrl = publicUrl.replaceAll("/+$", ""); this.from = from; }
 
     boolean send(UserAccount user, String rawToken) {
-        JavaMailSender sender = senders.getIfAvailable();
-        if (sender == null || from.isBlank()) return false;
         String link = publicUrl + "/reset-password?email=" + URLEncoder.encode(user.getEmail(), StandardCharsets.UTF_8)
             + "&token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(from); message.setTo(user.getEmail()); message.setSubject("计划平台：重置密码");
-        message.setText("你收到了重置计划平台密码的请求。请在有效期内打开以下链接设置新密码：\n" + link
+        return send(user.getEmail(), "计划平台：重置密码", "你收到了重置计划平台密码的请求。请在有效期内打开以下链接设置新密码：\n" + link
             + "\n\n如果不是你本人操作，请忽略本邮件。此链接仅可使用一次。");
+    }
+    boolean sendInvitation(String email, String rawToken) {
+        return send(email, "计划平台：邀请注册", "你被邀请使用计划平台。请在有效期内打开以下链接创建账号：\n" + invitationLink(email, rawToken)
+            + "\n\n此链接仅可使用一次。若不是你本人收到，请忽略本邮件。");
+    }
+    boolean sendEmailVerification(UserAccount user, String rawToken) {
+        String link = publicUrl + "/verify-email?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
+        return send(user.getEmail(), "计划平台：验证邮箱", "请在有效期内打开以下链接验证你的计划平台邮箱：\n" + link + "\n\n此链接仅可使用一次。");
+    }
+    String invitationLink(String email, String rawToken) {
+        return publicUrl + "/register?email=" + URLEncoder.encode(email, StandardCharsets.UTF_8) + "&invite=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
+    }
+    private boolean send(String recipient, String subject, String text) {
+        JavaMailSender sender = senders.getIfAvailable();
+        if (sender == null || from.isBlank()) return false;
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from); message.setTo(recipient); message.setSubject(subject); message.setText(text);
         try { sender.send(message); return true; }
         catch (MailException exception) { return false; }
     }

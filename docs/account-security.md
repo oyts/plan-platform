@@ -12,6 +12,8 @@
 - 用户可修改显示名称；邮箱继续作为不可直接变更的登录标识，邮箱变更需要后续的双邮箱验证流程。
 - 修改密码时必须验证当前密码，并撤销该用户全部刷新会话。
 - 找回密码默认关闭。启用后由 SMTP 向已注册邮箱发送一次性、高熵的重置链接；数据库仅保存令牌 SHA-256 摘要。请求接口始终返回相同结果，避免枚举邮箱。
+- 公开注册关闭时，只有管理员创建的一次性邀请链接可以注册；邀请令牌仅保存 SHA-256 摘要。管理员只能管理邀请，不能查看用户的计划数据。
+- 邮箱验证默认关闭。开启后，注册用户会收到一次性验证链接；是否强制把“已验证”作为访问前提将留待后续风控阶段按业务决定。
 
 ## 生产环境变量
 
@@ -24,6 +26,11 @@ REFRESH_COOKIE_SECURE=true
 MAX_LOGIN_ATTEMPTS=5
 LOGIN_WINDOW_SECONDS=900
 MAX_SESSIONS=5
+INVITATION_ENABLED=true
+INVITATION_HOURS=168
+EMAIL_VERIFICATION_ENABLED=false
+EMAIL_VERIFICATION_MINUTES=60
+BOOTSTRAP_ADMIN_EMAIL=<已有账号的邮箱，用于首次授予管理员权限>
 PASSWORD_RESET_ENABLED=false
 PASSWORD_RESET_MINUTES=60
 APP_PUBLIC_URL=https://plan.example.com

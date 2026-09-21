@@ -14,6 +14,8 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/reviews', component: () => import('@/views/ReviewView.vue') },
   { path: '/records', component: () => import('@/views/RecordsView.vue') },
   { path: '/exports', component: () => import('@/views/ExportsView.vue') },
+  { path: '/members', component: () => import('@/views/MembersView.vue') },
+  { path: '/verify-email', component: () => import('@/views/VerifyEmailView.vue'), meta: { public: true } },
   { path: '/mainlines', component: () => import('@/views/MainlinesView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },
 ] });

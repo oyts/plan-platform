@@ -27,6 +27,8 @@ public class AuthService {
     private final UserAccountRepository users;
     private final RefreshTokenRepository refreshTokens;
     private final PasswordResetTokenRepository passwordResetTokens;
+    private final InvitationRepository invitations;
+    private final EmailVerificationTokenRepository emailVerificationTokens;
     private final PasswordResetMailService passwordResetMail;
     private final PasswordEncoder passwordEncoder;
     private final JwtEncoder jwtEncoder;
@@ -35,12 +37,15 @@ public class AuthService {
     private final LoginAttemptService loginAttempts;
 
     public AuthService(UserAccountRepository users, RefreshTokenRepository refreshTokens, PasswordResetTokenRepository passwordResetTokens,
+                       InvitationRepository invitations, EmailVerificationTokenRepository emailVerificationTokens,
                        PasswordResetMailService passwordResetMail, PasswordEncoder passwordEncoder,
                        JwtEncoder jwtEncoder, JwtProperties jwtProperties, SecurityProperties securityProperties,
                        LoginAttemptService loginAttempts) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.passwordResetTokens = passwordResetTokens;
+        this.invitations = invitations;
+        this.emailVerificationTokens = emailVerificationTokens;
         this.passwordResetMail = passwordResetMail;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;
@@ -51,10 +56,17 @@ public class AuthService {
 
     @Transactional
     public IssuedTokens register(AuthDtos.RegisterRequest request) {
-        if (!securityProperties.registrationEnabled()) throw new ForbiddenException("当前未开放公开注册，请联系管理员创建账号。");
         String email = request.email().trim().toLowerCase();
         if (users.existsByEmailIgnoreCase(email)) throw new ConflictException("该邮箱已经注册。");
+        Invitation invitation = null;
+        if (!securityProperties.registrationEnabled()) {
+            if (!securityProperties.invitationEnabled() || request.invitationToken() == null || request.invitationToken().isBlank()) throw new ForbiddenException("当前仅接受有效邀请注册链接注册。");
+            invitation = invitations.findByTokenHashAndEmailIgnoreCase(hash(request.invitationToken()), email)
+                .filter(candidate -> candidate.isActive(Instant.now())).orElseThrow(() -> new ForbiddenException("邀请链接无效、已使用或已经过期。"));
+        }
         UserAccount user = users.save(new UserAccount(email, passwordEncoder.encode(request.password()), request.displayName().trim()));
+        if (invitation != null) invitation.accept();
+        if (securityProperties.emailVerificationEnabled()) sendEmailVerification(user);
         return issueTokens(user);
     }
 
@@ -151,6 +163,21 @@ public class AuthService {
         revokeAllSessions(user.getId());
     }
 
+    @Transactional
+    public void requestEmailVerification(String userId) {
+        if (!securityProperties.emailVerificationEnabled()) throw new ForbiddenException("服务器尚未启用邮箱验证。");
+        UserAccount user = users.findById(userId).orElseThrow(() -> new IllegalArgumentException("用户不存在。"));
+        if (!user.isEmailVerified()) sendEmailVerification(user);
+    }
+
+    @Transactional
+    public void confirmEmailVerification(AuthDtos.EmailVerificationConfirmRequest request) {
+        EmailVerificationToken token = emailVerificationTokens.findByTokenHash(hash(request.token()))
+            .filter(item -> item.getUsedAt() == null && item.getExpiresAt().isAfter(Instant.now()))
+            .orElseThrow(() -> new UnauthorizedException("验证链接无效、已使用或已经过期。"));
+        token.getUser().verifyEmail(); token.consume();
+    }
+
     private IssuedTokens issueTokens(UserAccount user) {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(jwtProperties.accessTokenMinutes(), ChronoUnit.MINUTES);
@@ -170,7 +197,7 @@ public class AuthService {
     }
 
     private AuthDtos.UserResponse toUser(UserAccount user) {
-        return new AuthDtos.UserResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getRole());
+        return new AuthDtos.UserResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getRole(), user.isEmailVerified());
     }
 
     private String hash(String value) {
@@ -179,6 +206,13 @@ public class AuthService {
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException(exception);
         }
+    }
+
+    private void sendEmailVerification(UserAccount user) {
+        String rawToken = UUID.randomUUID() + "." + UUID.randomUUID();
+        if (!passwordResetMail.sendEmailVerification(user, rawToken)) return;
+        emailVerificationTokens.findByUserIdAndUsedAtIsNullAndExpiresAtAfter(user.getId(), Instant.now()).forEach(EmailVerificationToken::revoke);
+        emailVerificationTokens.save(new EmailVerificationToken(user, hash(rawToken), Instant.now().plus(securityProperties.emailVerificationMinutes(), ChronoUnit.MINUTES)));
     }
 
     record IssuedTokens(AuthDtos.TokenResponse response, String refreshToken) {}

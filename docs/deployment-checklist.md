@@ -5,8 +5,10 @@
 1. 复制 `.env.example` 为 `.env`，填写新的 `DB_PASSWORD`、`MYSQL_ROOT_PASSWORD` 与至少 32 位随机 `JWT_SECRET`；这些值绝不提交 Git。
 2. 设置 `CORS_ALLOWED_ORIGINS=https://你的域名`、`APP_PUBLIC_URL=https://你的域名` 和 `REFRESH_COOKIE_SECURE=true`。
 3. 默认保持 `REGISTRATION_ENABLED=false`。仅在明确邀请新用户时短暂开启，并在创建完成后关闭。
-4. 若启用找回密码，同时配置 `PASSWORD_RESET_ENABLED=true`、`MAIL_FROM` 和 SMTP 参数。没有可用 SMTP 时保持该功能关闭。
-5. 在反向代理或安全组层仅开放 80/443；数据库 3306 不对公网开放。
+4. 使用邀请制时，先以已有账号邮箱设置 `BOOTSTRAP_ADMIN_EMAIL` 并重启一次服务；该账号会获得管理员权限，可在“成员邀请”页创建邀请。确认管理员账号后可清空该变量。
+5. 仅在邮件服务已可用时开启 `EMAIL_VERIFICATION_ENABLED=true` 或 `PASSWORD_RESET_ENABLED=true`。
+6. 若启用找回密码，同时配置 `PASSWORD_RESET_ENABLED=true`、`MAIL_FROM` 和 SMTP 参数。没有可用 SMTP 时保持该功能关闭。
+7. 在反向代理或安全组层仅开放 80/443；数据库 3306 不对公网开放。
 
 ## 启动与验收
 

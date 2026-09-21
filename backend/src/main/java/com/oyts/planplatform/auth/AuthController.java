@@ -52,7 +52,7 @@ public class AuthController {
     }
 
     @GetMapping("/config")
-    AuthDtos.AuthConfigResponse config() { return new AuthDtos.AuthConfigResponse(security.registrationEnabled(), security.passwordResetEnabled()); }
+    AuthDtos.AuthConfigResponse config() { return new AuthDtos.AuthConfigResponse(security.registrationEnabled(), security.passwordResetEnabled(), security.invitationEnabled(), security.emailVerificationEnabled()); }
 
     @GetMapping("/me")
     AuthDtos.UserResponse me(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) {
@@ -79,6 +79,14 @@ public class AuthController {
     @PostMapping("/password-reset/confirm")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void confirmPasswordReset(@Valid @RequestBody AuthDtos.PasswordResetConfirmRequest request) { authService.confirmPasswordReset(request); }
+
+    @PostMapping("/email-verification/request")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void requestEmailVerification(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) { authService.requestEmailVerification(jwt.getSubject()); }
+
+    @PostMapping("/email-verification/confirm")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void confirmEmailVerification(@Valid @RequestBody AuthDtos.EmailVerificationConfirmRequest request) { authService.confirmEmailVerification(request); }
 
     @GetMapping("/sessions")
     List<AuthDtos.SessionResponse> sessions(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,

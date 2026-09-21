@@ -47,6 +47,21 @@ paths:
       summary: 使用邮件令牌重置密码并撤销全部刷新会话
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PasswordResetConfirmRequest' } } } }
       responses: { '204': { description: 已重置 } }
+  /auth/email-verification/confirm:
+    post:
+      summary: 使用一次性令牌验证邮箱
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [token], properties: { token: { type: string } } } } } }
+      responses: { '204': { description: 已验证 } }
+  /admin/invitations:
+    get:
+      summary: 管理员读取邀请记录
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: 邀请列表 } }
+    post:
+      summary: 管理员创建一次性邀请
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string, format: email }, expiresInHours: { type: integer, minimum: 1, maximum: 720 } } } } } }
+      responses: { '201': { description: 邀请已创建 } }
   /plans:
     get: { summary: 获取当前用户计划, security: [{ bearerAuth: [] }], responses: { '200': { description: 计划列表 } } }
     post: { summary: 创建计划, security: [{ bearerAuth: [] }], responses: { '201': { description: 已创建 } } }

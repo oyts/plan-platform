@@ -13,7 +13,7 @@ api.interceptors.request.use((config) => {
 let refreshing: Promise<string> | null = null;
 api.interceptors.response.use((response) => response, async (error: AxiosError) => {
   const request = error.config as (InternalAxiosRequestConfig & { retried?: boolean }) | undefined;
-  const publicAuthRequest = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout']
+  const publicAuthRequest = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout', '/auth/password-reset/', '/auth/email-verification/confirm']
     .some((path) => request?.url?.includes(path));
   if (error.response?.status !== 401 || !request || request.retried || publicAuthRequest) throw error;
   request.retried = true;

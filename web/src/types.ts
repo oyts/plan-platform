@@ -1,4 +1,4 @@
-export interface User { id: string; email: string; displayName: string; role: string }
+export interface User { id: string; email: string; displayName: string; role: string; emailVerified: boolean }
 export interface TokenResponse { accessToken: string; expiresInSeconds: number; user: User }
 export interface SessionInfo { id: string; createdAt: string; expiresAt: string; current: boolean }
 export interface Plan { id: string; name: string; description: string; startDate: string; endDate: string; archived: boolean; version: number; taskCount: number; completedCount: number; updatedAt: string }
@@ -18,3 +18,4 @@ export interface Today { date: string; tasks: Task[]; total: number; completed: 
 export interface MainlineItem { id: string; title: string; description: string; acceptance: string[]; plannedMinutes: number; sortOrder: number; status: string; unlocked: boolean; accumulatedSeconds: number; note: string; startedAt: string | null; completedAt: string | null; version: number }
 export interface Mainline { id: string; name: string; description: string; color: string; version: number; completed: number; total: number; items: MainlineItem[] }
 export interface RecurrenceBatch { recurrenceId: string; title: string; category: string; firstDate: string; lastDate: string; taskCount: number; completedCount: number; openCount: number }
+export interface Invitation { id: string; email: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null; createdBy: string; registrationUrl: string | null }
