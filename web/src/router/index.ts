@@ -17,6 +17,7 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/members', component: () => import('@/views/MembersView.vue') },
   { path: '/verify-email', component: () => import('@/views/VerifyEmailView.vue'), meta: { public: true } },
   { path: '/mainlines', component: () => import('@/views/MainlinesView.vue') },
+  { path: '/sync', component: () => import('@/views/SyncView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },
 ] });
 router.beforeEach((to) => { if (!to.meta.public && !hasToken()) return '/login'; if (to.meta.public && hasToken()) return '/'; });

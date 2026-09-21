@@ -6,9 +6,9 @@
 
 ## 当前状态
 
-> **第一阶段基线验收完成（2026-09-17）**
+> **多端同步基础阶段完成（2026-09-22）**
 >
-> 已完成 Spring Boot 集成测试、Vue 生产构建与本地真实 HTTP 验收；旧版 JSON 已支持预检、幂等关系型导入、迁移报告和批次回滚。账号系统已完成 HttpOnly 刷新 Cookie、令牌轮换、登录限流、会话管理、注册开关和跨用户越权测试；下一阶段为旧版业务功能对等迁移。
+> 已完成多用户业务、旧版迁移、邀请注册、邮件验证、PWA 安装和移动端适配。普通业务写入现已支持 IndexedDB 离线队列、服务端幂等重放与 409 冲突停靠；计时类操作仍严格要求在线。
 
 ## 技术栈
 
@@ -33,6 +33,7 @@
 - 旧版 1.x JSON 预检、原始快照、关系型导入、幂等控制、迁移报告与批次回滚。
 - Docker Compose 一键启动 MySQL、Spring Boot、Vue/Nginx。
 - PWA 安装、应用壳离线缓存、版本更新提示与移动端响应式布局；私有 API 数据不做离线缓存。
+- IndexedDB 离线操作队列、`X-Idempotency-Key` 服务端响应重放和可人工处理的多端冲突中心。
 
 ## 本地运行
 
@@ -88,7 +89,7 @@ docker compose up -d --build
 
 部署前、上线和回滚检查见 [部署清单](docs/deployment-checklist.md)。接口契约见 [OpenAPI 文档](docs/openapi.yaml)。
 
-PWA 能力边界、手机回归步骤和自动检查见 [PWA 与跨端测试](docs/pwa-and-cross-client-testing.md)。
+PWA 能力边界、手机回归步骤和自动检查见 [PWA 与跨端测试](docs/pwa-and-cross-client-testing.md)。离线协议、幂等键与冲突处理见 [离线同步说明](docs/offline-sync.md)。
 
 ## 目录
 

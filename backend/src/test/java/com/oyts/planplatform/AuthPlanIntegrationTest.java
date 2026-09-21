@@ -103,6 +103,30 @@ class AuthPlanIntegrationTest {
     }
 
     @Test
+    void idempotencyKeysReplayCompletedWritesAndRejectDifferentPayloads() throws Exception {
+        String token = register("idempotency@example.com", "幂等测试账号");
+        String key = "plan-create-idempotency-001";
+        String body = """
+            {"name":"幂等计划","description":"只创建一次","startDate":"2026-09-22","endDate":"2026-09-30","overallTagName":"总计","overallTagColor":"#002FA7"}
+            """;
+        MvcResult created = mvc.perform(post("/api/plans").header("Authorization", "Bearer " + token)
+                .header("X-Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isCreated()).andReturn();
+        String planId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+
+        mvc.perform(post("/api/plans").header("Authorization", "Bearer " + token)
+                .header("X-Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isCreated()).andExpect(header().string("X-Idempotent-Replay", "true"))
+            .andExpect(jsonPath("$.id").value(planId));
+        mvc.perform(get("/api/plans").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+
+        mvc.perform(post("/api/plans").header("Authorization", "Bearer " + token)
+                .header("X-Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON).content(body.replace("幂等计划", "不同计划")))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.message").value("同一操作键不能用于不同请求内容。"));
+    }
+
+    @Test
     void profileAndPasswordChangesProtectTheAccountLifecycle() throws Exception {
         String token = register("account@example.com", "账户测试账号");
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/auth/me").header("Authorization", "Bearer " + token)

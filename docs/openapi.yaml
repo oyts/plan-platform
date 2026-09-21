@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Plan Platform API
   version: 0.1.0
-  description: 多用户计划、主线、计时与统计 API。除认证入口外，所有接口均需 Bearer Access Token。
+  description: 多用户计划、主线、计时与统计 API。除认证入口外，所有接口均需 Bearer Access Token。客户端可为写操作提供 X-Idempotency-Key；相同用户、键和请求内容在 24 小时内会重放已完成响应。
 servers:
   - url: /api
 paths:
@@ -64,7 +64,7 @@ paths:
       responses: { '201': { description: 邀请已创建 } }
   /plans:
     get: { summary: 获取当前用户计划, security: [{ bearerAuth: [] }], responses: { '200': { description: 计划列表 } } }
-    post: { summary: 创建计划, security: [{ bearerAuth: [] }], responses: { '201': { description: 已创建 } } }
+    post: { summary: 创建计划, security: [{ bearerAuth: [] }], parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }], responses: { '201': { description: 已创建 }, '409': { description: 幂等键冲突 } } }
   /plans/{planId}/tasks/page:
     get:
       summary: 按日期范围分页查询任务
@@ -77,6 +77,8 @@ paths:
     get: { summary: 分页查询计时流水, security: [{ bearerAuth: [] }], responses: { '200': { description: 计时分页 } }
 components:
   securitySchemes: { bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT } }
+  parameters:
+    IdempotencyKey: { name: X-Idempotency-Key, in: header, required: false, description: 8 至 100 位操作键；安全重试时必须复用原键和完全相同的请求内容。, schema: { type: string, minLength: 8, maxLength: 100, pattern: '^[A-Za-z0-9._:-]+$' } }
   schemas:
     RegisterRequest: { type: object, required: [email, password, displayName], properties: { email: { type: string, format: email }, password: { type: string, minLength: 10 }, displayName: { type: string, maxLength: 80 } } }
     LoginRequest: { type: object, required: [email, password], properties: { email: { type: string, format: email }, password: { type: string } } }
