@@ -183,17 +183,26 @@ class AuthPlanIntegrationTest {
             .andExpect(status().isOk());
         mvc.perform(get("/api/time-entries").header("Authorization", "Bearer " + token).param("from", "2026-09-01").param("to", "2026-09-30"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].taskTitle").value("可恢复任务"));
+        mvc.perform(get("/api/time-entries").header("Authorization", "Bearer " + token).param("from", "2026-09-01").param("to", "2026-09-30").param("planId", planId).param("source", "MANUAL"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].source").value("MANUAL"));
         mvc.perform(put("/api/plans/{planId}/reflections/{date}", planId, "2026-09-03").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"completedSummary\":\"完成任务\",\"unfinishedSummary\":\"\",\"blockers\":\"\",\"firstTaskTomorrow\":\"复习\",\"energy\":4,\"note\":\"\"}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.energy").value(4));
         mvc.perform(get("/api/plans/{planId}/reflections/page", planId).header("Authorization", "Bearer " + token).param("from", "2026-09-01").param("to", "2026-09-30"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].completedSummary").value("完成任务"));
+        mvc.perform(get("/api/plans/{planId}/reflections/export", planId).header("Authorization", "Bearer " + token).param("from", "2026-09-01").param("to", "2026-09-30").param("format", "MARKDOWN"))
+            .andExpect(status().isOk()).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("# 证据计划：复盘记录")));
         mvc.perform(delete("/api/tasks/{taskId}", taskId).header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
         mvc.perform(get("/api/trash").header("Authorization", "Bearer " + token)).andExpect(status().isOk())
             .andExpect(jsonPath("$[0].type").value("TASK")).andExpect(jsonPath("$[0].id").value(taskId));
         mvc.perform(post("/api/trash/TASK/{taskId}/restore", taskId).header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
         mvc.perform(get("/api/plans/{planId}/tasks", planId).header("Authorization", "Bearer " + token))
             .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(taskId));
+        mvc.perform(delete("/api/plans/{planId}", planId).header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/trash").header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].type").value("PLAN"));
+        mvc.perform(post("/api/trash/PLAN/{planId}/restore", planId).header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/plans").header("Authorization", "Bearer " + token)).andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(planId));
     }
 
     @Test
@@ -256,8 +265,8 @@ class AuthPlanIntegrationTest {
                 "step-a":{"taskId":"step-a","status":"completed","accumulatedSeconds":300,"startedAt":null,"completedAt":"2026-09-17T08:20:00Z","timeEntries":[],"acceptanceChecks":[true],"note":"通过","deferTo":null,"skipReason":null,"updatedAt":"2026-09-17T08:20:00Z"}
               },
               "reflections":{"2026-09-17":{"date":"2026-09-17","completedSummary":"完成学习","unfinishedSummary":"","blockers":"","firstTaskTomorrow":"继续","energy":4,"note":"状态良好","updatedAt":"2026-09-17T12:00:00Z"}},
-              "gates":{"G1":{"gateId":"G1","checks":{},"note":"","reviewedAt":null}},
-              "workspace":{"activePlanId":"summer-plan","defaultPlanTags":[{"id":"all","name":"总计","color":"#002FA7","isOverall":true}],"customPlans":[],"customMainlines":[],"taskTemplates":[],"trash":[],"deletionMarkers":[],"updatedAt":"2026-09-17T12:00:00Z"}
+              "gates":{"G1":{"gateId":"G1","checks":{"完成迁移":true},"note":"旧闸门备注","reviewedAt":"2026-09-17T12:00:00Z"}},
+              "workspace":{"activePlanId":"summer-plan","defaultPlanTags":[{"id":"all","name":"总计","color":"#002FA7","isOverall":true}],"customPlans":[],"customMainlines":[],"taskTemplates":[{"id":"template-a","name":"每日复习","title":"复习知识点","description":"","startTime":"09:00","endTime":"09:30","plannedMinutes":30,"acceptance":["完成记录"],"resourceUrl":"","createdAt":"2026-09-17T12:00:00Z","updatedAt":"2026-09-17T12:00:00Z"}],"trash":[],"deletionMarkers":[],"updatedAt":"2026-09-17T12:00:00Z"}
             }
             """;
 
@@ -270,7 +279,13 @@ class AuthPlanIntegrationTest {
             .andExpect(status().isCreated()).andExpect(jsonPath("$.tasks").value(1))
             .andExpect(jsonPath("$.timeEntries").value(1)).andExpect(jsonPath("$.mainlineItems").value(1))
             .andReturn().getResponse().getContentAsString();
-        String importId = objectMapper.readTree(importedBody).get("importId").asText();
+        JsonNode importResult = objectMapper.readTree(importedBody);
+        String importId = importResult.get("importId").asText();
+        String importedPlanId = importResult.get("createdPlanIds").get(0).asText();
+        mvc.perform(get("/api/templates").header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].name").value("每日复习"));
+        mvc.perform(get("/api/plans/{planId}/milestones", importedPlanId).header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].name").value("G1")).andExpect(jsonPath("$[0].checks[0]").value(true));
 
         mvc.perform(post("/api/migrations/legacy/import").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content(backup))

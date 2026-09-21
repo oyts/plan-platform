@@ -12,15 +12,19 @@ import com.oyts.planplatform.mainline.domain.Mainline;
 import com.oyts.planplatform.mainline.domain.MainlineItem;
 import com.oyts.planplatform.plan.domain.DailyReflection;
 import com.oyts.planplatform.plan.domain.Plan;
+import com.oyts.planplatform.plan.domain.PlanMilestone;
 import com.oyts.planplatform.plan.domain.PlanTag;
 import com.oyts.planplatform.plan.domain.PlanTask;
 import com.oyts.planplatform.plan.domain.TaskProgress;
+import com.oyts.planplatform.plan.domain.TaskTemplate;
 import com.oyts.planplatform.plan.domain.TimeEntry;
 import com.oyts.planplatform.plan.repository.DailyReflectionRepository;
 import com.oyts.planplatform.plan.repository.PlanRepository;
+import com.oyts.planplatform.plan.repository.PlanMilestoneRepository;
 import com.oyts.planplatform.plan.repository.PlanTagRepository;
 import com.oyts.planplatform.plan.repository.PlanTaskRepository;
 import com.oyts.planplatform.plan.repository.TaskProgressRepository;
+import com.oyts.planplatform.plan.repository.TaskTemplateRepository;
 import com.oyts.planplatform.plan.repository.TimeEntryRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -45,21 +49,23 @@ class LegacyMigrationService {
     private final UserAccountRepository users;
     private final LegacyImportRepository imports;
     private final PlanRepository plans;
+    private final PlanMilestoneRepository milestones;
     private final PlanTagRepository tags;
     private final PlanTaskRepository tasks;
     private final TaskProgressRepository progress;
+    private final TaskTemplateRepository templates;
     private final TimeEntryRepository timeEntries;
     private final DailyReflectionRepository reflections;
     private final MainlineRepository mainlines;
     private final MainlineItemRepository mainlineItems;
     private final ObjectMapper mapper;
 
-    LegacyMigrationService(UserAccountRepository users, LegacyImportRepository imports, PlanRepository plans,
-                           PlanTagRepository tags, PlanTaskRepository tasks, TaskProgressRepository progress,
+    LegacyMigrationService(UserAccountRepository users, LegacyImportRepository imports, PlanRepository plans, PlanMilestoneRepository milestones,
+                           PlanTagRepository tags, PlanTaskRepository tasks, TaskProgressRepository progress, TaskTemplateRepository templates,
                            TimeEntryRepository timeEntries, DailyReflectionRepository reflections,
                            MainlineRepository mainlines, MainlineItemRepository mainlineItems, ObjectMapper mapper) {
-        this.users = users; this.imports = imports; this.plans = plans; this.tags = tags; this.tasks = tasks;
-        this.progress = progress; this.timeEntries = timeEntries; this.reflections = reflections;
+        this.users = users; this.imports = imports; this.plans = plans; this.milestones = milestones; this.tags = tags; this.tasks = tasks;
+        this.progress = progress; this.templates = templates; this.timeEntries = timeEntries; this.reflections = reflections;
         this.mainlines = mainlines; this.mainlineItems = mainlineItems; this.mapper = mapper;
     }
 
@@ -82,9 +88,10 @@ class LegacyMigrationService {
         int items = mainlineNodes.stream().mapToInt(node -> node.path("items").size()).sum();
         int entryCount = 0;
         for (JsonNode item : payload.path("progress")) entryCount += item.path("timeEntries").size();
-        int preservedOnly = payload.path("gates").size() + payload.path("workspace").path("taskTemplates").size()
-            + payload.path("workspace").path("trash").size() + payload.path("workspace").path("deletionMarkers").size();
-        if (preservedOnly > 0) warnings.add("闸门、任务模板、回收站和删除标记共 " + preservedOnly + " 条，仅保存在原始快照中。");
+        int preservedOnly = payload.path("workspace").path("trash").size() + payload.path("workspace").path("deletionMarkers").size();
+        if (payload.path("workspace").path("taskTemplates").size() > 0) warnings.add("旧版任务模板会迁入新版模板库；模板的开始/结束时间需在创建任务时补充。");
+        if (payload.path("gates").size() > 0) warnings.add("旧版闸门会迁为里程碑并保留验收勾选；旧备份未携带闸门日期，请在新版调整目标日期。");
+        if (preservedOnly > 0) warnings.add("回收站和删除标记共 " + preservedOnly + " 条，仅保存在原始快照中。");
         return new Preview(checksum(payload), text(payload, "planVersion", "unknown"), errors.isEmpty(), planNodes.size(),
             planTasks, mainlineNodes.size(), items, payload.path("reflections").size(), entryCount, preservedOnly,
             List.copyOf(warnings), List.copyOf(errors));
@@ -107,8 +114,18 @@ class LegacyMigrationService {
 
         List<String> planIds = new ArrayList<>();
         List<String> mainlineIds = new ArrayList<>();
-        int importedTags = 0, importedTasks = 0, importedProgress = 0, importedEntries = 0, importedReflections = 0, importedItems = 0;
+        List<String> templateIds = new ArrayList<>();
+        List<String> milestoneIds = new ArrayList<>();
+        int importedTags = 0, importedTasks = 0, importedProgress = 0, importedEntries = 0, importedReflections = 0, importedItems = 0, importedTemplates = 0, importedMilestones = 0;
         JsonNode progressMap = payload.path("progress");
+
+        for (JsonNode source : payload.path("workspace").path("taskTemplates")) {
+            String name = clip(text(source, "name", "旧版模板"), 80);
+            TaskTemplate template = templates.save(new TaskTemplate(owner, name, "CUSTOM", clip(text(source, "title", name), 180),
+                clip(text(source, "description", ""), 2000), Math.max(1, source.path("plannedMinutes").asInt(1)),
+                json(source.path("acceptance").isArray() ? source.path("acceptance") : mapper.createArrayNode()), clip(text(source, "resourceUrl", ""), 1000), true));
+            templateIds.add(template.getId()); importedTemplates++;
+        }
 
         for (JsonNode source : planNodes(payload)) {
             Plan plan = plans.save(new Plan(owner, clip(text(source, "name", "旧版计划"), 120), "从计划控制台 " + preview.sourceVersion() + " 迁移",
@@ -154,6 +171,21 @@ class LegacyMigrationService {
                     value.path("energy").isInt() ? value.path("energy").asInt() : null, clip(text(value, "note", ""), 2000));
                 reflections.save(reflection); importedReflections++;
             }
+            if (defaultPlan) {
+                int gateIndex = 0;
+                Iterator<Map.Entry<String, JsonNode>> gateIterator = payload.path("gates").properties().iterator();
+                while (gateIterator.hasNext()) {
+                    Map.Entry<String, JsonNode> gate = gateIterator.next();
+                    List<String> conditions = new ArrayList<>();
+                    Iterator<String> conditionIterator = gate.getValue().path("checks").fieldNames();
+                    while (conditionIterator.hasNext()) conditions.add(conditionIterator.next());
+                    PlanMilestone milestone = new PlanMilestone(plan, gate.getKey(), plan.getStartDate().plusDays(Math.min(gateIndex++, java.time.temporal.ChronoUnit.DAYS.between(plan.getStartDate(), plan.getEndDate()))),
+                        "从旧版闸门迁移；请按当前计划调整目标日期。", json(conditions));
+                    List<Boolean> checks = conditions.stream().map(condition -> gate.getValue().path("checks").path(condition).asBoolean(false)).toList();
+                    milestone.record(json(checks), clip(text(gate.getValue(), "note", ""), 2000), nullableInstant(gate.getValue().path("reviewedAt")));
+                    milestones.save(milestone); milestoneIds.add(milestone.getId()); importedMilestones++;
+                }
+            }
         }
 
         for (JsonNode source : mainlineNodes(payload)) {
@@ -175,8 +207,8 @@ class LegacyMigrationService {
         }
 
         ImportReport report = new ImportReport(batch.getId(), preview.checksum(), preview.sourceVersion(), "COMPLETED",
-            importedTags, importedTasks, importedProgress, importedEntries, importedReflections, importedItems,
-            List.copyOf(planIds), List.copyOf(mainlineIds), preview.warnings(), Instant.now(), null);
+            importedTags, importedTasks, importedProgress, importedEntries, importedReflections, importedItems, importedTemplates, importedMilestones,
+            List.copyOf(planIds), List.copyOf(mainlineIds), List.copyOf(templateIds), List.copyOf(milestoneIds), preview.warnings(), Instant.now(), null);
         batch.complete(json(report));
         return report;
     }
@@ -193,11 +225,13 @@ class LegacyMigrationService {
         if ("ROLLED_BACK".equals(batch.getStatus())) return readReport(batch.getReportJson());
         if (!"COMPLETED".equals(batch.getStatus())) throw new ConflictException("只有已完成的迁移可以回滚。");
         ImportReport previous = readReport(batch.getReportJson());
+        safeList(previous.createdTemplateIds()).forEach(id -> templates.findByIdAndOwnerId(id, userId).ifPresent(templates::delete));
+        safeList(previous.createdMilestoneIds()).forEach(id -> milestones.findByIdAndPlanOwnerId(id, userId).ifPresent(milestones::delete));
         previous.createdMainlineIds().forEach(id -> mainlines.findByIdAndOwnerId(id, userId).ifPresent(mainlines::delete));
         previous.createdPlanIds().forEach(id -> plans.findByIdAndOwnerId(id, userId).ifPresent(plans::delete));
         ImportReport rolledBack = new ImportReport(previous.importId(), previous.checksum(), previous.sourceVersion(), "ROLLED_BACK",
-            previous.tags(), previous.tasks(), previous.progressRecords(), previous.timeEntries(), previous.reflections(), previous.mainlineItems(),
-            previous.createdPlanIds(), previous.createdMainlineIds(), previous.warnings(), previous.completedAt(), Instant.now());
+            previous.tags(), previous.tasks(), previous.progressRecords(), previous.timeEntries(), previous.reflections(), previous.mainlineItems(), previous.templates(), previous.milestones(),
+            previous.createdPlanIds(), previous.createdMainlineIds(), safeList(previous.createdTemplateIds()), safeList(previous.createdMilestoneIds()), previous.warnings(), previous.completedAt(), Instant.now());
         batch.rollback(json(rolledBack));
         return rolledBack;
     }
@@ -258,6 +292,7 @@ class LegacyMigrationService {
     private <E extends Enum<E>> E enumValue(Class<E> type, String value, E fallback) {
         try { return Enum.valueOf(type, value.toUpperCase()); } catch (Exception ignored) { return fallback; }
     }
+    private <T> List<T> safeList(List<T> values) { return values == null ? List.of() : values; }
     private String json(Object value) { try { return mapper.writeValueAsString(value); } catch (Exception e) { throw new IllegalArgumentException("迁移报告无法序列化。", e); } }
     private ImportReport readReport(String value) { try { return mapper.readValue(value, ImportReport.class); } catch (Exception e) { throw new IllegalStateException("迁移报告已损坏。", e); } }
 
@@ -265,8 +300,8 @@ class LegacyMigrationService {
                    int mainlineItems, int reflections, int timeEntries, int preservedOnly,
                    List<String> warnings, List<String> errors) {}
     record ImportReport(String importId, String checksum, String sourceVersion, String status, int tags, int tasks,
-                        int progressRecords, int timeEntries, int reflections, int mainlineItems,
-                        List<String> createdPlanIds, List<String> createdMainlineIds, List<String> warnings,
+                        int progressRecords, int timeEntries, int reflections, int mainlineItems, int templates, int milestones,
+                        List<String> createdPlanIds, List<String> createdMainlineIds, List<String> createdTemplateIds, List<String> createdMilestoneIds, List<String> warnings,
                         Instant completedAt, Instant rolledBackAt) {}
     record History(String importId, String sourceVersion, String checksum, String status, Instant createdAt,
                    Instant completedAt, Instant rolledBackAt) {}

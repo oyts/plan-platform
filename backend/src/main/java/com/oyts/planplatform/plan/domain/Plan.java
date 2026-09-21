@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.time.Instant;
 
 @Entity
 @Table(name = "plans")
@@ -31,6 +32,7 @@ public class Plan extends BaseEntity {
 
     @Column(nullable = false)
     private boolean archived;
+    @Column(name = "deleted_at") private Instant deletedAt;
 
     protected Plan() {}
 
@@ -48,10 +50,13 @@ public class Plan extends BaseEntity {
     }
 
     public void archive() { archived = true; }
+    public void trash() { deletedAt = Instant.now(); }
+    public void restore() { deletedAt = null; archived = false; }
     public UserAccount getOwner() { return owner; }
     public String getName() { return name; }
     public String getDescription() { return description; }
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }
     public boolean isArchived() { return archived; }
+    public Instant getDeletedAt() { return deletedAt; }
 }

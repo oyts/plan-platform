@@ -7,6 +7,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.Instant;
 
 @Entity
 @Table(name = "plan_tags")
@@ -23,6 +24,7 @@ public class PlanTag extends BaseEntity {
 
     @Column(name = "overall_tag", nullable = false)
     private boolean overall;
+    @Column(name = "deleted_at") private Instant deletedAt;
 
     protected PlanTag() {}
 
@@ -41,4 +43,7 @@ public class PlanTag extends BaseEntity {
     public String getName() { return name; }
     public String getColor() { return color; }
     public boolean isOverall() { return overall; }
+    public void trash() { deletedAt = Instant.now(); }
+    public void restore() { deletedAt = null; }
+    public Instant getDeletedAt() { return deletedAt; }
 }

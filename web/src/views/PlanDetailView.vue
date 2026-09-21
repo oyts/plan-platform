@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { api, apiMessage } from '@/api/client';
 import type { Plan, Tag, Task } from '@/types';
 
 const route = useRoute();
+const router = useRouter();
 const planId = String(route.params.id);
 const plan = ref<Plan | null>(null);
 const tags = ref<Tag[]>([]);
@@ -55,12 +56,16 @@ async function removeTask(task: Task) {
   if (!confirm(`删除任务“${task.title}”？`)) return;
   try { await api.delete(`/tasks/${task.id}`); if (editingTask.value?.id === task.id) resetTask(); await load(); } catch (exception) { error.value = apiMessage(exception); }
 }
+async function removePlan() {
+  if (!plan.value || !confirm(`将计划“${plan.value.name}”移入回收站？任务、标签和里程碑会随计划保留，可在“记录”中恢复。`)) return;
+  try { await api.delete(`/plans/${planId}`); await router.push('/plans'); } catch (exception) { error.value = apiMessage(exception); }
+}
 onMounted(() => load().then(resetTask).catch(exception => error.value = apiMessage(exception)));
 </script>
 
 <template>
   <div class="page">
-    <section class="page-head"><div><p class="eyebrow">PLAN / DETAIL</p><h1>{{ plan?.name ?? '读取计划中…' }}</h1></div><div><p>{{ plan?.startDate }}—{{ plan?.endDate }} · {{ tasks.length }} 项任务</p><router-link class="btn" :to="`/plans/${planId}/studio`">阶段与模板</router-link></div></section>
+    <section class="page-head"><div><p class="eyebrow">PLAN / DETAIL</p><h1>{{ plan?.name ?? '读取计划中…' }}</h1></div><div><p>{{ plan?.startDate }}—{{ plan?.endDate }} · {{ tasks.length }} 项任务</p><div class="button-row"><router-link class="btn" :to="`/plans/${planId}/studio`">阶段与模板</router-link><button class="btn danger" type="button" @click="removePlan">移入回收站</button></div></div></section>
     <p v-if="error" class="error-text">{{ error }}</p>
     <section class="tag-strip" aria-label="计划标签">
       <span v-for="tag in tags" :key="tag.id" class="tag-tool"><span class="tag" :style="{ color: tag.color, borderColor: tag.color }">{{ tag.name }}{{ tag.overall ? ' · 总计' : '' }}</span><button class="text-btn" type="button" @click="editTag(tag)">编辑</button><button v-if="!tag.overall" class="text-btn danger-text" type="button" @click="removeTag(tag)">删除</button></span>

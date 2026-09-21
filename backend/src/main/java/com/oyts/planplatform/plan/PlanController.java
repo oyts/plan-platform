@@ -200,20 +200,35 @@ public class PlanController {
         return service.reflectionPage(jwt.getSubject(), planId, from, to, page, size);
     }
 
+    @GetMapping("/plans/{planId}/reflections/export")
+    ResponseEntity<String> exportReflections(@AuthenticationPrincipal Jwt jwt, @PathVariable String planId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "CSV") String format) {
+        boolean markdown = "MARKDOWN".equalsIgnoreCase(format);
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=plan-reflections." + (markdown ? "md" : "csv"))
+            .contentType(MediaType.parseMediaType(markdown ? "text/markdown;charset=UTF-8" : "text/csv;charset=UTF-8"))
+            .body("\uFEFF" + service.reflectionExport(jwt.getSubject(), planId, from, to, format));
+    }
+
     @GetMapping("/time-entries")
     PlanDtos.PageResponse<PlanDtos.TimeEntryResponse> timeLedger(@AuthenticationPrincipal Jwt jwt,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-        return service.timeLedger(jwt.getSubject(), from, to, page, size);
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String planId, @RequestParam(required = false) String tagId,
+            @RequestParam(required = false) String taskId, @RequestParam(required = false) String source) {
+        return service.timeLedger(jwt.getSubject(), from, to, page, size, planId, tagId, taskId, source);
     }
 
     @GetMapping(value = "/time-entries/export", produces = "text/csv;charset=UTF-8")
     ResponseEntity<String> exportTimeLedger(@AuthenticationPrincipal Jwt jwt,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String planId, @RequestParam(required = false) String tagId,
+            @RequestParam(required = false) String taskId, @RequestParam(required = false) String source) {
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=plan-time-ledger.csv")
-            .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8")).body("\uFEFF" + service.timeLedgerCsv(jwt.getSubject(), from, to));
+            .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8")).body("\uFEFF" + service.timeLedgerCsv(jwt.getSubject(), from, to, planId, tagId, taskId, source));
     }
 
     @GetMapping("/trash")

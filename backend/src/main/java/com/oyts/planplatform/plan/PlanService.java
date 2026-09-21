@@ -62,7 +62,7 @@ public class PlanService {
 
     @Transactional(readOnly = true)
     public List<PlanDtos.PlanResponse> listPlans(String userId) {
-        return plans.findByOwnerIdAndArchivedFalseOrderByStartDateDesc(userId).stream().map(this::toPlan).toList();
+        return plans.findByOwnerIdAndDeletedAtIsNullAndArchivedFalseOrderByStartDateDesc(userId).stream().map(this::toPlan).toList();
     }
 
     @Transactional
@@ -85,12 +85,12 @@ public class PlanService {
     }
 
     @Transactional
-    public void archivePlan(String userId, String planId) { ownedPlan(userId, planId).archive(); }
+    public void archivePlan(String userId, String planId) { ownedPlan(userId, planId).trash(); }
 
     @Transactional(readOnly = true)
     public List<PlanDtos.TagResponse> listTags(String userId, String planId) {
         ownedPlan(userId, planId);
-        return tags.findByPlanIdOrderByOverallDescCreatedAtAsc(planId).stream().map(this::toTag).toList();
+        return tags.findByPlanIdAndDeletedAtIsNullOrderByOverallDescCreatedAtAsc(planId).stream().map(this::toTag).toList();
     }
 
     @Transactional
@@ -113,7 +113,7 @@ public class PlanService {
         PlanTag tag = ownedTag(userId, tagId);
         if (tag.isOverall()) throw new IllegalArgumentException("总标签不能删除。");
         if (tasks.countByTagIdAndDeletedAtIsNull(tagId) > 0) throw new ConflictException("该标签仍被任务使用，请先修改任务标签。");
-        tags.delete(tag);
+        tag.trash();
     }
 
     @Transactional(readOnly = true)
@@ -374,22 +374,46 @@ public class PlanService {
     }
 
     @Transactional(readOnly = true)
-    public PlanDtos.PageResponse<PlanDtos.TimeEntryResponse> timeLedger(String userId, LocalDate from, LocalDate to, int page, int size) {
+    public String reflectionExport(String userId, String planId, LocalDate from, LocalDate to, String format) {
+        Plan plan = ownedPlan(userId, planId);
+        validateRange(from, to);
+        List<PlanDtos.ReflectionResponse> rows = reflections.findByPlanIdAndDateBetweenOrderByDateDesc(planId, from, to).stream().map(this::toReflection).toList();
+        if ("MARKDOWN".equalsIgnoreCase(format)) {
+            StringBuilder markdown = new StringBuilder("# ").append(plan.getName()).append("：复盘记录\n\n");
+            rows.forEach(row -> markdown.append("## ").append(row.date()).append("\n\n")
+                .append("- 完成：").append(markdownValue(row.completedSummary())).append("\n")
+                .append("- 未完成：").append(markdownValue(row.unfinishedSummary())).append("\n")
+                .append("- 阻塞：").append(markdownValue(row.blockers())).append("\n")
+                .append("- 明日第一件事：").append(markdownValue(row.firstTaskTomorrow())).append("\n")
+                .append("- 精力：").append(row.energy() == null ? "未评分" : row.energy() + "/5").append("\n")
+                .append("- 备注：").append(markdownValue(row.note())).append("\n\n"));
+            return markdown.toString();
+        }
+        StringBuilder csv = new StringBuilder("日期,完成,未完成,阻塞,明日第一件事,精力,备注\n");
+        rows.forEach(row -> csv.append(csvCell(row.date().toString())).append(',').append(csvCell(row.completedSummary())).append(',')
+            .append(csvCell(row.unfinishedSummary())).append(',').append(csvCell(row.blockers())).append(',').append(csvCell(row.firstTaskTomorrow())).append(',')
+            .append(csvCell(row.energy() == null ? "" : row.energy().toString())).append(',').append(csvCell(row.note())).append('\n'));
+        return csv.toString();
+    }
+
+    @Transactional(readOnly = true)
+    public PlanDtos.PageResponse<PlanDtos.TimeEntryResponse> timeLedger(String userId, LocalDate from, LocalDate to, int page, int size,
+                                                                         String planId, String tagId, String taskId, String source) {
         validateRange(from, to);
         Instant rangeStart = from.atStartOfDay(java.time.ZoneId.of("Asia/Shanghai")).toInstant();
         Instant rangeEnd = to.plusDays(1).atStartOfDay(java.time.ZoneId.of("Asia/Shanghai")).toInstant();
-        Page<TimeEntry> result = timeEntries.findByProgressTaskPlanOwnerIdAndStartedAtBetweenOrderByStartedAtDesc(userId, rangeStart, rangeEnd,
-            PageRequest.of(normalizePage(page), normalizeSize(size)));
+        Page<TimeEntry> result = timeEntries.findAll(timeSpecification(userId, rangeStart, rangeEnd, planId, tagId, taskId, source),
+            PageRequest.of(normalizePage(page), normalizeSize(size), Sort.by(Sort.Direction.DESC, "startedAt")));
         return new PlanDtos.PageResponse<>(result.getContent().stream().map(this::toTimeEntry).toList(), result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }
 
     @Transactional(readOnly = true)
-    public String timeLedgerCsv(String userId, LocalDate from, LocalDate to) {
+    public String timeLedgerCsv(String userId, LocalDate from, LocalDate to, String planId, String tagId, String taskId, String source) {
         validateRange(from, to);
         Instant rangeStart = from.atStartOfDay(java.time.ZoneId.of("Asia/Shanghai")).toInstant();
         Instant rangeEnd = to.plusDays(1).atStartOfDay(java.time.ZoneId.of("Asia/Shanghai")).toInstant();
         StringBuilder csv = new StringBuilder("开始时间,结束时间,计划,任务,标签,秒数,来源\n");
-        timeEntries.findByProgressTaskPlanOwnerIdAndStartedAtBetweenOrderByStartedAtDesc(userId, rangeStart, rangeEnd).forEach(entry -> {
+        timeEntries.findAll(timeSpecification(userId, rangeStart, rangeEnd, planId, tagId, taskId, source), Sort.by(Sort.Direction.DESC, "startedAt")).forEach(entry -> {
             PlanDtos.TimeEntryResponse row = toTimeEntry(entry);
             csv.append(csvCell(row.startedAt().toString())).append(',').append(csvCell(row.endedAt().toString())).append(',')
                 .append(csvCell(row.planId())).append(',').append(csvCell(row.taskTitle())).append(',').append(csvCell(row.tagName()))
@@ -404,6 +428,8 @@ public class PlanService {
         tasks.findByPlanOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(task -> rows.add(new PlanDtos.TrashResponse("TASK", task.getId(), task.getTitle(), task.getPlan().getName() + " · " + task.getDate(), task.getDeletedAt())));
         milestones.findByPlanOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(item -> rows.add(new PlanDtos.TrashResponse("MILESTONE", item.getId(), item.getName(), item.getPlan().getName() + " · " + item.getDate(), item.getDeletedAt())));
         templates.findByOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(item -> rows.add(new PlanDtos.TrashResponse("TEMPLATE", item.getId(), item.getName(), item.getTitle(), item.getDeletedAt())));
+        plans.findByOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(item -> rows.add(new PlanDtos.TrashResponse("PLAN", item.getId(), item.getName(), item.getStartDate() + " — " + item.getEndDate(), item.getDeletedAt())));
+        tags.findByPlanOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId).forEach(item -> rows.add(new PlanDtos.TrashResponse("TAG", item.getId(), item.getName(), item.getPlan().getName(), item.getDeletedAt())));
         rows.sort(java.util.Comparator.comparing(PlanDtos.TrashResponse::deletedAt).reversed());
         return rows;
     }
@@ -414,6 +440,8 @@ public class PlanService {
             case "TASK" -> { PlanTask item = tasks.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站任务不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
             case "MILESTONE" -> { PlanMilestone item = milestones.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站里程碑不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
             case "TEMPLATE" -> { TaskTemplate item = templates.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站模板不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
+            case "PLAN" -> { Plan item = plans.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站计划不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
+            case "TAG" -> { PlanTag item = tags.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站标签不存在。")); requireTrashed(item.getDeletedAt()); item.restore(); }
             default -> throw new IllegalArgumentException("不支持的回收站类型。");
         }
     }
@@ -424,6 +452,8 @@ public class PlanService {
             case "TASK" -> { PlanTask item = tasks.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站任务不存在。")); requireTrashed(item.getDeletedAt()); tasks.delete(item); }
             case "MILESTONE" -> { PlanMilestone item = milestones.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站里程碑不存在。")); requireTrashed(item.getDeletedAt()); milestones.delete(item); }
             case "TEMPLATE" -> { TaskTemplate item = templates.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站模板不存在。")); requireTrashed(item.getDeletedAt()); templates.delete(item); }
+            case "PLAN" -> { Plan item = plans.findByIdAndOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站计划不存在。")); requireTrashed(item.getDeletedAt()); plans.delete(item); }
+            case "TAG" -> { PlanTag item = tags.findByIdAndPlanOwnerId(id, userId).orElseThrow(() -> new NotFoundException("回收站标签不存在。")); requireTrashed(item.getDeletedAt()); tags.delete(item); }
             default -> throw new IllegalArgumentException("不支持的回收站类型。");
         }
     }
@@ -465,8 +495,8 @@ public class PlanService {
         return new PlanDtos.PageResponse<>(rows.subList(start, end), normalizedPage, normalizedSize, rows.size(), (int) Math.ceil((double) rows.size() / normalizedSize));
     }
 
-    private Plan ownedPlan(String userId, String planId) { return plans.findByIdAndOwnerId(planId, userId).orElseThrow(() -> new NotFoundException("计划不存在。")); }
-    private PlanTag ownedTag(String userId, String tagId) { return tags.findByIdAndPlanOwnerId(tagId, userId).orElseThrow(() -> new NotFoundException("标签不存在。")); }
+    private Plan ownedPlan(String userId, String planId) { return plans.findByIdAndOwnerIdAndDeletedAtIsNull(planId, userId).orElseThrow(() -> new NotFoundException("计划不存在。")); }
+    private PlanTag ownedTag(String userId, String tagId) { return tags.findByIdAndPlanOwnerIdAndDeletedAtIsNull(tagId, userId).orElseThrow(() -> new NotFoundException("标签不存在。")); }
     private PlanTask ownedTask(String userId, String taskId) { return tasks.findByIdAndPlanOwnerIdAndDeletedAtIsNull(taskId, userId).orElseThrow(() -> new NotFoundException("任务不存在。")); }
     private PlanMilestone ownedMilestone(String userId, String milestoneId) { return milestones.findByIdAndPlanOwnerIdAndDeletedAtIsNull(milestoneId, userId).orElseThrow(() -> new NotFoundException("里程碑不存在。")); }
     private TaskTemplate ownedTemplate(String userId, String templateId) { return templates.findByIdAndOwnerIdAndDeletedAtIsNull(templateId, userId).orElseThrow(() -> new NotFoundException("任务模板不存在。")); }
@@ -571,5 +601,22 @@ public class PlanService {
         String clean = value == null ? "" : value.replace("\"", "\"\"");
         if (!clean.isEmpty() && "=+-@".indexOf(clean.charAt(0)) >= 0) clean = "'" + clean;
         return "\"" + clean + "\"";
+    }
+    private String markdownValue(String value) { return blank(value) ? "未填写" : value.replace("\n", "<br>"); }
+    private org.springframework.data.jpa.domain.Specification<TimeEntry> timeSpecification(String userId, Instant from, Instant to,
+                                                                                              String planId, String tagId, String taskId, String source) {
+        return (root, query, builder) -> {
+            var progressJoin = root.join("progress");
+            var taskJoin = progressJoin.join("task");
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            predicates.add(builder.equal(taskJoin.get("plan").get("owner").get("id"), userId));
+            predicates.add(builder.greaterThanOrEqualTo(root.get("startedAt"), from));
+            predicates.add(builder.lessThan(root.get("startedAt"), to));
+            if (!blank(planId)) predicates.add(builder.equal(taskJoin.get("plan").get("id"), planId));
+            if (!blank(tagId)) predicates.add(builder.equal(taskJoin.get("tag").get("id"), tagId));
+            if (!blank(taskId)) predicates.add(builder.equal(taskJoin.get("id"), taskId));
+            if (!blank(source)) predicates.add(builder.equal(root.get("source"), source.trim().toUpperCase()));
+            return builder.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
     }
 }
