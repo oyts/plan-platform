@@ -30,6 +30,8 @@ public class UserAccount extends BaseEntity {
         this.passwordHash = passwordHash;
         this.displayName = displayName;
     }
+    public void updateDisplayName(String displayName) { this.displayName = displayName.trim(); }
+    public void changePassword(String passwordHash) { this.passwordHash = passwordHash; }
 
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }

@@ -22,6 +22,7 @@
 ## 已实现
 
 - 邮箱注册开关、登录限流、15 分钟 JWT Access Token、HttpOnly Refresh Cookie、令牌轮换与多设备会话管理。
+- 个人资料维护、当前密码验证的密码修改、SMTP 驱动的一次性找回密码链接；密码变更或找回会撤销全部刷新会话。
 - 用户级数据隔离，任何计划、标签、任务和主线查询都包含所有权条件。
 - 计划、标签、任务的增删改查与输入校验。
 - 任务开始、暂停、完成、手工补录、验收结果、结果备注与计时流水。
@@ -83,6 +84,8 @@ docker compose up -d --build
 访问：http://localhost:43127
 
 本地 Docker 首次体验可临时设置 `REGISTRATION_ENABLED=true`，创建账号后再关闭。生产环境必须修改 `JWT_SECRET`、数据库密码和允许跨域的域名，并设置 `REFRESH_COOKIE_SECURE=true`；阿里云部署时建议使用 HTTPS、独立数据库备份、日志采集和安全组最小开放原则。
+
+部署前、上线和回滚检查见 [部署清单](docs/deployment-checklist.md)。接口契约见 [OpenAPI 文档](docs/openapi.yaml)。
 
 ## 目录
 

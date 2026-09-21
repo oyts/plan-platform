@@ -43,3 +43,7 @@ app:
     max-login-attempts: ${MAX_LOGIN_ATTEMPTS:5}
     login-window-seconds: ${LOGIN_WINDOW_SECONDS:900}
     max-sessions: ${MAX_SESSIONS:5}
+    password-reset-enabled: ${PASSWORD_RESET_ENABLED:false}
+    password-reset-minutes: ${PASSWORD_RESET_MINUTES:60}
+  public-url: ${APP_PUBLIC_URL:http://localhost:43128}
+  mail-from: ${MAIL_FROM:}

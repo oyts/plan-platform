@@ -101,6 +101,26 @@ class AuthPlanIntegrationTest {
     }
 
     @Test
+    void profileAndPasswordChangesProtectTheAccountLifecycle() throws Exception {
+        String token = register("account@example.com", "账户测试账号");
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/auth/me").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"displayName\":\"更新后的名称\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.displayName").value("更新后的名称"));
+        mvc.perform(post("/api/auth/password").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"currentPassword\":\"password123\",\"newPassword\":\"newpassword456\"}"))
+            .andExpect(status().isNoContent());
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"account@example.com\",\"password\":\"password123\"}"))
+            .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"account@example.com\",\"password\":\"newpassword456\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.user.displayName").value("更新后的名称"));
+        mvc.perform(post("/api/auth/password-reset/request").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"not-an-account@example.com\"}"))
+            .andExpect(status().isNoContent());
+    }
+
+    @Test
     void longPlanTasksCanBePagedAndDeferredIntoTheCatchUpRail() throws Exception {
         String token = register("schedule@example.com", "日程测试账号");
         JsonNode plan = objectMapper.readTree(mvc.perform(post("/api/plans").header("Authorization", "Bearer " + token)

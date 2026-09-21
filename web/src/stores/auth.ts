@@ -3,9 +3,9 @@ import { ref } from 'vue';
 import { api, clearTokens, saveTokens } from '@/api/client';
 import type { TokenResponse, User } from '@/types';
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null); const ready = ref(false); const registrationEnabled = ref(false);
+  const user = ref<User | null>(null); const ready = ref(false); const registrationEnabled = ref(false); const passwordResetEnabled = ref(false);
   async function bootstrap() {
-    try { registrationEnabled.value = (await api.get<{registrationEnabled:boolean}>('/auth/config')).data.registrationEnabled; } catch { registrationEnabled.value = false; }
+    try { const config = (await api.get<{registrationEnabled:boolean;passwordResetEnabled:boolean}>('/auth/config')).data; registrationEnabled.value = config.registrationEnabled; passwordResetEnabled.value = config.passwordResetEnabled; } catch { registrationEnabled.value = false; passwordResetEnabled.value = false; }
     try { const { data } = await api.post<TokenResponse>('/auth/refresh'); saveTokens(data); user.value = data.user; } catch { clearTokens(); user.value = null; }
     ready.value = true;
   }
@@ -13,5 +13,6 @@ export const useAuthStore = defineStore('auth', () => {
   async function register(email: string, password: string, displayName: string) { const { data } = await api.post<TokenResponse>('/auth/register', { email, password, displayName }); saveTokens(data); user.value = data.user; }
   async function logout() { try { await api.post('/auth/logout'); } finally { clearTokens(); user.value = null; } }
   async function logoutAll() { try { await api.post('/auth/logout-all'); } finally { clearTokens(); user.value = null; } }
-  return { user, ready, registrationEnabled, bootstrap, login, register, logout, logoutAll };
+  function updateProfile(profile: User) { user.value = profile; }
+  return { user, ready, registrationEnabled, passwordResetEnabled, bootstrap, login, register, logout, logoutAll, updateProfile };
 });

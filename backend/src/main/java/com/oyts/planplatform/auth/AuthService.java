@@ -26,17 +26,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
     private final UserAccountRepository users;
     private final RefreshTokenRepository refreshTokens;
+    private final PasswordResetTokenRepository passwordResetTokens;
+    private final PasswordResetMailService passwordResetMail;
     private final PasswordEncoder passwordEncoder;
     private final JwtEncoder jwtEncoder;
     private final JwtProperties jwtProperties;
     private final SecurityProperties securityProperties;
     private final LoginAttemptService loginAttempts;
 
-    public AuthService(UserAccountRepository users, RefreshTokenRepository refreshTokens, PasswordEncoder passwordEncoder,
+    public AuthService(UserAccountRepository users, RefreshTokenRepository refreshTokens, PasswordResetTokenRepository passwordResetTokens,
+                       PasswordResetMailService passwordResetMail, PasswordEncoder passwordEncoder,
                        JwtEncoder jwtEncoder, JwtProperties jwtProperties, SecurityProperties securityProperties,
                        LoginAttemptService loginAttempts) {
         this.users = users;
         this.refreshTokens = refreshTokens;
+        this.passwordResetTokens = passwordResetTokens;
+        this.passwordResetMail = passwordResetMail;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;
         this.jwtProperties = jwtProperties;
@@ -99,12 +104,51 @@ public class AuthService {
 
     @Transactional
     public void logoutAll(String userId) {
-        refreshTokens.findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(userId, Instant.now()).forEach(RefreshToken::revoke);
+        revokeAllSessions(userId);
     }
 
     @Transactional(readOnly = true)
     public AuthDtos.UserResponse me(String userId) {
         return users.findById(userId).map(this::toUser).orElseThrow(() -> new IllegalArgumentException("用户不存在。"));
+    }
+
+    @Transactional
+    public AuthDtos.UserResponse updateProfile(String userId, AuthDtos.ProfileRequest request) {
+        UserAccount user = users.findById(userId).orElseThrow(() -> new IllegalArgumentException("用户不存在。"));
+        user.updateDisplayName(request.displayName());
+        return toUser(user);
+    }
+
+    /** A password change ends every refresh session, so a stolen long-lived cookie cannot survive the change. */
+    @Transactional
+    public void changePassword(String userId, AuthDtos.ChangePasswordRequest request) {
+        UserAccount user = users.findById(userId).orElseThrow(() -> new IllegalArgumentException("用户不存在。"));
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) throw new UnauthorizedException("当前密码不正确。" );
+        user.changePassword(passwordEncoder.encode(request.newPassword()));
+        revokeAllSessions(userId);
+    }
+
+    /** Always returns normally to prevent account enumeration. A reset is possible only with configured SMTP delivery. */
+    @Transactional
+    public void requestPasswordReset(AuthDtos.PasswordResetRequest request) {
+        if (!securityProperties.passwordResetEnabled()) return;
+        users.findByEmailIgnoreCase(request.email().trim()).filter(UserAccount::isEnabled).ifPresent(user -> {
+            String rawToken = UUID.randomUUID() + "." + UUID.randomUUID();
+            if (!passwordResetMail.send(user, rawToken)) return;
+            passwordResetTokens.findByUserIdAndUsedAtIsNullAndExpiresAtAfter(user.getId(), Instant.now()).forEach(PasswordResetToken::revoke);
+            passwordResetTokens.save(new PasswordResetToken(user, hash(rawToken), Instant.now().plus(securityProperties.passwordResetMinutes(), ChronoUnit.MINUTES)));
+        });
+    }
+
+    @Transactional
+    public void confirmPasswordReset(AuthDtos.PasswordResetConfirmRequest request) {
+        PasswordResetToken token = passwordResetTokens.findByTokenHashAndUserEmailIgnoreCase(hash(request.token()), request.email().trim())
+            .filter(item -> item.getUsedAt() == null && item.getExpiresAt().isAfter(Instant.now()))
+            .orElseThrow(() -> new UnauthorizedException("重置链接无效、已使用或已经过期。"));
+        UserAccount user = token.getUser();
+        user.changePassword(passwordEncoder.encode(request.newPassword()));
+        token.consume();
+        revokeAllSessions(user.getId());
     }
 
     private IssuedTokens issueTokens(UserAccount user) {
@@ -119,6 +163,10 @@ public class AuthService {
         for (int index = securityProperties.maxSessions() - 1; index < active.size(); index++) active.get(index).revoke();
         refreshTokens.save(new RefreshToken(user, hash(rawRefresh), now.plus(jwtProperties.refreshTokenDays(), ChronoUnit.DAYS)));
         return new IssuedTokens(new AuthDtos.TokenResponse(accessToken, jwtProperties.accessTokenMinutes() * 60, toUser(user)), rawRefresh);
+    }
+
+    private void revokeAllSessions(String userId) {
+        refreshTokens.findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(userId, Instant.now()).forEach(RefreshToken::revoke);
     }
 
     private AuthDtos.UserResponse toUser(UserAccount user) {

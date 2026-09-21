@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -51,12 +52,33 @@ public class AuthController {
     }
 
     @GetMapping("/config")
-    AuthDtos.AuthConfigResponse config() { return new AuthDtos.AuthConfigResponse(security.registrationEnabled()); }
+    AuthDtos.AuthConfigResponse config() { return new AuthDtos.AuthConfigResponse(security.registrationEnabled(), security.passwordResetEnabled()); }
 
     @GetMapping("/me")
     AuthDtos.UserResponse me(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) {
         return authService.me(jwt.getSubject());
     }
+
+    @PatchMapping("/me")
+    AuthDtos.UserResponse updateProfile(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,
+                                        @Valid @RequestBody AuthDtos.ProfileRequest request) {
+        return authService.updateProfile(jwt.getSubject(), request);
+    }
+
+    @PostMapping("/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void changePassword(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,
+                        @Valid @RequestBody AuthDtos.ChangePasswordRequest request, HttpServletResponse response) {
+        authService.changePassword(jwt.getSubject(), request); cookies.clear(response);
+    }
+
+    @PostMapping("/password-reset/request")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void requestPasswordReset(@Valid @RequestBody AuthDtos.PasswordResetRequest request) { authService.requestPasswordReset(request); }
+
+    @PostMapping("/password-reset/confirm")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void confirmPasswordReset(@Valid @RequestBody AuthDtos.PasswordResetConfirmRequest request) { authService.confirmPasswordReset(request); }
 
     @GetMapping("/sessions")
     List<AuthDtos.SessionResponse> sessions(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,

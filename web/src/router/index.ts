@@ -4,6 +4,7 @@ import DashboardView from '@/views/DashboardView.vue';
 const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
   { path: '/register', component: () => import('@/views/RegisterView.vue'), meta: { public: true } },
+  { path: '/reset-password', component: () => import('@/views/ResetPasswordView.vue'), meta: { public: true } },
   { path: '/', component: DashboardView },
   { path: '/schedule', component: () => import('@/views/ScheduleView.vue') },
   { path: '/plans', component: () => import('@/views/PlansView.vue') },

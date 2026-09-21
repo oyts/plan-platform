@@ -1,0 +1,71 @@
+openapi: 3.0.3
+info:
+  title: Plan Platform API
+  version: 0.1.0
+  description: 多用户计划、主线、计时与统计 API。除认证入口外，所有接口均需 Bearer Access Token。
+servers:
+  - url: /api
+paths:
+  /auth/config:
+    get:
+      summary: 获取公开账号功能开关
+      responses: { '200': { description: 功能开关 } }
+  /auth/register:
+    post:
+      summary: 注册账号（服务端开启注册时）
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RegisterRequest' } } } }
+      responses: { '201': { description: 已注册 } }
+  /auth/login:
+    post:
+      summary: 邮箱密码登录并写入 HttpOnly 刷新 Cookie
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } } }
+      responses: { '200': { description: 已登录 } }
+  /auth/refresh:
+    post:
+      summary: 使用刷新 Cookie 轮换令牌
+      responses: { '200': { description: 新 Access Token } }
+  /auth/me:
+    get: { summary: 获取当前资料, security: [{ bearerAuth: [] }], responses: { '200': { description: 当前用户 } } }
+    patch:
+      summary: 修改当前用户显示名称
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ProfileRequest' } } } }
+      responses: { '200': { description: 已更新 } }
+  /auth/password:
+    post:
+      summary: 验证当前密码后修改密码并撤销全部刷新会话
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ChangePasswordRequest' } } } }
+      responses: { '204': { description: 密码已更新 } }
+  /auth/password-reset/request:
+    post:
+      summary: 请求一次性密码重置邮件；始终返回 204 以避免邮箱枚举
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EmailRequest' } } } }
+      responses: { '204': { description: 已受理 } }
+  /auth/password-reset/confirm:
+    post:
+      summary: 使用邮件令牌重置密码并撤销全部刷新会话
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PasswordResetConfirmRequest' } } } }
+      responses: { '204': { description: 已重置 } }
+  /plans:
+    get: { summary: 获取当前用户计划, security: [{ bearerAuth: [] }], responses: { '200': { description: 计划列表 } } }
+    post: { summary: 创建计划, security: [{ bearerAuth: [] }], responses: { '201': { description: 已创建 } } }
+  /plans/{planId}/tasks/page:
+    get:
+      summary: 按日期范围分页查询任务
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: planId, in: path, required: true, schema: { type: string } }, { name: from, in: query, required: true, schema: { type: string, format: date } }, { name: to, in: query, required: true, schema: { type: string, format: date } }]
+      responses: { '200': { description: 任务分页 } }
+  /mainlines:
+    get: { summary: 获取顺序主线, security: [{ bearerAuth: [] }], responses: { '200': { description: 主线列表 } }
+  /time-entries:
+    get: { summary: 分页查询计时流水, security: [{ bearerAuth: [] }], responses: { '200': { description: 计时分页 } }
+components:
+  securitySchemes: { bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT } }
+  schemas:
+    RegisterRequest: { type: object, required: [email, password, displayName], properties: { email: { type: string, format: email }, password: { type: string, minLength: 10 }, displayName: { type: string, maxLength: 80 } } }
+    LoginRequest: { type: object, required: [email, password], properties: { email: { type: string, format: email }, password: { type: string } } }
+    EmailRequest: { type: object, required: [email], properties: { email: { type: string, format: email } } }
+    ProfileRequest: { type: object, required: [displayName], properties: { displayName: { type: string, maxLength: 80 } } }
+    ChangePasswordRequest: { type: object, required: [currentPassword, newPassword], properties: { currentPassword: { type: string }, newPassword: { type: string, minLength: 10 } } }
+    PasswordResetConfirmRequest: { type: object, required: [email, token, newPassword], properties: { email: { type: string, format: email }, token: { type: string }, newPassword: { type: string, minLength: 10 } } }
