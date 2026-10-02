@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router';
 import { hasSession } from '@/api/client';
 import { isNativeClient as isDesktop } from '@/desktop';
+import { requiredClientUpdate, updateRouteAllowed } from '@/clientUpdates';
 import DashboardView from '@/views/DashboardView.vue';
 const router = createRouter({ history: isDesktop() ? createWebHashHistory() : createWebHistory(), routes: [
   { path: '/desktop', component: () => import('@/views/DesktopView.vue'), meta: { public: true, allowAuthenticated: true } },
@@ -22,5 +23,5 @@ const router = createRouter({ history: isDesktop() ? createWebHashHistory() : cr
   { path: '/sync', component: () => import('@/views/SyncView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },
 ] });
-router.beforeEach((to) => { if (!to.meta.public && !hasSession()) return '/login'; if (to.meta.public && hasSession() && !to.meta.allowAuthenticated) return '/'; });
+router.beforeEach((to) => { if (requiredClientUpdate() && !updateRouteAllowed(to.path)) return '/desktop'; if (!to.meta.public && !hasSession()) return '/login'; if (to.meta.public && hasSession() && !to.meta.allowAuthenticated) return requiredClientUpdate() ? '/desktop' : '/'; });
 export default router;

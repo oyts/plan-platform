@@ -8,13 +8,13 @@
 - Java 层固定服务器请求、HTTPS 证书校验、禁止跨站重定向；正式包只允许 HTTPS，测试包额外允许本机和 Android 模拟器宿主地址的 HTTP。
 - Access Token 只在页面内存中；默认 `plan_refresh` 会话由 Android Keystore 的不可导出 AES 密钥加密，密文保存在私有存储中。会话按服务器隔离、使用绝对到期时间，退出登录删除对应会话；禁用系统备份，避免迁移密文或敏感本地缓存到其他设备。
 - 后端不可达时退出也会尝试清除本机凭据并返回登录页，但这不代表服务器或其他设备的会话已被撤销；网络恢复后须重新登录并执行“退出所有设备”。本地清理失败会明确提示。
-- 离线队列沿用服务端幂等键，按服务器和用户隔离。冲突留在同步中心，不直接覆盖。冷启动离线登录和全量离线数据浏览尚不支持；计时和完成操作仍需联网。
+- 离线队列沿用服务端幂等键，按服务器和用户隔离。冲突留在同步中心，不直接覆盖。最近联网验证后的 24 小时内可离线重开并浏览已缓存页面；普通编辑可排队，计时和完成操作仍需联网。
 - 系统返回键导航和首页退出确认；CSV 和 Markdown 导出通过 Android 分享菜单保存或分享，无需申请存储、相机、定位权限。
-- 手动覆盖升级：同一应用 ID、同一签名、递增 `versionCode`。当前没有静默安装或在线自动下载更新。
+- 0.1.1（versionCode 5）支持应用内更新：默认不自动下载，用户主动勾选后才下载；安装仍需用户与 Android 系统确认。同一应用 ID、同一签名和递增 `versionCode` 才允许覆盖，未实现签名轮换。清单尚未上线，见 [客户端更新与本地验收](client-updates.md)。
 
 ## 使用本地测试包
 
-文件位于 `android-artifacts/PlanCabin-0.1.0-debug.apk`。它是开发测试包，不能当作面向公众的正式发布包。
+文件位于 `android-artifacts/PlanCabin-0.1.1-debug.apk`。它是开发测试包，不能当作面向公众的正式发布包。
 
 1. 在电脑双击 `start-desktop-server.bat`，启动本机 43129 端口的独立 Spring Boot 测试库。它不会改动原数据库或云端注册设置。
 2. 手机开启开发者选项和 USB 调试，使用数据线连接电脑，并在手机上确认调试授权。开启 USB 调试会扩大设备管理权限，仅授权自己的电脑，测试后可关闭。
@@ -23,7 +23,7 @@
 ```powershell
 & .\.desktop-tools\android-sdk\platform-tools\adb.exe devices
 & .\.desktop-tools\android-sdk\platform-tools\adb.exe reverse tcp:43129 tcp:43129
-& .\.desktop-tools\android-sdk\platform-tools\adb.exe install -r .\android-artifacts\PlanCabin-0.1.0-debug.apk
+& .\.desktop-tools\android-sdk\platform-tools\adb.exe install -r .\android-artifacts\PlanCabin-0.1.1-debug.apk
 ```
 
 4. 手机上打开“计划舱”，在登录页进入“服务器连接与客户端更新”，填写 `http://127.0.0.1:43129`，测试并保存。USB 转发使手机的这个地址指向电脑，不必开放校园网端口。拔掉数据线、重启设备后可能需要重新执行转发命令。
@@ -54,7 +54,7 @@ Java 单元测试覆盖 HTTPS、调试 HTTP 范围、固定 API 路径、请求�
 
 已提供 `SessionVaultInstrumentedTest` 真机测试，使用随机测试服务器标识验证 Keystore 加密、重建读取、跨服务器隔离与删除，不访问真实账号。在项目根目录执行 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-device.ps1 -Action instrument`；脚本不自动卸载主应用，测试辅助包会留在设备上。
 
-最新验收结果：后端 13 项、前端 32 项、Windows 原生 4 项、Android Java 6 项、独立浏览器 16 项通过；Web/PWA 构建检查通过，EXE 与调试 APK 构建成功，APK 签名校验通过。2026-10-02 在 iQOO Neo10 Pro 安装 APK，并通过 1 项 Keystore 真机测试。手机手工业务、分享、后台恢复、三端原生联调和升级回归仍待完成；未执行远程 GitHub 工作流或生产部署。完整范围见 [跨客户端验收](cross-client-acceptance.md)。
+2026-10-02 在 iQOO Neo10 Pro 安装 APK，并通过 1 项 Keystore 真机测试。用户随后确认登录保持、跨端修改、CSV 分享、账号退出与离线冲突处理；2026-10-03 确认可配置休息日及 PC 同步结果。新增更新功能的原生安装回归尚未执行；没有推送远程 GitHub 工作流或生产部署。最新自动测试范围见 [客户端更新与本地验收](client-updates.md) 与 [跨客户端验收](cross-client-acceptance.md)。
 
 ## 真机与跨端验收
 

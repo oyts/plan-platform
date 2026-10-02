@@ -6,6 +6,7 @@ import { projectPending } from '@/offlineProjection';
 import { connectionState, markConnected, markDisconnected, requiresConnection } from '@/connectionState';
 import { isNativeClient as isDesktop, desktopScope } from '@/desktop';
 import { desktopAdapter } from './desktopAdapter';
+import { requiredClientUpdate } from '@/clientUpdates';
 
 type OfflineRequestConfig = AxiosRequestConfig & { retried?: boolean; offlineReplay?: boolean; idempotencyKey?: string };
 type InternalOfflineRequestConfig = InternalAxiosRequestConfig & { retried?: boolean; offlineReplay?: boolean; idempotencyKey?: string; cacheOwner?: string | null; cacheScope?: string; sessionEpoch?: number };
@@ -29,6 +30,7 @@ export const api = axios.create(connection);
 const refreshApi = axios.create(connection);
 api.interceptors.request.use(async (config) => {
   const offlineConfig = config as InternalOfflineRequestConfig;
+  if (requiredClientUpdate() && !['GET', 'HEAD'].includes(config.method?.toUpperCase() ?? 'GET') && !config.url?.startsWith('/auth/')) throw new OfflineUnavailableError('当前客户端版本已停止支持，请先更新。已有待同步操作仍保留，更新后再提交。');
   const owner = currentQueueOwner();
   offlineConfig.cacheOwner = owner; offlineConfig.cacheScope = serverScope(); offlineConfig.sessionEpoch = epoch;
   if (accessToken && owner) config.headers.Authorization = `Bearer ${accessToken}`;

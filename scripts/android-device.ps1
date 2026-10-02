@@ -15,7 +15,8 @@ else { $listing; throw 'Connect and authorize exactly one device, or supply -Ser
 Write-Host 'Authorized device found.'
 if ($Action -eq 'check') { exit 0 }
 if ($Action -eq 'install') {
-    $apk = Join-Path $projectRoot 'android-artifacts/PlanCabin-0.1.0-debug.apk'
+    $clientVersion = (Get-Content -LiteralPath (Join-Path $projectRoot 'web/package.json') -Raw | ConvertFrom-Json).version
+    $apk = Join-Path $projectRoot "android-artifacts/PlanCabin-$clientVersion-debug.apk"
     if (-not (Test-Path -LiteralPath $apk)) { throw 'Build the test APK first with build-android.bat.' }
     if (-not (Get-NetTCPConnection -State Listen -LocalAddress '127.0.0.1' -LocalPort $Port -ErrorAction SilentlyContinue)) {
         throw "Start the local test API on 127.0.0.1:$Port before preparing the phone. No APK was installed."

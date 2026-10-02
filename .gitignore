@@ -33,6 +33,7 @@ web/src-tauri/target/
 .desktop-tools/
 .desktop-signing/
 desktop-artifacts/
+client-update-artifacts/
 web/src-tauri/gen/
 web/src-tauri/icons/*
 !web/src-tauri/icons/icon.ico

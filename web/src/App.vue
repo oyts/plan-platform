@@ -4,11 +4,15 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import PwaControl from '@/components/PwaControl.vue';
 import ConnectionBar from '@/components/ConnectionBar.vue';
+import ClientUpdateNotice from '@/components/ClientUpdateNotice.vue';
+import { checkClientUpdate, requiredClientUpdate, updateRouteAllowed } from '@/clientUpdates';
 const auth = useAuthStore(); const router = useRouter();
 const queueNotice = ref('');
 const reconnecting = ref(false); const pageRevision = ref(0);
 async function reconnect() { reconnecting.value = true; try { await auth.bootstrap(); pageRevision.value++; } finally { reconnecting.value = false; } }
 let noticeTimer: number | undefined;
+let updateTimer: number | undefined;
+function checkUpdates() { void checkClientUpdate(); }
 async function logout() {
   try { await auth.logout(); }
   catch { window.alert('服务端退出或本地凭据清理未完全成功，请检查网络后重试；当前页面已退出登录。'); }
@@ -20,9 +24,9 @@ function showQueueNotice(): void {
   window.clearTimeout(noticeTimer);
   noticeTimer = window.setTimeout(() => { queueNotice.value = ''; }, 5000);
 }
-function invalidated() { auth.user = null; void router.replace('/login'); }
-onMounted(() => { window.addEventListener('plan-platform:offline-queued', showQueueNotice); window.addEventListener('plan-platform:session-invalidated', invalidated); });
-onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', showQueueNotice); window.removeEventListener('plan-platform:session-invalidated', invalidated); window.clearTimeout(noticeTimer); });
+function invalidated() { auth.user = null; if (!router.currentRoute.value.meta.public) void router.replace('/login'); }
+onMounted(() => { window.addEventListener('plan-platform:offline-queued', showQueueNotice); window.addEventListener('plan-platform:session-invalidated', invalidated); window.addEventListener('online', checkUpdates); updateTimer = window.setInterval(checkUpdates, 15 * 60 * 1000); });
+onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', showQueueNotice); window.removeEventListener('plan-platform:session-invalidated', invalidated); window.removeEventListener('online', checkUpdates); window.clearTimeout(noticeTimer); window.clearInterval(updateTimer); });
 </script>
 <template>
   <div class="app-shell">
@@ -33,6 +37,7 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
     </header>
     <div v-if="queueNotice" class="queue-toast" role="status"><strong>已加入离线队列</strong><span>{{ queueNotice }}</span><router-link to="/sync">查看队列</router-link></div>
     <ConnectionBar v-if="auth.user" :key="auth.user.id" :busy="reconnecting" @reconnect="reconnect" />
-    <main><router-view :key="`${router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
+    <ClientUpdateNotice />
+    <main :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
   </div>
 </template>

@@ -7,16 +7,19 @@ import './style.css';
 import './android.css';
 import { setupPwa } from './pwa';
 import { initializeDesktop, isNativeClient as isDesktop, isAndroid } from './desktop';
+import { initializeClientUpdates, checkClientUpdate } from './clientUpdates';
 const app = createApp(App);
 const pinia = createPinia();
 app.use(pinia);
 async function bootstrap(): Promise<void> {
   await initializeDesktop();
+  await initializeClientUpdates();
   const auth = useAuthStore(pinia);
   if (!isDesktop()) await auth.bootstrap();
   app.use(router);
   await router.isReady();
   app.mount('#app');
+  if (isDesktop()) void checkClientUpdate();
   if (isAndroid()) {
     const { App: androidApp } = await import('@capacitor/app');
     await androidApp.addListener('backButton', ({ canGoBack }) => {

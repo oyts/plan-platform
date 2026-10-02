@@ -28,22 +28,32 @@ import org.json.JSONObject;
 @CapacitorPlugin(name = "PlanNative")
 public class PlanNativePlugin extends Plugin {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
+    // Large update downloads must not block login, API requests or offline replay.
+    private final ExecutorService updateWorker = Executors.newSingleThreadExecutor();
     private String server;
     private SessionVault vault;
+    private ClientUpdater updater;
     @Override public void load() {
         vault = new SessionVault(getContext());
+        updater = new ClientUpdater(getActivity());
         server = getContext().getSharedPreferences("plan-native-settings", 0).getString("server", "");
         try { if (!server.isEmpty()) server = TransportRules.server(server, BuildConfig.DEBUG); }
         catch (IllegalArgumentException invalid) { server = ""; }
     }
     @PluginMethod public void execute(PluginCall call) {
-        worker.execute(() -> {
+        String command = call.getString("command", "");
+        ExecutorService executor = Arrays.asList("desktop_check_update", "desktop_download_update", "desktop_install_update", "desktop_allow_update_install").contains(command) ? updateWorker : worker;
+        executor.execute(() -> {
             try {
                 JSObject args = call.getObject("args", new JSObject());
                 Object result;
-                switch (call.getString("command", "")) {
+                switch (command) {
                     case "desktop_info":
-                        result = new JSObject().put("version", BuildConfig.VERSION_NAME).put("serverUrl", server).put("updatesEnabled", false).put("debug", BuildConfig.DEBUG); break;
+                        result = new JSObject().put("version", BuildConfig.VERSION_NAME).put("versionCode", BuildConfig.VERSION_CODE).put("serverUrl", server).put("updatesEnabled", updater.enabled()).put("updateChannel", BuildConfig.PLAN_UPDATE_URL).put("debug", BuildConfig.DEBUG); break;
+                    case "desktop_check_update": result = updater.check(); break;
+                    case "desktop_download_update": updater.download(); result = true; break;
+                    case "desktop_install_update": updater.install(); result = true; break;
+                    case "desktop_allow_update_install": updater.allowInstall(); result = true; break;
                     case "desktop_probe": result = probe(args.getString("serverUrl")); break;
                     case "desktop_save_server":
                         String next = TransportRules.server(args.getString("serverUrl"), BuildConfig.DEBUG);
@@ -154,5 +164,5 @@ public class PlanNativePlugin extends Plugin {
         intent.setClipData(ClipData.newUri(getContext().getContentResolver(), name, uri));
         getActivity().runOnUiThread(() -> getActivity().startActivity(Intent.createChooser(intent, "保存或分享导出文件")));
     }
-    @Override protected void handleOnDestroy() { worker.shutdown(); }
+    @Override protected void handleOnDestroy() { worker.shutdown(); updateWorker.shutdown(); }
 }

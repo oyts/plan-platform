@@ -68,7 +68,7 @@ $tauriArguments = @('--ci')
 if ($UpdateUrl -or $PublicKeyPath) {
     if (-not $UpdateUrl -or -not $PublicKeyPath) { throw 'UpdateUrl and PublicKeyPath must both be supplied.' }
     $parsedUpdateUrl = [Uri]$UpdateUrl
-    if ($parsedUpdateUrl.Scheme -ne 'https') { throw 'UpdateUrl must use HTTPS.' }
+    if ($parsedUpdateUrl.Scheme -ne 'https' -or $parsedUpdateUrl.UserInfo -or $parsedUpdateUrl.Fragment) { throw 'UpdateUrl must use HTTPS without credentials or fragments.' }
     if (-not $env:TAURI_SIGNING_PRIVATE_KEY) { throw 'Set TAURI_SIGNING_PRIVATE_KEY to your private key path or content before enabling updates.' }
     $env:PLAN_DESKTOP_UPDATE_URL = $UpdateUrl
     $env:PLAN_DESKTOP_UPDATE_PUBKEY = (Get-Content -LiteralPath $publicKeyFile -Raw).Trim()

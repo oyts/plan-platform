@@ -1,4 +1,5 @@
 mod transport;
+mod update_policy;
 
 use serde::Serialize;
 use tauri::{Manager, State};
@@ -13,35 +14,58 @@ struct DesktopInfo {
     version: String,
     server_url: String,
     updates_enabled: bool,
+    update_channel: String,
 }
 
-struct PendingUpdate(Mutex<Option<Update>>);
+#[derive(Default)]
+struct PreparedUpdate { update: Option<Update>, bytes: Option<Vec<u8>> }
+struct PendingUpdate(Mutex<PreparedUpdate>);
 
 #[derive(Serialize)]
-struct UpdateInfo { version: String, notes: Option<String> }
+#[serde(rename_all = "camelCase")]
+struct UpdateInfo { version: String, notes: Option<String>, mandatory: bool, minimum_version: String }
 
 #[tauri::command]
 async fn desktop_check_update(app: tauri::AppHandle, pending: State<'_, PendingUpdate>) -> Result<Option<UpdateInfo>, String> {
     if !updates_enabled() { return Err("当前安装包尚未配置签名更新源。".into()); }
     let endpoint = url::Url::parse(option_env!("PLAN_DESKTOP_UPDATE_URL").unwrap()).map_err(|_| "更新源地址无效。")?;
-    if endpoint.scheme() != "https" { return Err("更新源必须使用 HTTPS。".into()); }
+    if endpoint.scheme() != "https" || !endpoint.username().is_empty() || endpoint.password().is_some() || endpoint.fragment().is_some() { return Err("更新源必须使用无凭据的 HTTPS 地址。".into()); }
     let update = app.updater_builder().endpoints(vec![endpoint]).map_err(|error| error.to_string())?
+        .configure_client(|client| client.https_only(true))
         .timeout(std::time::Duration::from_secs(20)).build().map_err(|error| error.to_string())?
         .check().await.map_err(|error| format!("更新检查失败：{error}"))?;
-    let info = update.as_ref().map(|value| UpdateInfo { version: value.version.clone(), notes: value.body.clone() });
-    *pending.0.lock().await = update;
+    let info = if let Some(value) = update.as_ref() {
+        if value.download_url.scheme() != "https" || !value.download_url.username().is_empty() || value.download_url.password().is_some() { return Err("安装包必须使用无凭据的 HTTPS 地址。".into()); }
+        let minimum = match value.raw_json.get("minimumSupportedVersion") {
+            None => "0.0.0",
+            Some(value) => value.as_str().ok_or("最低支持版本格式无效。")?,
+        };
+        let mandatory = update_policy::mandatory(&app.package_info().version.to_string(), &value.version, minimum)?;
+        Some(UpdateInfo { version: value.version.clone(), notes: value.body.clone(), mandatory, minimum_version: minimum.into() })
+    } else { None };
+    *pending.0.lock().await = PreparedUpdate { update, bytes: None };
     Ok(info)
 }
 
 #[tauri::command]
+async fn desktop_download_update(pending: State<'_, PendingUpdate>) -> Result<(), String> {
+    let mut prepared = pending.0.lock().await;
+    let update = prepared.update.as_ref().ok_or("请先检查新版本。")?;
+    prepared.bytes = Some(update.download(|_, _| {}, || {}).await.map_err(|error| format!("下载或签名校验失败：{error}"))?);
+    Ok(())
+}
+
+#[tauri::command]
 async fn desktop_install_update(pending: State<'_, PendingUpdate>) -> Result<(), String> {
-    let update = pending.0.lock().await.take().ok_or("请先检查并选择新版本。")?;
-    update.download_and_install(|_, _| {}, || {}).await.map_err(|error| format!("更新失败，当前版本仍可使用：{error}"))
+    let prepared = pending.0.lock().await;
+    let update = prepared.update.as_ref().ok_or("请先检查新版本。")?;
+    let bytes = prepared.bytes.as_ref().ok_or("请先下载并校验更新包。")?;
+    update.install(bytes).map_err(|error| format!("安装失败，更新包仍可重试：{error}"))
 }
 
 #[tauri::command]
 async fn desktop_info(app: tauri::AppHandle, state: State<'_, Mutex<DesktopState>>) -> Result<DesktopInfo, String> {
-    Ok(DesktopInfo { version: app.package_info().version.to_string(), server_url: state.lock().await.config().server_url, updates_enabled: updates_enabled() })
+    Ok(DesktopInfo { version: app.package_info().version.to_string(), server_url: state.lock().await.config().server_url, updates_enabled: updates_enabled(), update_channel: option_env!("PLAN_DESKTOP_UPDATE_URL").unwrap_or("").into() })
 }
 
 #[tauri::command]
@@ -79,7 +103,7 @@ pub fn run() {
     builder.setup(|app| {
         let path = app.path().app_config_dir()?.join("desktop.json");
         app.manage(Mutex::new(DesktopState::load(path).map_err(std::io::Error::other)?));
-        app.manage(PendingUpdate(Mutex::new(None)));
+        app.manage(PendingUpdate(Mutex::new(PreparedUpdate::default())));
         tauri::WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
             .on_navigation(|url| {
                 (url.scheme() == "tauri" && url.host_str() == Some("localhost"))
@@ -87,7 +111,7 @@ pub fn run() {
                     || (cfg!(debug_assertions) && url.host_str() == Some("localhost") && url.port() == Some(43128))
             }).build()?;
         Ok(())
-    }).invoke_handler(tauri::generate_handler![desktop_info, desktop_save_server, desktop_probe, desktop_request, desktop_open_url, desktop_check_update, desktop_install_update, clear_native_session])
+    }).invoke_handler(tauri::generate_handler![desktop_info, desktop_save_server, desktop_probe, desktop_request, desktop_open_url, desktop_check_update, desktop_download_update, desktop_install_update, clear_native_session])
       .run(tauri::generate_context!())
       .expect("无法启动计划舱桌面客户端");
 }
