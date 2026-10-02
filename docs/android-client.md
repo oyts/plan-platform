@@ -32,6 +32,8 @@
 
 不要使用旧版同步密钥当作新版密码。当前公网域名上的旧版服务不提供新版账号接口，连接测试会拒绝它。首次 APK 安装不需要等待网络证书；公网 API 的 HTTPS 连接才需要有效服务器证书。
 
+43129 是 API 端口，不是网页入口。手机浏览器直接打开它的根路径可能返回 HTTP 401；应打开已安装的 APK，在应用内部配置该地址。
+
 ## 构建与测试
 
 需要 Node.js 22 或以上、JDK 21、Android SDK platform 36 和 build-tools 36.0.0。当前电脑的便携工具放在 Git 忽略目录 `.desktop-tools`，没有把 SDK、运行时、缓存或签名密钥加入仓库；其他电脑应先安装工具并设置 `JAVA_HOME`、`ANDROID_HOME`。中文 Windows 工作目录将 Gradle 缓存和生成的构建输出分别放到系统临时目录 `plan-cabin-gradle`、`plan-cabin-android-build`，避免测试启动器的路径编码问题；源码不移动。可指定自己的纯英文 `GRADLE_USER_HOME` 和 `PLAN_ANDROID_BUILD_ROOT`。最终 APK 仍复制回项目的 `android-artifacts`。
@@ -50,9 +52,9 @@ Java 单元测试覆盖 HTTPS、调试 HTTP 范围、固定 API 路径、请求�
 
 系统备份同时使用 `allowBackup=false` 和显式云备份、设备迁移排除规则，依据 [Android 官方备份说明](https://developer.android.com/identity/data/autobackup)。仅关闭 `allowBackup` 不能保证所有厂商设备都禁用设备间迁移；实际设备行为仍需验收。
 
-已提供 `SessionVaultInstrumentedTest` 真机测试，使用随机测试服务器标识验证 Keystore 加密、重建读取、跨服务器隔离与删除，不访问真实账号。连接手机后可在 `web/android` 执行 `gradlew.bat :app:connectedDebugAndroidTest`；尚未连接设备时不能把这项标为已通过。
+已提供 `SessionVaultInstrumentedTest` 真机测试，使用随机测试服务器标识验证 Keystore 加密、重建读取、跨服务器隔离与删除，不访问真实账号。在项目根目录执行 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-device.ps1 -Action instrument`；脚本不自动卸载主应用，测试辅助包会留在设备上。
 
-本次本地验证：后端 13 项、前端 18 项、Windows 原生 4 项、Android Java 6 项，共 41 项自动测试通过；Web/PWA 构建检查通过，Windows EXE 与 Android 调试 APK 构建成功。APK 签名校验通过；Android 正式配置（未签名）和设备测试 APK 编译通过，静态检查为 0 错误、17 个警告，主要是模板未使用资源与依赖更新提示。未执行手机安装、Keystore 真机测试、三端联调，也未执行远程 GitHub 工作流或生产部署。
+最新验收结果：后端 13 项、前端 32 项、Windows 原生 4 项、Android Java 6 项、独立浏览器 16 项通过；Web/PWA 构建检查通过，EXE 与调试 APK 构建成功，APK 签名校验通过。2026-10-02 在 iQOO Neo10 Pro 安装 APK，并通过 1 项 Keystore 真机测试。手机手工业务、分享、后台恢复、三端原生联调和升级回归仍待完成；未执行远程 GitHub 工作流或生产部署。完整范围见 [跨客户端验收](cross-client-acceptance.md)。
 
 ## 真机与跨端验收
 

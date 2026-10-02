@@ -10,8 +10,13 @@ web/dist/
 web/*.tsbuildinfo
 web/vite.config.js
 web/vite.config.d.ts
+web/scripts/pwa-build.js
+web/scripts/pwa-build.d.ts
 web/dist-desktop/
 web/dist-android/
+web/test-results/
+web/playwright-report/
+acceptance-results/
 android-artifacts/
 .android-signing/
 *.keystore

@@ -3,7 +3,7 @@
 ## 能力边界
 
 - 浏览器满足 HTTPS（或 `localhost`）时会注册 Service Worker，并可把计划平台安装为独立窗口。
-- Service Worker 只缓存应用壳和同源静态资源；`/api/**` 永不写入缓存。
+- 构建时生成完整的脚本与样式预缓存清单，Service Worker 只缓存应用壳和同源静态资源；`/api/**` 永不写入缓存。动态模块按静态路径匹配，公共静态文件不因 Origin 请求头差异错过缓存。
 - 离线时可以打开已访问的应用页面；计划、任务、标签、里程碑、模板和主线的普通新增、编辑会进入当前浏览器的 IndexedDB 队列。
 - 删除操作必须在线执行。当前删除接口没有携带实体基础版本，禁止离线排队可以避免误删其他设备刚更新的数据。
 - 计时开始/暂停、完成、手动补录、延期和重复任务生成必须在线执行。这些操作依赖准确服务端时间，不会伪装成已完成。
@@ -31,4 +31,6 @@
 
 ## 自动检查
 
-`verify.bat` 在前后端构建后执行 `web/scripts/check-pwa.mjs`，验证 Manifest、Service Worker、图标产物齐全，且 Service Worker 明确跳过 `/api/`。
+`verify.bat` 在前后端构建后执行 `web/scripts/check-pwa.mjs`，验证 Manifest、Service Worker、图标产物、生产缓存版本及入口脚本预缓存齐全，且 Service Worker 明确跳过 `/api/`。
+
+`verify-cross-client.bat` 还会运行真实浏览器断网重开测试，检查缓存中没有私有 API 响应。桌面与手机尺寸各运行一组业务测试；手机尺寸不等于 Android 真机。完整结果和原生设备清单见 [跨客户端验收](cross-client-acceptance.md)。

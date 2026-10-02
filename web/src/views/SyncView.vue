@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import axios from 'axios';
-import { apiMessage, currentQueueOwner, replayOfflineOperation } from '@/api/client';
-import { deleteOperation, listOperations, onQueueChange, updateOperation, type OfflineOperation } from '@/offlineQueue';
+import { apiMessage, currentQueueOwner } from '@/api/client';
+import { deleteOperation, listOperations, onQueueChange, type OfflineOperation } from '@/offlineQueue';
+import { synchronizeQueue } from '@/queueSync';
 
 const rows = ref<OfflineOperation[]>([]);
-const busy = ref(new Set<string>());
+const busy = ref(false);
 const online = ref(navigator.onLine);
 const notice = ref('');
 const error = ref('');
@@ -18,31 +18,24 @@ async function load(): Promise<void> {
   rows.value = ownerId ? await listOperations(ownerId) : [];
 }
 
-async function retry(row: OfflineOperation): Promise<boolean> {
-  if (!online.value || busy.value.has(row.id)) return false;
-  busy.value = new Set(busy.value).add(row.id);
+async function retryAll(limit = Infinity): Promise<void> {
+  const ownerId = currentQueueOwner();
+  if (!online.value || busy.value || !ownerId) return;
+  busy.value = true;
   error.value = ''; notice.value = '';
   try {
-    await updateOperation(row.id, { attempts: row.attempts + 1, status: 'PENDING', error: undefined });
-    await replayOfflineOperation(row);
-    await deleteOperation(row.id);
-    notice.value = `“${operationName(row)}”已同步。`;
-    return true;
+    const result = await synchronizeQueue(ownerId, limit);
+    notice.value = result.synced ? `${result.synced} 项操作已同步。` : '';
+    if (result.stopped === 'CONFLICT') error.value = '同步已暂停：请先处理队首冲突，后续操作仍保留在本机。';
+    else if (result.stopped === 'FAILED') error.value = result.message ?? '同步失败，后续操作未提交。';
+    else if (result.stopped === 'BUSY') error.value = '另一个窗口正在同步，请稍后刷新。';
+    else if (result.stopped === 'IDENTITY') error.value = '账号或服务器已变化，同步已停止。';
+    else if (result.stopped === 'OFFLINE') error.value = '网络已断开，同步已暂停。';
   } catch (failure) {
-    const conflict = axios.isAxiosError(failure) && failure.response?.status === 409;
-    await updateOperation(row.id, { status: conflict ? 'CONFLICT' : 'FAILED', error: apiMessage(failure) });
-    if (!conflict) error.value = apiMessage(failure);
-    return false;
+    error.value = apiMessage(failure);
   } finally {
-    const next = new Set(busy.value); next.delete(row.id); busy.value = next;
+    busy.value = false;
     await load();
-  }
-}
-
-async function retryAll(): Promise<void> {
-  for (const row of [...rows.value]) {
-    if (row.status === 'CONFLICT') continue;
-    if (!await retry(row) && !online.value) break;
   }
 }
 
@@ -106,7 +99,7 @@ onUnmounted(() => {
     <section class="sync-ledger">
       <header class="section-title">
         <div><p class="eyebrow">LOCAL OPERATION LEDGER</p><h2>待同步操作</h2></div>
-        <div class="button-row"><span>{{ pendingCount }} 项等待</span><button class="btn primary" :disabled="!online || !rows.some((row) => row.status !== 'CONFLICT')" @click="retryAll">同步等待项</button></div>
+        <div class="button-row"><span>{{ pendingCount }} 项等待</span><button class="btn primary" :disabled="!online || busy || !rows.length" @click="retryAll()">{{ busy ? '同步中…' : '同步等待项' }}</button></div>
       </header>
 
       <article v-for="row in rows" :key="row.id" class="sync-row" :class="`sync-row--${row.status.toLowerCase()}`">
@@ -120,8 +113,8 @@ onUnmounted(() => {
         </div>
         <div class="sync-actions">
           <router-link v-if="row.status === 'CONFLICT'" class="btn" :to="destination(row)">查看最新数据</router-link>
-          <button class="btn primary" :disabled="!online || busy.has(row.id)" @click="retry(row)">{{ busy.has(row.id) ? '同步中…' : '重试' }}</button>
-          <button class="btn danger" :disabled="busy.has(row.id)" @click="discard(row)">放弃本地操作</button>
+          <button class="btn primary" :disabled="!online || busy || rows[0]?.id !== row.id || row.status === 'CONFLICT'" @click="retryAll(1)">重试队首</button>
+          <button class="btn danger" :disabled="busy" @click="discard(row)">放弃本地操作</button>
         </div>
       </article>
       <div v-if="!rows.length" class="sync-empty"><strong>队列为空</strong><p>当前设备的操作已经全部送达服务器。</p></div>

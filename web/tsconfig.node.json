@@ -1,4 +1,4 @@
 {
-  "compilerOptions": { "composite": true, "module": "ESNext", "moduleResolution": "Bundler", "types": ["node"] },
-  "include": ["vite.config.ts"]
+  "compilerOptions": { "composite": true, "noEmit": true, "allowImportingTsExtensions": true, "module": "ESNext", "moduleResolution": "Bundler", "types": ["node"] },
+  "include": ["vite.config.ts", "scripts/pwa-build.ts"]
 }
