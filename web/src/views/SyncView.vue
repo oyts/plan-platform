@@ -3,6 +3,10 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { apiMessage, currentQueueOwner } from '@/api/client';
 import { deleteOperation, listOperations, onQueueChange, type OfflineOperation } from '@/offlineQueue';
 import { synchronizeQueue } from '@/queueSync';
+import { requiresConnection } from '@/connectionState';
+import { hasToken } from '@/api/client';
+import { useAuthStore } from '@/stores/auth';
+const auth = useAuthStore();
 
 const rows = ref<OfflineOperation[]>([]);
 const busy = ref(false);
@@ -24,6 +28,8 @@ async function retryAll(limit = Infinity): Promise<void> {
   busy.value = true;
   error.value = ''; notice.value = '';
   try {
+    if (requiresConnection()) await auth.bootstrap();
+    if (!hasToken() || currentQueueOwner() !== ownerId) throw new Error('请恢复连接并验证当前账号后再同步。');
     const result = await synchronizeQueue(ownerId, limit);
     notice.value = result.synced ? `${result.synced} 项操作已同步。` : '';
     if (result.stopped === 'CONFLICT') error.value = '同步已暂停：请先处理队首冲突，后续操作仍保留在本机。';

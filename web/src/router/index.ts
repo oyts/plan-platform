@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router';
-import { hasToken } from '@/api/client';
+import { hasSession } from '@/api/client';
 import { isNativeClient as isDesktop } from '@/desktop';
 import DashboardView from '@/views/DashboardView.vue';
 const router = createRouter({ history: isDesktop() ? createWebHashHistory() : createWebHistory(), routes: [
@@ -22,5 +22,5 @@ const router = createRouter({ history: isDesktop() ? createWebHashHistory() : cr
   { path: '/sync', component: () => import('@/views/SyncView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },
 ] });
-router.beforeEach((to) => { if (!to.meta.public && !hasToken()) return '/login'; if (to.meta.public && hasToken() && !to.meta.allowAuthenticated) return '/'; });
+router.beforeEach((to) => { if (!to.meta.public && !hasSession()) return '/login'; if (to.meta.public && hasSession() && !to.meta.allowAuthenticated) return '/'; });
 export default router;

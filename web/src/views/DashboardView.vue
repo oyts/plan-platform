@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { api, apiMessage } from '@/api/client';
+import LocalBadge from '@/components/LocalBadge.vue';
+import { requiresConnection } from '@/connectionState';
 import type { Progress, Task, Today } from '@/types';
 
 const today = ref<Today | null>(null);
@@ -79,11 +81,11 @@ onMounted(load);
       <article v-for="task in today.tasks" :key="task.id" class="task-row">
         <div class="time-cell"><strong>{{ task.startTime?.slice(0, 5) ?? '--:--' }}</strong><span>{{ task.endTime?.slice(0, 5) ?? '' }}</span></div>
         <div class="task-copy"><span class="tag" :style="{ color: task.tagColor ?? '#002FA7', borderColor: task.tagColor ?? '#002FA7' }">{{ task.tagName ?? task.category }}</span><h3>{{ task.title }}</h3><p>{{ task.description }}</p></div>
-        <div class="task-state"><strong>{{ task.progress.status }}</strong><span>{{ duration(task.progress.accumulatedSeconds) }}</span></div>
+        <div class="task-state"><strong>{{ task.progress.status }}</strong><span>{{ duration(task.progress.accumulatedSeconds) }}</span><LocalBadge :state="task.localState"/></div>
         <div class="button-row">
-          <button v-if="task.progress.status !== 'RUNNING' && task.progress.status !== 'COMPLETED'" class="btn" :disabled="busyId === task.id" @click="timer(task.id, 'start', task.progress)">开始</button>
-          <button v-if="task.progress.status === 'RUNNING'" class="btn" @click="timer(task.id, 'pause', task.progress)">暂停</button>
-          <button v-if="task.progress.status !== 'COMPLETED'" class="btn primary" @click="openCompletion(task)">完成</button>
+          <button v-if="task.progress.status !== 'RUNNING' && task.progress.status !== 'COMPLETED'" class="btn" :disabled="busyId === task.id || requiresConnection()" @click="timer(task.id, 'start', task.progress)">开始</button>
+          <button v-if="task.progress.status === 'RUNNING'" class="btn" :disabled="requiresConnection()" @click="timer(task.id, 'pause', task.progress)">暂停</button>
+          <button v-if="task.progress.status !== 'COMPLETED'" class="btn primary" :disabled="requiresConnection()" @click="openCompletion(task)">完成</button>
         </div>
       </article>
     </section>
@@ -99,5 +101,5 @@ onMounted(load);
       </form>
     </div>
   </div>
-  <div v-else class="loading">正在读取今天的计划…</div>
+  <div v-else class="page"><h1>今日控制台</h1><p :class="error ? 'error-text' : 'loading'">{{ error || '正在读取今天的计划…' }}</p><router-link v-if="error" class="btn" to="/plans">查看已缓存计划</router-link></div>
 </template>

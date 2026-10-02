@@ -10,6 +10,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.Instant;
+import java.util.List;
+import java.util.stream.IntStream;
 
 @Entity
 @Table(name = "plans")
@@ -29,6 +31,9 @@ public class Plan extends BaseEntity {
 
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
+
+    @Column(name = "rest_days_mask", nullable = false)
+    private int restDaysMask;
 
     @Column(nullable = false)
     private boolean archived;
@@ -50,6 +55,16 @@ public class Plan extends BaseEntity {
     }
 
     public void archive() { archived = true; }
+    public void setRestDays(List<Integer> days) {
+        if (days == null || days.size() > 7 || days.stream().anyMatch(day -> day == null || day < 1 || day > 7)) {
+            throw new IllegalArgumentException("休息日必须是星期一到星期日（1 到 7）。");
+        }
+        if (days.stream().distinct().count() != days.size()) throw new IllegalArgumentException("休息日不能重复。");
+        restDaysMask = days.stream().mapToInt(day -> 1 << (day - 1)).reduce(0, (mask, bit) -> mask | bit);
+    }
+    public List<Integer> getRestDays() {
+        return IntStream.rangeClosed(1, 7).filter(day -> (restDaysMask & (1 << (day - 1))) != 0).boxed().toList();
+    }
     public void trash() { deletedAt = Instant.now(); }
     public void restore() { deletedAt = null; archived = false; }
     public UserAccount getOwner() { return owner; }

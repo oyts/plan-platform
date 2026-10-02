@@ -1,4 +1,4 @@
-param([ValidateSet('check','install','instrument')][string]$Action = 'check', [string]$Serial)
+param([ValidateSet('check','install','instrument')][string]$Action = 'check', [string]$Serial, [ValidateRange(1024,65535)][int]$Port = 43129)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
@@ -17,16 +17,16 @@ if ($Action -eq 'check') { exit 0 }
 if ($Action -eq 'install') {
     $apk = Join-Path $projectRoot 'android-artifacts/PlanCabin-0.1.0-debug.apk'
     if (-not (Test-Path -LiteralPath $apk)) { throw 'Build the test APK first with build-android.bat.' }
-    if (-not (Get-NetTCPConnection -State Listen -LocalAddress '127.0.0.1' -LocalPort 43129 -ErrorAction SilentlyContinue)) {
-        throw 'Start start-desktop-server.bat before preparing the phone. No APK was installed.'
+    if (-not (Get-NetTCPConnection -State Listen -LocalAddress '127.0.0.1' -LocalPort $Port -ErrorAction SilentlyContinue)) {
+        throw "Start the local test API on 127.0.0.1:$Port before preparing the phone. No APK was installed."
     }
     & "$env:ANDROID_HOME/build-tools/36.0.0/apksigner.bat" verify $apk
     if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed.' }
-    & $adb -s $Serial reverse tcp:43129 tcp:43129
+    & $adb -s $Serial reverse "tcp:$Port" "tcp:$Port"
     if ($LASTEXITCODE -ne 0) { throw 'USB port forwarding failed.' }
     & $adb -s $Serial install -r $apk
     if ($LASTEXITCODE -ne 0) { throw 'APK installation failed. Do not uninstall an existing client to bypass a signature mismatch without backing up its data.' }
-    Write-Host 'Test APK installed. Open Plan Cabin and configure http://127.0.0.1:43129. The USB forwarding lasts only while connected.'
+    Write-Host "Test APK installed. Open Plan Cabin and configure http://127.0.0.1:$Port. The USB forwarding lasts only while connected."
 } else {
     # Build only the instrumentation APK. Do not let Gradle manage device
     # installation/uninstallation of the user's main application.

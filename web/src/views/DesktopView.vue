@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { forgetScope } from '@/offlineCache';
+import { serverScope } from '@/api/client';
 import { checkDesktopUpdate, getDesktopInfo, installDesktopUpdate, isNativeClient as isDesktop, isAndroid, probeDesktopServer, saveDesktopServer, type DesktopInfo, type DesktopUpdate } from '@/desktop';
 const auth = useAuthStore();
 const info = ref<DesktopInfo | null>(null);
@@ -19,6 +21,8 @@ async function save(): Promise<void> {
   busy.value = true; error.value = ''; message.value = '';
   try {
     await probeDesktopServer(serverUrl.value);
+    await forgetScope(serverScope());
+    await forgetScope(serverUrl.value.trim().replace(/\/+$/, ''));
     await saveDesktopServer(serverUrl.value);
     window.location.hash = '/login'; window.location.reload();
   } catch (reason) { error.value = explain(reason); }
@@ -63,7 +67,7 @@ onMounted(async () => {
           <div v-if="update" class="desktop-update"><h3>可更新至 {{ update.version }}</h3><p v-if="update.notes">{{ update.notes }}</p><button class="btn primary" :disabled="busy" @click="installUpdate">下载并安装</button></div>
         </section>
       </div>
-      <section class="desktop-note"><strong>{{ isAndroid() ? '登录会话由 Android Keystore 加密保护' : '登录会话保存在 Windows 凭据管理器中' }}</strong><p>客户端启动后自动恢复登录；退出登录会清除对应会话。更换设备后需重新登录。</p></section>
+      <section class="desktop-note"><strong>{{ isAndroid() ? '登录会话由 Android Keystore 加密保护' : '登录会话保存在 Windows 凭据管理器中' }}</strong><p>核心页面另有按服务器和账号隔离的本地缓存，并非加密存储。最近联网验证后的 24 小时内可离线重开；退出会清除会话与页面缓存，但保留该账号未同步的操作。请仅在自己的设备使用。</p></section>
     </template>
   </div>
 </template>

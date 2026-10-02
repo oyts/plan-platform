@@ -2,6 +2,9 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, apiMessage } from '@/api/client';
+import LocalBadge from '@/components/LocalBadge.vue';
+import { requiresConnection } from '@/connectionState';
+import { isPlanRestDay, restDaySummary } from '@/restDays';
 import type { Milestone, Plan, Progress, Task, PageResponse } from '@/types';
 
 const route = useRoute();
@@ -22,7 +25,7 @@ function iso(date: Date) { return date.toLocaleDateString('sv-SE'); }
 function shiftDate(value: string, days: number) { const date = dateFrom(value); date.setDate(date.getDate() + days); return iso(date); }
 function duration(seconds: number) { const h = Math.floor(seconds / 3600); const m = Math.floor(seconds % 3600 / 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; }
 function dayLabel(value: string) { return dateFrom(value).toLocaleDateString('zh-CN', { weekday: 'short' }); }
-function isRestDay(value: string) { const day = dateFrom(value).getDay(); return day === 0 || day === 6; }
+function isRestDay(value: string) { return isPlanRestDay(value, activePlan.value?.restDays); }
 const dates = computed(() => Array.from({ length: 7 }, (_, index) => shiftDate(anchor.value, index)));
 const activePlan = computed(() => plans.value.find(plan => plan.id === planId.value) ?? null);
 const milestonesByDate = computed(() => {
@@ -121,11 +124,11 @@ onMounted(async () => { try { await loadPlans(); await loadSchedule(); } catch (
 <template>
   <div class="page schedule-page">
     <header class="page-head schedule-head">
-      <div><p class="eyebrow">SCHEDULE / DATE RAIL</p><h1>执行日程</h1><p>原计划、补做任务和实际用时在同一条日期轨道上查看。</p></div>
+      <div><p class="eyebrow">SCHEDULE / DATE RAIL</p><h1>执行日程</h1><p>原计划、补做任务和实际用时在同一条日期轨道上查看。</p><p v-if="activePlan" class="helper-text">{{ restDaySummary(activePlan.restDays) }} · <router-link :to="`/plans/${planId}`">编辑计划设置</router-link></p></div>
       <label class="plan-picker">当前计划<select v-model="planId"><option v-for="plan in plans" :key="plan.id" :value="plan.id">{{ plan.name }}</option></select></label>
     </header>
     <p v-if="error" class="error-text">{{ error }}</p>
-    <p v-if="!plans.length && !loading" class="empty">先创建一个计划，才能开始安排日程。</p>
+    <p v-if="!plans.length && !loading && !error" class="empty">先创建一个计划，才能开始安排日程。</p>
     <template v-else>
       <section class="schedule-controls" aria-label="日期范围控制">
         <button class="btn" type="button" @click="anchor = shiftDate(anchor, -7)">上一周</button>
@@ -141,7 +144,7 @@ onMounted(async () => { try { await loadPlans(); await loadSchedule(); } catch (
             <div v-if="tasksByDate.get(date)?.length" class="rail-tasks">
               <button v-for="task in tasksByDate.get(date)" :key="task.id" class="rail-task" :class="{ active: selected?.id === task.id, deferred: Boolean(task.progress.deferTo) }" type="button" @click="select(task)">
                 <span>{{ task.startTime?.slice(0, 5) ?? '弹性' }}</span><b :style="{ background: task.tagColor ?? '#002FA7' }" /><strong>{{ task.title }}</strong><small>{{ task.progress.status }} · {{ duration(task.progress.accumulatedSeconds) }}</small>
-                <em v-if="task.progress.deferTo">补做自 {{ task.date.slice(5) }}</em>
+                <em v-if="task.localState">{{ task.localState === 'PENDING' ? '本地修改 · 待同步' : '本地操作 · 待处理' }}</em><em v-if="task.progress.deferTo">补做自 {{ task.date.slice(5) }}</em>
               </button>
             </div>
             <p v-else class="rail-empty">{{ isRestDay(date) ? '休息日可在右侧安排补做' : '没有安排任务' }}</p>
@@ -149,7 +152,7 @@ onMounted(async () => { try { await loadPlans(); await loadSchedule(); } catch (
         </section>
         <aside class="schedule-inspector" aria-live="polite">
           <template v-if="selected">
-            <p class="eyebrow">TASK / INSPECTOR</p><h2>{{ selected.title }}</h2>
+            <p class="eyebrow">TASK / INSPECTOR</p><h2>{{ selected.title }}</h2><LocalBadge :state="selected.localState"/>
             <p class="inspector-meta">{{ selectedDay }} · {{ selected.tagName ?? selected.category }} · 计划 {{ selected.plannedMinutes }} 分钟</p>
             <a v-if="selected.resourceUrl" :href="selected.resourceUrl" target="_blank" rel="noreferrer">打开任务资料</a>
             <label v-if="selected.acceptance.length" class="inspector-label">验收标准
@@ -157,13 +160,13 @@ onMounted(async () => { try { await loadPlans(); await loadSchedule(); } catch (
             </label>
             <label>执行状态<select v-model="draft.status"><option value="PENDING">待开始</option><option value="RUNNING">进行中</option><option value="PAUSED">已暂停</option><option value="PARTIAL">部分完成</option><option value="SKIPPED">已跳过</option><option value="COMPLETED">已完成</option></select></label>
             <label>执行备注<textarea v-model="draft.note" rows="3" placeholder="记录结果、阻塞或下次调整。" /></label>
-            <div class="button-row"><button v-if="selected.progress.status !== 'RUNNING'" class="btn" :disabled="busy" @click="timer('start', selected.progress)">开始计时</button><button v-else class="btn" :disabled="busy" @click="timer('pause', selected.progress)">暂停计时</button><button class="btn primary" :disabled="busy" @click="saveState">保存状态</button></div>
+            <div class="button-row"><button v-if="selected.progress.status !== 'RUNNING'" class="btn" :disabled="busy || requiresConnection()" @click="timer('start', selected.progress)">开始计时</button><button v-else class="btn" :disabled="busy || requiresConnection()" @click="timer('pause', selected.progress)">暂停计时</button><button class="btn primary" :disabled="busy || requiresConnection()" @click="saveState">保存状态</button></div>
             <div class="inspector-rule" />
             <label>补做日期<input v-model="draft.deferTo" type="date" :min="selected.date" /></label>
-            <button class="btn" :disabled="busy || !draft.deferTo" @click="deferTask">安排补做</button>
+            <button class="btn" :disabled="busy || !draft.deferTo || requiresConnection()" @click="deferTask">安排补做</button>
             <p class="helper-text">补做可以安排在休息日；原计划会标记为已延期，不会重复计入当天任务。</p>
             <label>补录实际分钟<input v-model.number="draft.manualMinutes" type="number" min="1" max="1440" /></label>
-            <button class="btn" :disabled="busy || !draft.manualMinutes" @click="addManualTime">记入实际用时</button>
+            <button class="btn" :disabled="busy || !draft.manualMinutes || requiresConnection()" @click="addManualTime">记入实际用时</button>
           </template>
           <div v-else class="inspector-empty"><p class="eyebrow">TASK / INSPECTOR</p><h2>选择一个任务</h2><p>在左侧日程中点选任务，右侧会固定显示其状态、补做和计时操作。</p></div>
         </aside>

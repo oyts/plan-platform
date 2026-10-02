@@ -52,7 +52,7 @@ public class AuthController {
     }
 
     @GetMapping("/config")
-    AuthDtos.AuthConfigResponse config() { return new AuthDtos.AuthConfigResponse(security.registrationEnabled(), security.passwordResetEnabled(), security.invitationEnabled(), security.emailVerificationEnabled()); }
+    AuthDtos.AuthConfigResponse config() { return new AuthDtos.AuthConfigResponse(security.registrationEnabled(), security.passwordResetEnabled(), security.invitationEnabled(), security.emailVerificationEnabled(), true); }
 
     @GetMapping("/me")
     AuthDtos.UserResponse me(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) {

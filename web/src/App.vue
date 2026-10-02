@@ -3,8 +3,11 @@ import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import PwaControl from '@/components/PwaControl.vue';
+import ConnectionBar from '@/components/ConnectionBar.vue';
 const auth = useAuthStore(); const router = useRouter();
 const queueNotice = ref('');
+const reconnecting = ref(false); const pageRevision = ref(0);
+async function reconnect() { reconnecting.value = true; try { await auth.bootstrap(); pageRevision.value++; } finally { reconnecting.value = false; } }
 let noticeTimer: number | undefined;
 async function logout() {
   try { await auth.logout(); }
@@ -17,8 +20,9 @@ function showQueueNotice(): void {
   window.clearTimeout(noticeTimer);
   noticeTimer = window.setTimeout(() => { queueNotice.value = ''; }, 5000);
 }
-onMounted(() => window.addEventListener('plan-platform:offline-queued', showQueueNotice));
-onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', showQueueNotice); window.clearTimeout(noticeTimer); });
+function invalidated() { auth.user = null; void router.replace('/login'); }
+onMounted(() => { window.addEventListener('plan-platform:offline-queued', showQueueNotice); window.addEventListener('plan-platform:session-invalidated', invalidated); });
+onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', showQueueNotice); window.removeEventListener('plan-platform:session-invalidated', invalidated); window.clearTimeout(noticeTimer); });
 </script>
 <template>
   <div class="app-shell">
@@ -28,6 +32,7 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
       <div class="account-tools"><PwaControl/><button class="account-button" type="button" @click="logout">{{ auth.user.displayName }} · 退出</button></div>
     </header>
     <div v-if="queueNotice" class="queue-toast" role="status"><strong>已加入离线队列</strong><span>{{ queueNotice }}</span><router-link to="/sync">查看队列</router-link></div>
-    <main><router-view /></main>
+    <ConnectionBar v-if="auth.user" :key="auth.user.id" :busy="reconnecting" @reconnect="reconnect" />
+    <main><router-view :key="`${router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
   </div>
 </template>

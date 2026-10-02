@@ -9,7 +9,7 @@ paths:
   /auth/config:
     get:
       summary: 获取公开账号功能开关
-      responses: { '200': { description: 功能开关 } }
+      responses: { '200': { description: 功能开关；planRestDaysEnabled 为 true 表示支持每周休息日配置, content: { application/json: { schema: { type: object, properties: { planRestDaysEnabled: { type: boolean } } } } } } }
   /auth/register:
     post:
       summary: 注册账号（服务端开启注册时）
@@ -63,8 +63,27 @@ paths:
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string, format: email }, expiresInHours: { type: integer, minimum: 1, maximum: 720 } } } } } }
       responses: { '201': { description: 邀请已创建 } }
   /plans:
-    get: { summary: 获取当前用户计划, security: [{ bearerAuth: [] }], responses: { '200': { description: 计划列表 } } }
-    post: { summary: 创建计划, security: [{ bearerAuth: [] }], parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }], responses: { '201': { description: 已创建 }, '409': { description: 幂等键冲突 } } }
+    get: { summary: 获取当前用户计划, security: [{ bearerAuth: [] }], responses: { '200': { description: 计划列表, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/PlanResponse' } } } } } } }
+    post:
+      summary: 创建计划；默认没有固定休息日
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PlanRequest' } } } }
+      responses:
+        '201': { description: 已创建, content: { application/json: { schema: { $ref: '#/components/schemas/PlanResponse' } } } }
+        '400': { description: 日期或休息日配置无效 }
+        '409': { description: 幂等键冲突 }
+  /plans/{planId}:
+    put:
+      summary: 编辑计划设置；休息日调整不移动或删除任务
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: planId, in: path, required: true, schema: { type: string } }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PlanRequest' } } } }
+      responses:
+        '200': { description: 已更新, content: { application/json: { schema: { $ref: '#/components/schemas/PlanResponse' } } } }
+        '400': { description: 日期或休息日配置无效 }
+        '404': { description: 计划不存在或不属于当前用户 }
+        '409': { description: 基础版本过期或幂等键冲突 }
   /plans/{planId}/tasks/page:
     get:
       summary: 按日期范围分页查询任务
@@ -72,14 +91,48 @@ paths:
       parameters: [{ name: planId, in: path, required: true, schema: { type: string } }, { name: from, in: query, required: true, schema: { type: string, format: date } }, { name: to, in: query, required: true, schema: { type: string, format: date } }]
       responses: { '200': { description: 任务分页 } }
   /mainlines:
-    get: { summary: 获取顺序主线, security: [{ bearerAuth: [] }], responses: { '200': { description: 主线列表 } }
+    get: { summary: 获取顺序主线, security: [{ bearerAuth: [] }], responses: { '200': { description: 主线列表 } } }
   /time-entries:
-    get: { summary: 分页查询计时流水, security: [{ bearerAuth: [] }], responses: { '200': { description: 计时分页 } }
+    get: { summary: 分页查询计时流水, security: [{ bearerAuth: [] }], responses: { '200': { description: 计时分页 } } }
 components:
   securitySchemes: { bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT } }
   parameters:
     IdempotencyKey: { name: X-Idempotency-Key, in: header, required: false, description: 8 至 100 位操作键；安全重试时必须复用原键和完全相同的请求内容。, schema: { type: string, minLength: 8, maxLength: 100, pattern: '^[A-Za-z0-9._:-]+$' } }
   schemas:
+    PlanRequest:
+      type: object
+      required: [name, startDate, endDate]
+      properties:
+        name: { type: string, maxLength: 120 }
+        description: { type: string, maxLength: 1000, nullable: true }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        overallTagName: { type: string, maxLength: 60, nullable: true }
+        overallTagColor: { type: string, maxLength: 20, nullable: true }
+        version: { type: integer, format: int64, nullable: true, description: 编辑时提交读取到的基础版本以检测并发修改 }
+        restDays:
+          type: array
+          nullable: true
+          maxItems: 7
+          uniqueItems: true
+          description: ISO 星期编号；1 周一至 7 周日。创建时省略或为空表示无固定休息日；更新时省略或 null 保留现有配置，空数组明确清空。
+          items: { type: integer, minimum: 1, maximum: 7 }
+          example: [1, 7]
+    PlanResponse:
+      type: object
+      required: [id, name, startDate, endDate, archived, version, taskCount, completedCount, updatedAt, restDays]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        archived: { type: boolean }
+        version: { type: integer, format: int64 }
+        taskCount: { type: integer, format: int64 }
+        completedCount: { type: integer, format: int64 }
+        updatedAt: { type: string, format: date-time }
+        restDays: { type: array, maxItems: 7, uniqueItems: true, description: 升序的每周休息日；不影响已有任务, items: { type: integer, minimum: 1, maximum: 7 } }
     RegisterRequest: { type: object, required: [email, password, displayName], properties: { email: { type: string, format: email }, password: { type: string, minLength: 10 }, displayName: { type: string, maxLength: 80 } } }
     LoginRequest: { type: object, required: [email, password], properties: { email: { type: string, format: email }, password: { type: string } } }
     EmailRequest: { type: object, required: [email], properties: { email: { type: string, format: email } } }

@@ -75,7 +75,9 @@ public class PlanService {
     @Transactional
     public PlanDtos.PlanResponse createPlan(String userId, PlanDtos.PlanRequest request) {
         UserAccount owner = users.findById(userId).orElseThrow(() -> new NotFoundException("用户不存在。"));
-        Plan plan = plans.save(new Plan(owner, request.name(), request.description(), request.startDate(), request.endDate()));
+        Plan plan = new Plan(owner, request.name(), request.description(), request.startDate(), request.endDate());
+        if (request.restDays() != null) plan.setRestDays(request.restDays());
+        plans.save(plan);
         String overallName = blank(request.overallTagName()) ? "总计" : request.overallTagName();
         String color = blank(request.overallTagColor()) ? "#002FA7" : request.overallTagColor();
         tags.save(new PlanTag(plan, overallName, color, true));
@@ -87,6 +89,8 @@ public class PlanService {
         Plan plan = ownedPlan(userId, planId);
         checkVersion(plan.getVersion(), request.version());
         plan.update(request.name(), request.description(), request.startDate(), request.endDate());
+        // Older clients omit this field; do not erase an existing configuration.
+        if (request.restDays() != null) plan.setRestDays(request.restDays());
         flushAndRefresh(plan);
         return toPlan(plan);
     }
@@ -640,7 +644,7 @@ public class PlanService {
     private PlanDtos.PlanResponse toPlan(Plan plan) {
         List<PlanTask> planTasks = tasks.findByPlanIdAndDeletedAtIsNullOrderByDateAscSortOrderAsc(plan.getId());
         long completed = planTasks.stream().filter(task -> progress.findByTaskId(task.getId()).map(item -> item.getStatus() == TaskProgress.Status.COMPLETED).orElse(false)).count();
-        return new PlanDtos.PlanResponse(plan.getId(), plan.getName(), plan.getDescription(), plan.getStartDate(), plan.getEndDate(), plan.isArchived(), plan.getVersion(), planTasks.size(), completed, plan.getUpdatedAt());
+        return new PlanDtos.PlanResponse(plan.getId(), plan.getName(), plan.getDescription(), plan.getStartDate(), plan.getEndDate(), plan.isArchived(), plan.getVersion(), planTasks.size(), completed, plan.getUpdatedAt(), plan.getRestDays());
     }
     private PlanDtos.TagResponse toTag(PlanTag tag) { return new PlanDtos.TagResponse(tag.getId(), tag.getName(), tag.getColor(), tag.isOverall(), tag.getVersion()); }
     private PlanDtos.TaskResponse toTask(PlanTask task) {

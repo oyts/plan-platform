@@ -22,10 +22,11 @@ public final class PlanDtos {
         @NotNull LocalDate endDate,
         @Size(max = 60) String overallTagName,
         @Size(max = 20) String overallTagColor,
-        Long version
+        Long version,
+        @Size(max = 7) List<@NotNull @Min(1) @Max(7) Integer> restDays
     ) {}
     public record PlanResponse(String id, String name, String description, LocalDate startDate, LocalDate endDate,
-                               boolean archived, long version, long taskCount, long completedCount, Instant updatedAt) {}
+                               boolean archived, long version, long taskCount, long completedCount, Instant updatedAt, List<Integer> restDays) {}
 
     public record TagRequest(@NotBlank @Size(max = 60) String name, @NotBlank @Size(max = 20) String color, Long version) {}
     public record TagResponse(String id, String name, String color, boolean overall, long version) {}

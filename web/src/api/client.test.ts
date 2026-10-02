@@ -3,7 +3,7 @@ import type { TokenResponse } from '@/types';
 import type { OfflineOperation } from '@/offlineQueue';
 const platform = vi.hoisted(() => ({ desktop: true, server: 'https://one.example.cn' }));
 vi.mock('@/desktop', () => ({ isNativeClient: () => platform.desktop, desktopScope: () => platform.server, nativeInvoke: vi.fn() }));
-vi.mock('@/offlineQueue', () => ({ enqueueOperation: vi.fn() }));
+vi.mock('@/offlineQueue', () => ({ enqueueOperation: vi.fn(), listOperations: vi.fn().mockResolvedValue([]) }));
 vi.stubGlobal('localStorage', { removeItem: vi.fn() });
 const { clearTokens, currentQueueOwner, replayOfflineOperation, saveTokens } = await import('./client');
 const session = { accessToken: 'test-only', user: { id: 'user-one' } } as TokenResponse;
@@ -14,7 +14,7 @@ describe('offline identity partitioning', () => {
     saveTokens(session);
     expect(currentQueueOwner()).toBe('https://one.example.cn|user-one');
     platform.server = 'https://two.example.cn';
-    expect(currentQueueOwner()).toBe('https://two.example.cn|user-one');
+    expect(currentQueueOwner()).toBeNull();
     clearTokens(); expect(currentQueueOwner()).toBeNull();
   });
   it('does not change browser queue ownership format', () => {
