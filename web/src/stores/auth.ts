@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { api, clearTokens, saveTokens } from '@/api/client';
 import type { TokenResponse, User } from '@/types';
+import { clearNativeSession } from '@/desktop';
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null); const ready = ref(false); const registrationEnabled = ref(false); const passwordResetEnabled = ref(false); const invitationEnabled = ref(false); const emailVerificationEnabled = ref(false);
   async function bootstrap() {
@@ -11,8 +12,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
   async function login(email: string, password: string) { const { data } = await api.post<TokenResponse>('/auth/login', { email, password }); saveTokens(data); user.value = data.user; }
   async function register(email: string, password: string, displayName: string, invitationToken?: string) { const { data } = await api.post<TokenResponse>('/auth/register', { email, password, displayName, invitationToken: invitationToken || null }); saveTokens(data); user.value = data.user; }
-  async function logout() { try { await api.post('/auth/logout'); } finally { clearTokens(); user.value = null; } }
-  async function logoutAll() { try { await api.post('/auth/logout-all'); } finally { clearTokens(); user.value = null; } }
+  async function forgetSession() { try { await clearNativeSession(); } finally { clearTokens(); user.value = null; } }
+  async function logout() { try { await api.post('/auth/logout'); } finally { await forgetSession(); } }
+  async function logoutAll() { try { await api.post('/auth/logout-all'); } finally { await forgetSession(); } }
   function updateProfile(profile: User) { user.value = profile; }
   return { user, ready, registrationEnabled, passwordResetEnabled, invitationEnabled, emailVerificationEnabled, bootstrap, login, register, logout, logoutAll, updateProfile };
 });

@@ -1,11 +1,12 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { isNativeClient as isDesktop } from '@/desktop';
 
 interface InstallPromptEvent extends Event { prompt(): Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
 const installPrompt = ref<InstallPromptEvent | null>(null); const updateReady = ref(false); const online = ref(navigator.onLine);
 let registration: ServiceWorkerRegistration | null = null;
 
 export function setupPwa(): void {
-  if (!('serviceWorker' in navigator)) return;
+  if (isDesktop() || !('serviceWorker' in navigator)) return;
   navigator.serviceWorker.register('/sw.js').then((registered) => {
     registration = registered;
     registered.addEventListener('updatefound', () => {

@@ -16,8 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '18', cache: npm, cache-dependency-path: web/package-lock.json }
+        with: { node-version: '22', cache: npm, cache-dependency-path: web/package-lock.json }
       - run: npm ci
         working-directory: web
       - run: npm run build
+        working-directory: web
+      - run: npm test
         working-directory: web

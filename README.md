@@ -6,9 +6,11 @@
 
 ## 当前状态
 
-> **多端同步基础阶段完成（2026-09-22）**
+> **Windows EXE 客户端阶段（2026-10-02）**
 >
 > 已完成多用户业务、旧版迁移、邀请注册、邮件验证、PWA 安装和移动端适配。普通业务写入现已支持 IndexedDB 离线队列、服务端幂等重放与 409 冲突停靠；计时类操作仍严格要求在线。
+>
+> 新增 Tauri 2 Windows 客户端、本地应用壳、可配置服务器、Windows 凭据管理器会话和签名更新基础。本地安装包使用手动升级，公开更新源与新版云端部署尚未启用。
 
 ## 技术栈
 
@@ -34,10 +36,11 @@
 - Docker Compose 一键启动 MySQL、Spring Boot、Vue/Nginx。
 - PWA 安装、应用壳离线缓存、版本更新提示与移动端响应式布局；私有 API 数据不做离线缓存。
 - IndexedDB 离线操作队列、`X-Idempotency-Key` 服务端响应重放和可人工处理的多端冲突中心。
+- Windows x64 EXE 安装包、原生安全请求、服务器配置、按服务器隔离的离线队列与签名更新基础。
 
 ## 本地运行
 
-环境要求：Java 21、Maven 3.9+、Node.js 18+。
+环境要求：Java 21、Maven 3.9+、Node.js 22+（原生 Android 构建工具需要）。
 
 最简单的方式是在 Windows 双击：
 
@@ -91,6 +94,11 @@ docker compose up -d --build
 
 PWA 能力边界、手机回归步骤和自动检查见 [PWA 与跨端测试](docs/pwa-and-cross-client-testing.md)。离线协议、幂等键与冲突处理见 [离线同步说明](docs/offline-sync.md)。
 
+Windows EXE 的安装、构建、验收与签名发布见 [桌面客户端说明](docs/windows-desktop.md)。双击 `build-desktop.bat` 构建安装包，`start-desktop.bat` 启动原生开发模式。
+双击 `start-desktop-server.bat` 可启动仅供本机测试的独立 API（43129 端口与独立 H2 数据文件）。
+
+Android APK 的安装、USB 本地测试和正式签名见 [Android 客户端说明](docs/android-client.md)。双击 `build-android.bat` 构建调试包；它与 Windows 客户端复用业务页面、账号和同步协议，正式签名发布与真机验收需另行完成。
+
 ## 目录
 
 ```text
@@ -113,8 +121,8 @@ plan-platform/
 所有客户端只负责界面与离线缓存，业务数据最终通过同一套 `/api` 接口进入服务器：
 
 1. Vue Web：当前基准客户端。
-2. Windows/macOS EXE：使用 Tauri 封装 Vue，复用 TypeScript API 层。
-3. Android APK：先用 Capacitor 快速复用 Vue；需要深入原生学习时再迁移 Kotlin。
+2. Windows EXE：已使用 Tauri 2 封装 Vue，复用业务 API；macOS/Linux 安装包后续单独适配。
+3. Android APK：已用 Capacitor 8 复用 Vue，Java 原生层负责受限 API 请求和 Keystore 会话加密；当前交付本地测试包。
 4. 微信小程序：独立页面层，复用账号、计划、任务、主线和统计 API。
 
 详细设计见 [架构说明](docs/architecture.md)、[账号与会话安全](docs/account-security.md) 和 [学习路线](docs/learning-guide.md)。

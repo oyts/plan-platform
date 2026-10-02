@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import PwaControl from '@/components/PwaControl.vue';
 const auth = useAuthStore(); const router = useRouter();
 const queueNotice = ref('');
 let noticeTimer: number | undefined;
-async function logout() { await auth.logout(); await router.push('/login'); }
+async function logout() {
+  try { await auth.logout(); }
+  catch { window.alert('服务端退出或本地凭据清理未完全成功，请检查网络后重试；当前页面已退出登录。'); }
+  finally { await router.replace('/login'); }
+}
+watch(() => auth.user, (user, previous) => { if (previous && !user && !router.currentRoute.value.meta.public) void router.replace('/login'); });
 function showQueueNotice(): void {
   queueNotice.value = '操作已安全保存到当前设备。联网后可在同步中心继续。';
   window.clearTimeout(noticeTimer);

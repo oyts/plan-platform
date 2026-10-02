@@ -1,6 +1,8 @@
 import axios, { type AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import type { TokenResponse } from '@/types';
 import { enqueueOperation, type OfflineOperation } from '@/offlineQueue';
+import { isNativeClient as isDesktop, desktopScope } from '@/desktop';
+import { desktopAdapter } from './desktopAdapter';
 
 type OfflineRequestConfig = AxiosRequestConfig & { retried?: boolean; offlineReplay?: boolean; idempotencyKey?: string };
 type InternalOfflineRequestConfig = InternalAxiosRequestConfig & { retried?: boolean; offlineReplay?: boolean; idempotencyKey?: string };
@@ -13,7 +15,9 @@ let accessToken: string | null = null;
 let queueOwnerId: string | null = null;
 localStorage.removeItem('plan-platform:access-token');
 localStorage.removeItem('plan-platform:refresh-token');
-export const api = axios.create({ baseURL: import.meta.env.VITE_API_BASE ?? '/api', timeout: 15000, withCredentials: true });
+const connection = { baseURL: isDesktop() ? '/api' : import.meta.env.VITE_API_BASE ?? '/api', timeout: 15000, withCredentials: true, ...(isDesktop() ? { adapter: desktopAdapter } : {}) };
+export const api = axios.create(connection);
+const refreshApi = axios.create(connection);
 api.interceptors.request.use(async (config) => {
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
   const offlineConfig = config as InternalOfflineRequestConfig;
@@ -40,7 +44,7 @@ api.interceptors.response.use((response) => response, async (error: AxiosError) 
     .some((path) => request?.url?.includes(path));
   if (error.response?.status !== 401 || !request || request.retried || publicAuthRequest) throw error;
   request.retried = true;
-  refreshing ??= axios.post<TokenResponse>(`${api.defaults.baseURL}/auth/refresh`, undefined, { withCredentials: true })
+  refreshing ??= refreshApi.post<TokenResponse>('/auth/refresh')
     .then(({ data }) => { saveTokens(data); return data.accessToken; })
     .finally(() => { refreshing = null; });
   try {
@@ -58,8 +62,9 @@ export function saveTokens(tokens: TokenResponse): void {
 }
 export function clearTokens(): void { accessToken = null; queueOwnerId = null; }
 export function hasToken(): boolean { return Boolean(accessToken); }
-export function currentQueueOwner(): string | null { return queueOwnerId; }
+export function currentQueueOwner(): string | null { return queueOwnerId ? (isDesktop() ? `${desktopScope()}|${queueOwnerId}` : queueOwnerId) : null; }
 export async function replayOfflineOperation(operation: OfflineOperation): Promise<void> {
+  if (operation.ownerId !== currentQueueOwner()) throw new Error('该离线操作不属于当前服务器和账号。');
   const config: OfflineRequestConfig = {
     method: operation.method,
     url: operation.url,
@@ -80,7 +85,7 @@ export function apiMessage(error: unknown): string {
     if (fieldError) return fieldError;
     if (payload?.message) return payload.message;
     if (error.response) return `请求未完成（HTTP ${error.response.status}）。`;
-    return '无法连接后端服务，请确认 Spring Boot 已启动。';
+    return isDesktop() ? error.message : '无法连接后端服务，请确认 Spring Boot 已启动。';
   }
   return error instanceof Error ? error.message : '操作失败。';
 }
@@ -96,7 +101,7 @@ function isQueueable(config: { method?: string; url?: string; offlineReplay?: bo
 async function queueRequest(config: InternalOfflineRequestConfig): Promise<void> {
   if (!queueOwnerId) throw new Error('当前登录身份不可用，无法安全保存离线操作。');
   const id = config.idempotencyKey ?? String(config.headers['X-Idempotency-Key'] ?? crypto.randomUUID());
-  await enqueueOperation({ id, ownerId: queueOwnerId, method: config.method?.toUpperCase() ?? 'POST', url: config.url ?? '/', params: clone(config.params), data: clone(config.data) });
+  await enqueueOperation({ id, ownerId: currentQueueOwner()!, method: config.method?.toUpperCase() ?? 'POST', url: config.url ?? '/', params: clone(config.params), data: clone(config.data) });
   window.dispatchEvent(new CustomEvent('plan-platform:offline-queued'));
 }
 

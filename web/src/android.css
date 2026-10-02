@@ -1,0 +1,10 @@
+/* Match the existing grid and typography; only enlarge installed-app touch targets. */
+.android-client .btn,
+.android-client .account-button,
+.android-client .install-btn { min-height: 44px; }
+.android-client input,
+.android-client select,
+.android-client textarea { font-size: 16px; min-height: 44px; }
+.android-client .desktop-panel { padding: 20px; }
+.android-client .desktop-facts > div { flex-wrap: wrap; }
+.android-client .site-header nav { overscroll-behavior-inline: contain; }

@@ -248,9 +248,13 @@ class AuthPlanIntegrationTest {
         mvc.perform(post("/api/tasks/{taskId}/manual-time", taskId).header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"seconds\":600,\"version\":0}"))
             .andExpect(status().isOk());
-        mvc.perform(get("/api/time-entries").header("Authorization", "Bearer " + token).param("from", "2026-09-01").param("to", "2026-09-30"))
+        // Time entries use the actual operation time, not the task's planned date.
+        java.time.LocalDate operationDate = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Shanghai"));
+        String ledgerFrom = operationDate.minusDays(1).toString();
+        String ledgerTo = operationDate.plusDays(1).toString();
+        mvc.perform(get("/api/time-entries").header("Authorization", "Bearer " + token).param("from", ledgerFrom).param("to", ledgerTo))
             .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].taskTitle").value("可恢复任务"));
-        mvc.perform(get("/api/time-entries").header("Authorization", "Bearer " + token).param("from", "2026-09-01").param("to", "2026-09-30").param("planId", planId).param("source", "MANUAL"))
+        mvc.perform(get("/api/time-entries").header("Authorization", "Bearer " + token).param("from", ledgerFrom).param("to", ledgerTo).param("planId", planId).param("source", "MANUAL"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].source").value("MANUAL"));
         mvc.perform(put("/api/plans/{planId}/reflections/{date}", planId, "2026-09-03").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"completedSummary\":\"完成任务\",\"unfinishedSummary\":\"\",\"blockers\":\"\",\"firstTaskTomorrow\":\"复习\",\"energy\":4,\"note\":\"\"}"))

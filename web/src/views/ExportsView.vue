@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { api, apiMessage } from '@/api/client';
 import type { Plan } from '@/types';
+import { downloadFile } from '@/download';
 
 function iso(days = 0) { const value = new Date(); value.setDate(value.getDate() + days); return value.toLocaleDateString('sv-SE'); }
 const plans = ref<Plan[]>([]); const planId = ref(''); const from = ref(iso(-29)); const to = ref(iso()); const error = ref(''); const busy = ref('');
@@ -11,8 +12,8 @@ async function download(kind: 'tasks' | 'stats' | 'reflectionsCsv' | 'reflection
   try {
     const endpoint = kind === 'tasks' ? `/plans/${planId.value}/tasks/export` : kind === 'stats' ? `/plans/${planId.value}/stats/export` : `/plans/${planId.value}/reflections/export`;
     const params = kind.startsWith('reflections') ? { from: from.value, to: to.value, format: kind === 'reflectionsMd' ? 'MARKDOWN' : 'CSV' } : { from: from.value, to: to.value };
-    const response = await api.get(endpoint, { params, responseType: 'blob' }); const url = URL.createObjectURL(response.data as Blob); const link = document.createElement('a'); link.href = url;
-    link.download = kind === 'reflectionsMd' ? `plan-review-${from.value}-${to.value}.md` : `plan-${kind}-${from.value}-${to.value}.csv`; link.click(); URL.revokeObjectURL(url);
+    const response = await api.get(endpoint, { params, responseType: 'blob' });
+    await downloadFile(response.data as Blob, kind === 'reflectionsMd' ? `plan-review-${from.value}-${to.value}.md` : `plan-${kind}-${from.value}-${to.value}.csv`);
   } catch (exception) { error.value = apiMessage(exception); } finally { busy.value = ''; }
 }
 onMounted(() => load().catch(exception => error.value = apiMessage(exception)));

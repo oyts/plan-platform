@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop",
+  "description": "本地打包页面的窗口基础权限。业务请求与更新通过受限原生命令完成；远程网页无原生权限。",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

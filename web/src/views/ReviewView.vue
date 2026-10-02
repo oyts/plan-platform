@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref, watch } from 'vue';
 import { api, apiMessage } from '@/api/client';
 import type { PageResponse, Plan, Reflection } from '@/types';
+import { downloadFile } from '@/download';
 
 const plans = ref<Plan[]>([]);
 const planId = ref('');
@@ -51,8 +52,7 @@ async function download(format: 'CSV' | 'MARKDOWN') {
   if (!planId.value) return;
   try {
     const response = await api.get(`/plans/${planId.value}/reflections/export`, { params: { from: historyFrom.value, to: historyTo.value, format }, responseType: 'blob' });
-    const url = URL.createObjectURL(response.data as Blob); const link = document.createElement('a'); link.href = url;
-    link.download = `plan-reflections-${historyFrom.value}-${historyTo.value}.${format === 'CSV' ? 'csv' : 'md'}`; link.click(); URL.revokeObjectURL(url);
+    await downloadFile(response.data as Blob, `plan-reflections-${historyFrom.value}-${historyTo.value}.${format === 'CSV' ? 'csv' : 'md'}`);
   } catch (exception) { error.value = apiMessage(exception); }
 }
 function selectHistory(item: Reflection) { reviewDate.value = item.date; }

@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from 'vue';
 import { api, apiMessage } from '@/api/client';
 import type { PageResponse, Plan, Tag, Task, TimeEntry, TrashItem } from '@/types';
+import { downloadFile } from '@/download';
 
 function shift(days: number) { const date = new Date(); date.setDate(date.getDate() + days); return date.toLocaleDateString('sv-SE'); }
 function duration(seconds: number) { const h = Math.floor(seconds / 3600); const m = Math.floor(seconds % 3600 / 60); const s = seconds % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; }
@@ -16,7 +17,7 @@ async function loadPlanOptions() {
   try { const [tagResponse, taskResponse] = await Promise.all([api.get<Tag[]>(`/plans/${planId.value}/tags`), api.get<Task[]>(`/plans/${planId.value}/tasks`)]); tags.value = tagResponse.data; tasks.value = taskResponse.data; }
   catch (exception) { error.value = apiMessage(exception); }
 }
-async function download() { try { const { page: ignoredPage, size: ignoredSize, ...params } = filterParams(); const response = await api.get('/time-entries/export', { params, responseType: 'blob' }); const url = URL.createObjectURL(response.data as Blob); const link = document.createElement('a'); link.href = url; link.download = `plan-time-ledger-${from.value}-${to.value}.csv`; link.click(); URL.revokeObjectURL(url); } catch (exception) { error.value = apiMessage(exception); } }
+async function download() { try { const { page: ignoredPage, size: ignoredSize, ...params } = filterParams(); const response = await api.get('/time-entries/export', { params, responseType: 'blob' }); await downloadFile(response.data as Blob, `plan-time-ledger-${from.value}-${to.value}.csv`); } catch (exception) { error.value = apiMessage(exception); } }
 async function restore(item: TrashItem) { busy.value = true; try { await api.post(`/trash/${item.type}/${item.id}/restore`); await Promise.all([loadTrash(), loadLedger(), loadPlans()]); } catch (exception) { error.value = apiMessage(exception); } finally { busy.value = false; } }
 async function purge(item: TrashItem) { if (!confirm(`永久删除“${item.title}”？此操作无法恢复。`)) return; busy.value = true; try { await api.delete(`/trash/${item.type}/${item.id}`); await loadTrash(); } catch (exception) { error.value = apiMessage(exception); } finally { busy.value = false; } }
 function typeLabel(type: TrashItem['type']) { return type === 'TASK' ? '任务' : type === 'MILESTONE' ? '里程碑' : type === 'TEMPLATE' ? '模板' : type === 'PLAN' ? '计划' : type === 'TAG' ? '标签' : type === 'MAINLINE' ? '主线' : '主线步骤'; }

@@ -1,7 +1,9 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router';
 import { hasToken } from '@/api/client';
+import { isNativeClient as isDesktop } from '@/desktop';
 import DashboardView from '@/views/DashboardView.vue';
-const router = createRouter({ history: createWebHistory(), routes: [
+const router = createRouter({ history: isDesktop() ? createWebHashHistory() : createWebHistory(), routes: [
+  { path: '/desktop', component: () => import('@/views/DesktopView.vue'), meta: { public: true, allowAuthenticated: true } },
   { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
   { path: '/register', component: () => import('@/views/RegisterView.vue'), meta: { public: true } },
   { path: '/reset-password', component: () => import('@/views/ResetPasswordView.vue'), meta: { public: true } },
@@ -20,5 +22,5 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/sync', component: () => import('@/views/SyncView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },
 ] });
-router.beforeEach((to) => { if (!to.meta.public && !hasToken()) return '/login'; if (to.meta.public && hasToken()) return '/'; });
+router.beforeEach((to) => { if (!to.meta.public && !hasToken()) return '/login'; if (to.meta.public && hasToken() && !to.meta.allowAuthenticated) return '/'; });
 export default router;

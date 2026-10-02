@@ -1,0 +1,29 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Plan Cabin",
+  "version": "0.1.0",
+  "identifier": "cn.zijun701.plan.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev:desktop",
+    "devUrl": "http://localhost:43128",
+    "beforeBuildCommand": "npm run build:desktop-web",
+    "frontendDist": "../dist-desktop"
+  },
+  "app": {
+    "windows": [{ "label": "main", "create": false, "title": "计划舱", "width": 1280, "height": 860, "minWidth": 800, "minHeight": 600 }],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: blob:; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; form-action 'self'",
+      "capabilities": ["desktop"]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico"],
+    "shortDescription": "计划、主线与时间管理",
+    "windows": {
+      "nsis": { "installMode": "currentUser", "languages": ["SimpChinese", "English"], "displayLanguageSelector": true },
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true }
+    }
+  }
+}

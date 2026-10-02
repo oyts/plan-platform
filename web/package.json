@@ -5,17 +5,29 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "dev:desktop": "vite --host 127.0.0.1 --mode desktop",
+    "build:desktop-web": "vue-tsc -b && vite build --mode desktop --outDir dist-desktop",
+    "build:android-web": "vue-tsc -b && vite build --mode android --outDir dist-android",
+    "android:sync": "cap sync android",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.2",
+    "@tauri-apps/api": "^2.12.1",
     "axios": "^1.11.0",
     "pinia": "^3.0.3",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
+    "@tauri-apps/cli": "^2.12.1",
     "@types/node": "^22.17.0",
     "@vitejs/plugin-vue": "^5.2.4",
     "@vue/tsconfig": "^0.7.0",

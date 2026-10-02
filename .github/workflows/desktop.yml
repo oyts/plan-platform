@@ -1,0 +1,21 @@
+name: Windows desktop
+on:
+  workflow_dispatch:
+  push:
+    paths: ['web/**', 'scripts/desktop*', '.github/workflows/desktop.yml']
+  pull_request:
+    paths: ['web/**', 'scripts/desktop*', '.github/workflows/desktop.yml']
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: rustup update stable
+      - run: npm ci
+        working-directory: web
+      - run: powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 -Action test
+      - run: powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 -Action build
+      - uses: actions/upload-artifact@v4
+        with: { name: plan-cabin-windows-x64, path: desktop-artifacts/*-setup.exe, if-no-files-found: error }
