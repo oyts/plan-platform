@@ -93,7 +93,7 @@ onUnmounted(() => {
     </header>
 
     <section class="sync-explainer">
-      <div><span>01</span><strong>离线暂存</strong><p>计划、任务、标签与主线的普通新增和编辑会保存在当前设备，不保存登录令牌。</p></div>
+      <div><span>01</span><strong>离线暂存</strong><p>周期计划、任务、标签与目标路线的普通新增和编辑会保存在当前设备，不保存登录令牌。</p></div>
       <div><span>02</span><strong>幂等重放</strong><p>每项操作都有唯一键；网络中断后的重复提交不会生成两份数据。</p></div>
       <div><span>03</span><strong>冲突停靠</strong><p>服务器已被其他设备修改时停止覆盖，由你查看最新数据并决定是否重新编辑。</p></div>
     </section>

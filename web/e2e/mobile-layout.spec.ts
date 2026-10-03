@@ -62,6 +62,6 @@ test('task paging, search and focused editor preserve values on cancel', async (
 test('more menu contains all secondary destinations and restores focus', async ({ page, request }) => {
   await setup(page, request); const more = page.getByRole('button', { name: '更多', exact: true }); await more.click();
   const dialog = page.getByRole('dialog', { name: '更多功能' });
-  for (const label of ['主线', '统计', '复盘', '记录', '导出', '同步', '设置']) await expect(dialog.getByRole('link', { name: new RegExp(`^${label}`) })).toBeVisible();
+  for (const label of ['统计', '复盘', '记录', '导出', '同步', '设置']) await expect(dialog.getByRole('link', { name: new RegExp(`^${label}`) })).toBeVisible();
   await page.keyboard.press('Escape'); await expect(dialog).not.toBeVisible(); await expect(more).toBeFocused();
 });

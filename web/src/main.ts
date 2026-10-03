@@ -9,6 +9,8 @@ import './mobile.css';
 import { setupPwa } from './pwa';
 import { initializeDesktop, isNativeClient as isDesktop, isAndroid } from './desktop';
 import { initializeClientUpdates, checkClientUpdate } from './clientUpdates';
+import { workspace, workspaceEntry } from './workspace';
+import { workspaceHome } from './workspaceModel';
 const app = createApp(App);
 const pinia = createPinia();
 app.use(pinia);
@@ -27,15 +29,15 @@ async function bootstrap(): Promise<void> {
       const dialog = document.querySelector<HTMLDialogElement>('dialog[open]');
       if (dialog) { dialog.dispatchEvent(new Event('cancel', { cancelable: true })); return; }
       const path = router.currentRoute.value.path;
-      if (['/', '/login'].includes(path)) {
+      if (['/', '/routes', '/login'].includes(path)) {
         if (window.confirm('退出计划舱？正在运行的计时不会因此停止。')) void androidApp.exitApp();
       } else if (canGoBack) router.back();
-      else void router.replace(auth.user ? '/' : '/login');
+      else void router.replace(auth.user ? workspaceHome(workspace.mode) : '/login');
     });
   }
   if (isDesktop()) {
     await auth.bootstrap();
-    if (auth.user && router.currentRoute.value.path === '/login') await router.replace('/');
+    if (auth.user && router.currentRoute.value.path === '/login') await router.replace(await workspaceEntry());
   }
 }
 void bootstrap().catch(() => {

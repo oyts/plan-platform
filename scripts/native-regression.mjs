@@ -37,7 +37,7 @@ let reverseOwned = false, forwardOwned = false, serial;
 let formalAndroidBefore;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function adb(...args) {
-  const { stdout } = await exec(adbPath, ...(serial ? [['-s', serial, ...args]] : [args]), { windowsHide: true, timeout: 45_000, maxBuffer: 2 * 1024 * 1024 });
+  const { stdout } = await exec(adbPath, ...(serial ? [['-s', serial, ...args]] : [args]), { windowsHide: true, timeout: args[0] === 'install' ? 180_000 : 45_000, maxBuffer: 2 * 1024 * 1024 });
   return stdout.trim();
 }
 async function waitFor(check, label, timeout = 45_000) {
@@ -292,10 +292,36 @@ async function run() {
       } else await expect(nav).not.toBeVisible();
     }
   });
+  await scenario('模式独立切换：路线位置保留，离线重开仍可查看，计划任务不受影响', async () => {
+    const line = await api('/mainlines', {name:'原生目标路线',description:'合成模式测试数据',color:'#002FA7'}, owner.token, 'POST', 201);
+    await api(`/mainlines/${line.id}/items`, {title:'原生路线步骤',description:'合成步骤',acceptance:['验收'],plannedMinutes:20,sortOrder:0}, owner.token, 'POST', 201);
+    for (const client of clients) {
+      await client.page.getByLabel('工作模式').selectOption('route');
+      await expect(client.page.getByRole('heading', {name:'继续路线',exact:true})).toBeVisible();
+      await client.page.getByRole('link', {name:'继续这条路线',exact:true}).click();
+      await expect(client.page.getByRole('heading', {name:'原生路线步骤',exact:true})).toBeVisible();
+      await client.page.getByLabel('工作模式').selectOption('plan');
+      await expect(client.page.getByRole('heading', {name:'执行日程',exact:true})).toBeVisible();
+      await client.page.getByLabel('工作模式').selectOption('route');
+      await expect(client.page.getByRole('heading', {name:'原生路线步骤',exact:true})).toBeVisible();
+      await capture(report.cases.at(-1), `-route-${client.kind}`);
+      client.proxy.setOnline(false);
+      await restart(client);
+      await expect(client.page.getByLabel('工作模式')).toHaveValue('route');
+      await expect(client.page.getByRole('heading', {name:'原生路线步骤',exact:true})).toBeVisible();
+      await expect(client.page.getByLabel('连接状态')).toContainText('离线工作区');
+      await capture(report.cases.at(-1), `-offline-route-${client.kind}`);
+      client.proxy.setOnline(true);
+      await client.page.getByLabel('工作模式').selectOption('plan');
+      await expect(client.page.getByRole('heading', {name:'执行日程',exact:true})).toBeVisible();
+      await refresh(client, `/plans/${currentPlan.id}`);
+      await expect(client.page.getByRole('heading', {name:'任务 A',exact:true})).toBeVisible();
+    }
+  });
   await scenario('终止并重开真实 EXE/APK：原生会话与计划保留', async () => {
     for (const client of clients) {
       await restart(client);
-      await expect(client.page.getByRole('heading', { name: '今日控制台' })).toBeVisible();
+      await expect(client.page.locator('.site-header .brand')).toBeVisible();
       await route(client, `/plans/${currentPlan.id}`);
       await expect(client.page.getByRole('heading', { name: '任务 A', exact: true })).toBeVisible();
       await expect(client.page.getByText('每周 星期日 休息', { exact: true })).toBeVisible();

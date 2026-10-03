@@ -22,6 +22,8 @@ async function login(page: Page, user: Account) {
   await page.getByLabel('邮箱', { exact: true }).fill(user.email);
   await page.getByLabel('密码', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(page.locator('.site-header .brand')).toBeVisible();
+  await page.goto(`${SITE}/`);
   await expect(page.getByRole('heading', { name: '今日控制台' })).toBeVisible();
 }
 async function secondPage(browser: Browser, run: (page: Page) => Promise<void>) {
@@ -55,6 +57,7 @@ async function enterNewPlan(page: Page, name: string) {
   await page.getByRole('button', { name: '保存计划', exact: true }).click();
 }
 async function navigate(page: Page, name: string) {
+  if (name === '主线') { await page.getByLabel('工作模式').selectOption('route'); name = '路线'; }
   const link = page.getByRole('link', { name, exact: true });
   if (!(await link.count()) && await page.getByRole('button', { name: '更多', exact: true }).isVisible()) await page.getByRole('button', { name: '更多', exact: true }).click();
   await link.click();

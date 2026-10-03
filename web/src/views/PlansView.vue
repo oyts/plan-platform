@@ -14,7 +14,7 @@ onMounted(()=>load().catch(e=>error.value=apiMessage(e)));
 </script>
 <template>
   <div class="page">
-    <section class="page-head"><div><p class="eyebrow">PLANS / CRUD</p><h1>计划与标签</h1></div><p>一个计划拥有独立日期范围、休息日、标签和任务。</p></section>
+    <section class="page-head"><div><h1>周期计划</h1></div><p>在日期范围内安排日程、休息日和每日任务，与目标路线独立。</p></section>
     <p v-if="error" class="error-text">{{error}}</p>
     <div class="split-layout">
       <section class="section">

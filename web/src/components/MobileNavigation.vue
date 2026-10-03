@@ -4,18 +4,21 @@ import { useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { requiredClientUpdate, updateRouteAllowed } from '@/clientUpdates';
 import { isNativeClient } from '@/desktop';
+import { workspace } from '@/workspace';
+import { planNavigation, routeNavigation } from '@/workspaceModel';
 import AppIcon from './AppIcon.vue';
 import AppSheet from './AppSheet.vue';
 import PwaControl from './PwaControl.vue';
 const emit = defineEmits<{ logout: [] }>();
 const auth = useAuthStore(); const route = useRoute(); const open = ref(false);
-const primary = [{ path: '/', label: '今日', icon: 'today' }, { path: '/schedule', label: '日程', icon: 'schedule' }, { path: '/plans', label: '计划', icon: 'plans' }] as const;
+const primary = computed(() => workspace.mode === 'plan' ? planNavigation : routeNavigation);
 const secondary = computed(() => [
-  { path: '/mainlines', label: '主线', description: '按步骤推进目标' },
+  ...(workspace.mode === 'plan' ? [
   { path: '/stats', label: '统计', description: '计划与实际用时' },
   { path: '/reviews', label: '复盘', description: '回顾每天的执行' },
   { path: '/records', label: '记录', description: '计时流水与回收站' },
   { path: '/exports', label: '导出', description: '保存数据到文件' },
+  ] : [{ path: '/route-records', label: '记录', description: '已删除的路线与步骤' }]),
   { path: '/sync', label: '同步', description: '待同步操作与冲突' },
   { path: '/settings', label: '设置', description: '账号与安全' },
   ...(isNativeClient() ? [{ path: '/desktop', label: '客户端', description: '服务器连接与更新' }] : []),

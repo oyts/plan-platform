@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ name: 'today' | 'schedule' | 'plans' | 'more' | 'close' }>();
+defineProps<{ name: 'today' | 'schedule' | 'plans' | 'more' | 'close' | 'route' | 'progress' }>();
 </script>
 <template>
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
@@ -7,6 +7,8 @@ defineProps<{ name: 'today' | 'schedule' | 'plans' | 'more' | 'close' }>();
     <template v-else-if="name === 'schedule'"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M7 3v4m10-4v4M3 10h18m-13 5h3m3 0h2"/></template>
     <template v-else-if="name === 'plans'"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="m7 9 1 1 2-2m3 1h4m-10 6 1 1 2-2m3 1h4"/></template>
     <template v-else-if="name === 'more'"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></template>
+    <template v-else-if="name === 'route'"><circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 5h8a4 4 0 0 1 0 8H9a4 4 0 0 0 0 6h8"/></template>
+    <template v-else-if="name === 'progress'"><path d="M4 3v18h17M8 17v-5m5 5V8m5 9V4"/></template>
     <path v-else d="m6 6 12 12M6 18 18 6"/>
   </svg>
 </template>

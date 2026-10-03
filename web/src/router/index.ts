@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router
 import { hasSession } from '@/api/client';
 import { isNativeClient as isDesktop } from '@/desktop';
 import { requiredClientUpdate, updateRouteAllowed } from '@/clientUpdates';
+import { observeWorkspacePath, workspaceEntry } from '@/workspace';
 import DashboardView from '@/views/DashboardView.vue';
 const router = createRouter({ history: isDesktop() ? createWebHashHistory() : createWebHistory(), routes: [
   { path: '/desktop', component: () => import('@/views/DesktopView.vue'), meta: { public: true, allowAuthenticated: true } },
@@ -20,8 +21,12 @@ const router = createRouter({ history: isDesktop() ? createWebHashHistory() : cr
   { path: '/members', component: () => import('@/views/MembersView.vue') },
   { path: '/verify-email', component: () => import('@/views/VerifyEmailView.vue'), meta: { public: true } },
   { path: '/mainlines', component: () => import('@/views/MainlinesView.vue') },
+  { path: '/routes', component: () => import('@/views/RouteHomeView.vue') },
+  { path: '/route-progress', component: () => import('@/views/RouteProgressView.vue') },
+  { path: '/route-records', component: () => import('@/views/RecordsView.vue'), props: { routeOnly: true } },
   { path: '/sync', component: () => import('@/views/SyncView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },
 ] });
-router.beforeEach((to) => { if (requiredClientUpdate() && !updateRouteAllowed(to.path)) return '/desktop'; if (!to.meta.public && !hasSession()) return '/login'; if (to.meta.public && hasSession() && !to.meta.allowAuthenticated) return requiredClientUpdate() ? '/desktop' : '/'; });
+router.beforeEach((to) => { if (requiredClientUpdate() && !updateRouteAllowed(to.path)) return '/desktop'; if (!to.meta.public && !hasSession()) return '/login'; if (to.meta.public && hasSession() && !to.meta.allowAuthenticated) return requiredClientUpdate() ? '/desktop' : workspaceEntry(); });
+router.beforeResolve(async (to) => { if (hasSession() && !to.meta.public) await observeWorkspacePath(to.fullPath); });
 export default router;
