@@ -91,12 +91,27 @@ export function registerArtifacts(stage = 'basic') {
   return entries;
 }
 
+export function tamperWindowsSignature(encoded) {
+  const lines = Buffer.from(encoded, 'base64').toString('utf8').split(/\r?\n/);
+  const packet = Buffer.from(lines[1] || '', 'base64');
+  const globalSignature = Buffer.from(lines[3] || '', 'base64');
+  if (packet.length !== 74 || !['ED', 'Ed'].includes(packet.subarray(0, 2).toString('ascii')) ||
+      !lines[2]?.startsWith('trusted comment: ') || globalSignature.length !== 64) {
+    throw new Error('Cannot create a structurally valid tampered Minisign signature.');
+  }
+  // Keep the algorithm, key ID, comments and encoded lengths intact. Corrupt one
+  // signature byte so this exercises verification, not just format decoding.
+  packet[10] ^= 1;
+  lines[1] = packet.toString('base64');
+  return Buffer.from(lines.join('\n')).toString('base64');
+}
+
 export function manifestFor(platform, entry, scenario, serverOrigin = origin) {
   if (!scenarios.includes(scenario)) throw new Error('Unknown lab scenario.');
   const artifact = entry[platform];
   const url = `${serverOrigin}/artifacts/${platform}/${encodeURIComponent(basename(artifact.file))}`;
   const notes = '本地更新链路验收包：账号、计划与离线队列应保留。非正式发布。';
-  if (platform === 'windows') return { version: entry.version, minimumSupportedVersion: scenario === 'required' ? entry.version : '0.0.0', notes, pub_date: '2026-10-03T00:00:00Z', platforms: { 'windows-x86_64': { url, signature: ['bad-signature', 'invalid-artifact'].includes(scenario) ? Buffer.from('not a valid signature').toString('base64') : artifact.signature } } };
+  if (platform === 'windows') return { version: entry.version, minimumSupportedVersion: scenario === 'required' ? entry.version : '0.0.0', notes, pub_date: '2026-10-03T00:00:00Z', platforms: { 'windows-x86_64': { url, signature: ['bad-signature', 'invalid-artifact'].includes(scenario) ? tamperWindowsSignature(artifact.signature) : artifact.signature } } };
   return { version: entry.version, versionCode: entry.versionCode, minimumSupportedVersionCode: scenario === 'required' ? entry.versionCode : 1, notes, url, size: artifact.size, sha256: ['bad-hash', 'invalid-artifact'].includes(scenario) ? '0'.repeat(64) : artifact.sha256 };
 }
 
