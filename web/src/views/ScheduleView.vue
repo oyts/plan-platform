@@ -3,11 +3,14 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, apiMessage } from '@/api/client';
 import LocalBadge from '@/components/LocalBadge.vue';
+import AppSheet from '@/components/AppSheet.vue';
+import { useMobileLayout } from '@/useMobileLayout';
 import { requiresConnection } from '@/connectionState';
 import { isPlanRestDay, restDaySummary } from '@/restDays';
 import type { Milestone, Plan, Progress, Task, PageResponse } from '@/types';
 
 const route = useRoute();
+const mobile = useMobileLayout();
 const router = useRouter();
 const plans = ref<Plan[]>([]);
 const planId = ref(typeof route.query.plan === 'string' ? route.query.plan : '');
@@ -150,8 +153,8 @@ onMounted(async () => { try { await loadPlans(); await loadSchedule(); } catch (
             <p v-else class="rail-empty">{{ isRestDay(date) ? '休息日可在右侧安排补做' : '没有安排任务' }}</p>
           </article>
         </section>
-        <aside class="schedule-inspector" aria-live="polite">
-          <template v-if="selected">
+        <component :is="mobile ? AppSheet : 'aside'" :class="{ 'schedule-inspector': !mobile }" :open="Boolean(selected)" :title="selected?.title || '任务详情'" title-id="schedule-task-title" :busy="busy" @close="selected = null">
+          <div v-if="selected" :class="{ 'sheet-form': mobile }">
             <p class="eyebrow">TASK / INSPECTOR</p><h2>{{ selected.title }}</h2><LocalBadge :state="selected.localState"/>
             <p class="inspector-meta">{{ selectedDay }} · {{ selected.tagName ?? selected.category }} · 计划 {{ selected.plannedMinutes }} 分钟</p>
             <a v-if="selected.resourceUrl" :href="selected.resourceUrl" target="_blank" rel="noreferrer">打开任务资料</a>
@@ -167,9 +170,9 @@ onMounted(async () => { try { await loadPlans(); await loadSchedule(); } catch (
             <p class="helper-text">补做可以安排在休息日；原计划会标记为已延期，不会重复计入当天任务。</p>
             <label>补录实际分钟<input v-model.number="draft.manualMinutes" type="number" min="1" max="1440" /></label>
             <button class="btn" :disabled="busy || !draft.manualMinutes || requiresConnection()" @click="addManualTime">记入实际用时</button>
-          </template>
-          <div v-else class="inspector-empty"><p class="eyebrow">TASK / INSPECTOR</p><h2>选择一个任务</h2><p>在左侧日程中点选任务，右侧会固定显示其状态、补做和计时操作。</p></div>
-        </aside>
+          </div>
+          <div v-else-if="!mobile" class="inspector-empty"><p class="eyebrow">TASK / INSPECTOR</p><h2>选择一个任务</h2><p>在左侧日程中点选任务，右侧会固定显示其状态、补做和计时操作。</p></div>
+        </component>
       </div>
     </template>
   </div>

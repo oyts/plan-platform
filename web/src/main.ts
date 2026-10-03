@@ -5,6 +5,7 @@ import router from './router';
 import { useAuthStore } from '@/stores/auth';
 import './style.css';
 import './android.css';
+import './mobile.css';
 import { setupPwa } from './pwa';
 import { initializeDesktop, isNativeClient as isDesktop, isAndroid } from './desktop';
 import { initializeClientUpdates, checkClientUpdate } from './clientUpdates';
@@ -23,6 +24,8 @@ async function bootstrap(): Promise<void> {
   if (isAndroid()) {
     const { App: androidApp } = await import('@capacitor/app');
     await androidApp.addListener('backButton', ({ canGoBack }) => {
+      const dialog = document.querySelector<HTMLDialogElement>('dialog[open]');
+      if (dialog) { dialog.dispatchEvent(new Event('cancel', { cancelable: true })); return; }
       const path = router.currentRoute.value.path;
       if (['/', '/login'].includes(path)) {
         if (window.confirm('退出计划舱？正在运行的计时不会因此停止。')) void androidApp.exitApp();

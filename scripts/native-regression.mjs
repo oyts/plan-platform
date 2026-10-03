@@ -73,7 +73,7 @@ async function refresh(client, path) {
   await client.page.reload();
   // Native session bootstrap can redirect a reloaded protected route to the dashboard.
   // Wait for identity restoration before navigating, just as a user would.
-  await expect(client.page.getByRole('button', { name: / · 退出$/ })).toBeVisible();
+  await expect(client.page.locator('.site-header .brand')).toBeVisible();
   await route(client, path);
 }
 async function attach(client) {
@@ -144,10 +144,10 @@ async function editTask(client, before, after) {
   await client.page.getByRole('button', { name: '保存修改', exact: true }).click();
   await expect(client.page.getByRole('heading', { name: after, exact: true })).toBeVisible();
 }
-async function capture(row) {
+async function capture(row, suffix = '') {
   for (const client of clients) {
     if (!client.page || client.page.isClosed()) continue;
-    const file = `${String(report.cases.length).padStart(2, '0')}-${client.kind}-${row.status.toLowerCase()}.png`;
+    const file = `${String(report.cases.length).padStart(2, '0')}-${client.kind}-${row.status.toLowerCase()}${suffix}.png`;
     try { await client.page.screenshot({ path: join(runDir, file), timeout: 5000 }); row.screenshots.push(`${runId}/${file}`); }
     catch {
       if (client.kind !== 'android') continue;
@@ -242,6 +242,7 @@ async function run() {
     currentPlan = (await api('/plans', undefined, owner.token)).find(plan => plan.name === '原生回归计划');
     expect(currentPlan.restDays).toEqual([]);
     for (const title of ['任务 A', '任务 B']) {
+      await first.page.getByRole('button', { name: '添加任务', exact: true }).click();
       await first.page.getByLabel('任务标题', { exact: true }).fill(title);
       await first.page.getByRole('button', { name: '保存任务', exact: true }).click();
       await expect(first.page.getByRole('heading', { name: title, exact: true })).toBeVisible();
@@ -269,6 +270,26 @@ async function run() {
       await expect(client.page.locator('.rail-day--rest')).toContainText('周日');
       await expect(client.page.locator('.rail-day').filter({ hasText: '周六' })).toContainText('计划日');
       await expect(client.page.getByRole('button', { name: /任务 A/ })).toBeVisible();
+    }
+  });
+  await scenario('布局适配：手机底部导航与日程详情面板，PC 保留桌面导航', async () => {
+    for (const client of clients) {
+      const nav = client.page.getByRole('navigation', { name: '手机主导航' });
+      if (client.kind === 'android') {
+        await expect(nav).toBeVisible();
+        expect(await client.page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+        await client.page.getByRole('button', { name: /任务 A/ }).click();
+        const dialog = client.page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByLabel('执行状态')).toBeVisible();
+        await capture(report.cases.at(-1), '-panel');
+        await dialog.getByRole('button', { name: '关闭面板', exact: true }).click();
+        await expect(dialog).not.toBeVisible();
+        await nav.getByRole('button', { name: '更多', exact: true }).click();
+        await client.page.getByRole('dialog').getByRole('link', { name: '同步', exact: true }).click();
+        await expect(client.page.getByRole('heading', { name: '同步中心', exact: true })).toBeVisible();
+        await expect(client.page.getByRole('dialog')).not.toBeVisible();
+      } else await expect(nav).not.toBeVisible();
     }
   });
   await scenario('终止并重开真实 EXE/APK：原生会话与计划保留', async () => {
@@ -332,6 +353,7 @@ async function run() {
     expect(server.find(task => task.id === b.id).title).toBe(b.title);
   });
   await scenario('退出与账号隔离：不自动恢复原账号、不泄露原计划和待同步队列', async () => {
+    if (await editor.page.getByRole('button', { name: '更多', exact: true }).isVisible()) await editor.page.getByRole('button', { name: '更多', exact: true }).click();
     await editor.page.getByRole('button', { name: `${owner.name} · 退出`, exact: true }).click();
     await expect(editor.page.getByRole('heading', { name: '登录计划平台' })).toBeVisible();
     await restart(editor);

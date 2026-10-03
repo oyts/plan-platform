@@ -54,10 +54,19 @@ async function enterNewPlan(page: Page, name: string) {
   await page.getByLabel('计划名称', { exact: true }).fill(name);
   await page.getByRole('button', { name: '保存计划', exact: true }).click();
 }
+async function navigate(page: Page, name: string) {
+  const link = page.getByRole('link', { name, exact: true });
+  if (!(await link.count()) && await page.getByRole('button', { name: '更多', exact: true }).isVisible()) await page.getByRole('button', { name: '更多', exact: true }).click();
+  await link.click();
+}
+async function logout(page: Page) {
+  if (await page.getByRole('button', { name: '更多', exact: true }).isVisible()) await page.getByRole('button', { name: '更多', exact: true }).click();
+  await page.getByRole('button', { name: '验收测试账号 · 退出' }).click();
+}
 
 test('two independent sessions see shared data but another account cannot read or modify it', async ({ page, browser, request }) => {
   const owner = await account(request); const friend = await account(request);
-  await login(page, owner); await page.getByRole('link', { name: '计划', exact: true }).click();
+  await login(page, owner); await navigate(page, '计划');
   await enterNewPlan(page, '设备间共享计划');
   await expect(page.getByRole('heading', { name: '设备间共享计划', exact: true })).toBeVisible();
   const planId = page.url().split('/').at(-1)!;
@@ -68,6 +77,7 @@ test('two independent sessions see shared data but another account cannot read o
     await login(mobile, owner); await mobile.goto(`${SITE}/plans/${planId}`);
     await expect(mobile.getByRole('heading', { name: '设备间共享计划', exact: true })).toBeVisible();
     await expect(mobile.getByText('跨端标签', { exact: true }).first()).toBeVisible();
+    await mobile.getByRole('button', { name: '添加任务', exact: true }).click();
     await mobile.getByLabel('任务标题', { exact: true }).fill('手机新增的任务');
     await mobile.getByRole('button', { name: '保存任务', exact: true }).click();
     await expect(mobile.getByRole('heading', { name: '手机新增的任务', exact: true })).toBeVisible();
@@ -80,18 +90,18 @@ test('two independent sessions see shared data but another account cannot read o
 
 test('offline creation survives reload and does not leak queue data to a different account', async ({ page, request }) => {
   const owner = await account(request); const friend = await account(request);
-  await login(page, owner); await page.getByRole('link', { name: '计划', exact: true }).click();
+  await login(page, owner); await navigate(page, '计划');
   await page.context().setOffline(true);
   await enterNewPlan(page, '离线计划');
   await expect(page.getByRole('status')).toContainText('已加入离线队列');
   const rows = await queueRows(page); expect(rows).toHaveLength(1);
   expect(JSON.stringify(rows)).not.toContain('Bearer'); expect(JSON.stringify(rows)).not.toContain(PASSWORD);
   await page.context().setOffline(false);
-  await page.getByRole('button', { name: '验收测试账号 · 退出' }).click();
+  await logout(page);
   await expect(page.getByRole('heading', { name: '登录计划平台' })).toBeVisible();
   await login(page, friend); await page.goto(`${SITE}/sync`);
   await expect(page.getByText('队列为空', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '验收测试账号 · 退出' }).click();
+  await logout(page);
   await expect(page.getByRole('heading', { name: '登录计划平台' })).toBeVisible();
   await login(page, owner); await page.goto(`${SITE}/sync`);
   await expect(page.locator('.sync-row')).toHaveCount(1);
@@ -104,7 +114,7 @@ test('offline creation survives reload and does not leak queue data to a differe
 
 test('a committed write with a lost response replays the same key and creates only one plan', async ({ page, request }) => {
   const owner = await account(request); await login(page, owner);
-  await page.getByRole('link', { name: '计划', exact: true }).click();
+  await navigate(page, '计划');
   await page.route('**/api/plans', async route => {
     if (route.request().method() !== 'POST') { await route.continue(); return; }
     const response = await route.fetch(); expect(response.status()).toBe(201);
@@ -114,7 +124,7 @@ test('a committed write with a lost response replays the same key and creates on
   await expect(page.getByRole('status')).toContainText('已加入离线队列');
   expect(await page.evaluate(() => navigator.onLine)).toBe(true);
   await page.unroute('**/api/plans');
-  await page.getByRole('link', { name: '同步', exact: true }).click();
+  await navigate(page, '同步');
   await page.getByRole('button', { name: '同步等待项', exact: true }).click();
   await expect(page.getByText('队列为空', { exact: true })).toBeVisible();
   expect((await call(request, owner, 'GET', '/plans')).filter((row: any) => row.name === '响应丢失验收')).toHaveLength(1);
@@ -128,10 +138,10 @@ test('stale edits stop the queue and do not overwrite another device or submit l
   await page.context().setOffline(true); await page.getByRole('button', { name: '保存修改', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('已加入离线队列');
   await call(request, owner, 'PUT', `/tasks/${currentTask.id}`, { ...currentTask, title: '另一端保留标题', version: currentTask.version });
-  await page.context().setOffline(false); await page.getByRole('link', { name: '计划', exact: true }).click();
+  await page.context().setOffline(false); await navigate(page, '计划');
   await page.context().setOffline(true); await enterNewPlan(page, '冲突后的等待计划');
   await expect.poll(async () => (await queueRows(page)).length).toBe(2);
-  await page.context().setOffline(false); await page.getByRole('link', { name: '同步', exact: true }).click();
+  await page.context().setOffline(false); await navigate(page, '同步');
   await page.getByRole('button', { name: '同步等待项', exact: true }).click();
   await expect(page.getByText('同步已暂停：请先处理队首冲突，后续操作仍保留在本机。')).toBeVisible();
   await expect(page.locator('.sync-row--conflict')).toHaveCount(1);
@@ -153,7 +163,7 @@ test('refresh restores the browser session and logging out one device leaves the
   expect(local).toEqual([]);
   await secondPage(browser, async mobile => {
     await login(mobile, owner);
-    await page.getByRole('button', { name: '验收测试账号 · 退出' }).click();
+    await logout(page);
     await expect(page.getByRole('heading', { name: '登录计划平台' })).toBeVisible(); await page.reload();
     await expect(page.getByRole('heading', { name: '登录计划平台' })).toBeVisible();
     await mobile.reload(); await expect(mobile.getByRole('heading', { name: '今日控制台' })).toBeVisible();
@@ -192,12 +202,12 @@ test('mainline step two remains locked until another session completes step one'
   const line = await call(request, owner, 'POST', '/mainlines', { name: '顺序主线验收', description: '', color: '#002FA7' }, 201);
   const first = await call(request, owner, 'POST', `/mainlines/${line.id}/items`, { title: '第一步', description: '', acceptance: [], plannedMinutes: 10, sortOrder: 0 }, 201);
   const next = await call(request, owner, 'POST', `/mainlines/${line.id}/items`, { title: '第二步', description: '', acceptance: [], plannedMinutes: 10, sortOrder: 1 }, 201);
-  await login(page, owner); await page.getByRole('link', { name: '主线', exact: true }).click();
+  await login(page, owner); await navigate(page, '主线');
   const nextRow = page.locator('.mainline-step').filter({ has: page.getByRole('heading', { name: '第二步', exact: true }) });
   await expect(nextRow.getByRole('button', { name: '开始', exact: true })).toBeDisabled();
   await call(request, owner, 'POST', `/mainlines/items/${next.id}/start?version=${next.version}`, undefined, 409);
   await secondPage(browser, async mobile => {
-    await login(mobile, owner); await mobile.getByRole('link', { name: '主线', exact: true }).click();
+    await login(mobile, owner); await navigate(mobile, '主线');
     await mobile.locator('.mainline-step').filter({ has: mobile.getByRole('heading', { name: '第一步', exact: true }) }).getByRole('button', { name: '完成', exact: true }).click();
     await expect(mobile.locator('.mainline-step').first()).toContainText('COMPLETED');
   });
@@ -253,17 +263,17 @@ test('offline workspace reopens with cached tasks, queues visible edits and clea
     expect((await call(request, owner, 'GET', `/plans/${currentPlan.id}/tasks`))[0].title).toBe(currentTask.title);
     // Logout while disconnected: no automatic resurrection of the local profile.
     page.once('dialog', dialog => dialog.accept());
-    await page.getByRole('button', { name: '验收测试账号 · 退出' }).click();
+    await logout(page);
     await expect(page.getByRole('heading', { name: '登录计划平台' })).toBeVisible(); await page.reload();
     await expect(page.getByRole('heading', { name: '登录计划平台' })).toBeVisible();
     const count = await page.evaluate(() => new Promise<number>(resolve => {
       const req = indexedDB.open('plan-platform-cache'); req.onsuccess = () => { const db = req.result; const query = db.transaction('responses').objectStore('responses').count(); query.onsuccess = () => { db.close(); resolve(query.result); }; };
     }));
     expect(count).toBe(0);
-    await context.setOffline(false); await login(page, friend); await page.getByRole('link', { name: '计划', exact: true }).click();
+    await context.setOffline(false); await login(page, friend); await navigate(page, '计划');
     await expect(page.getByRole('heading', { name: '离线可见的新标题', exact: true })).toHaveCount(0);
     await page.goto(`${SITE}/sync`); await expect(page.getByText('队列为空', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: '验收测试账号 · 退出' }).click();
+    await logout(page);
     await expect(page.getByRole('heading', { name: '登录计划平台' })).toBeVisible(); await login(page, owner);
     await page.goto(`${SITE}/sync`); await expect(page.locator('.sync-row')).toHaveCount(1);
     await page.getByRole('button', { name: '同步等待项', exact: true }).click();
@@ -276,7 +286,7 @@ test('plan rest days are chosen at creation, editable and visible in the cached 
   const owner = await account(request); await login(page, owner);
   const today = (await call(request, owner, 'GET', '/dashboard/today')).date;
   const end = new Date(`${today}T00:00:00`); end.setDate(end.getDate() + 6);
-  await page.getByRole('link', { name: '计划', exact: true }).click();
+  await navigate(page, '计划');
   await expect(page.getByRole('checkbox', { name: '星期六', exact: true })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: '星期日', exact: true })).not.toBeChecked();
   await page.getByLabel('开始日期', { exact: true }).fill(today);
@@ -309,12 +319,12 @@ test('plan rest days are chosen at creation, editable and visible in the cached 
   await editor.getByRole('button', { name: '保存计划设置', exact: true }).click();
   await expect(page.locator('.page-head')).toContainText('每周 星期日 休息');
   await expect(page.locator('.page-head')).toContainText('本地修改 · 待同步');
-  await page.getByRole('link', { name: '日程', exact: true }).click();
+  await navigate(page, '日程');
   await expect(page.locator('.rail-task')).toContainText('不因休息日删除的任务');
   await expect(page.locator('.rail-day--rest header')).toContainText('周日');
   expect((await call(request, owner, 'GET', '/plans')).find((row: any) => row.id === planId).restDays).toEqual([6]);
   await page.context().setOffline(false);
-  await page.getByRole('link', { name: '同步', exact: true }).click();
+  await navigate(page, '同步');
   await page.getByRole('button', { name: '同步等待项', exact: true }).click();
   await expect(page.getByText('队列为空', { exact: true })).toBeVisible();
   expect((await call(request, owner, 'GET', '/plans')).find((row: any) => row.id === planId).restDays).toEqual([7]);

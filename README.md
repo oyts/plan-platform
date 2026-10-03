@@ -85,6 +85,8 @@ cd ../web && npm run build
 
 真实 PC 与 Android 手机业务回归：先双击 `prepare-native-regression.bat` 构建独立测试客户端，再连接并授权手机，运行 `verify-native-clients.bat`。结果在 `acceptance-results/native/latest.html`，不会覆盖现有客户端。范围、隔离规则和命令行用法见 [原生客户端自动化回归](docs/native-regression.md)。
 
+手机布局使用底部导航、独立任务编辑面板和日程详情面板，任务列表支持搜索、筛选及每页 10 项展示。设计边界、横竖屏检查和本轮验收记录见 [手机布局优化](docs/mobile-layout.md)。
+
 ## Docker 部署
 
 复制配置并填写强密码：

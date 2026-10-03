@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth';
 import PwaControl from '@/components/PwaControl.vue';
 import ConnectionBar from '@/components/ConnectionBar.vue';
 import ClientUpdateNotice from '@/components/ClientUpdateNotice.vue';
+import MobileNavigation from '@/components/MobileNavigation.vue';
 import { checkClientUpdate, requiredClientUpdate, updateRouteAllowed } from '@/clientUpdates';
 const auth = useAuthStore(); const router = useRouter();
 const queueNotice = ref('');
@@ -31,7 +32,7 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
 <template>
   <div class="app-shell">
     <header v-if="auth.user" class="site-header">
-      <router-link class="brand" to="/"><strong>PLAN / PLATFORM</strong><span>计划与时间管理</span></router-link>
+      <router-link class="brand" to="/"><strong>计划舱</strong><span>计划与时间管理</span></router-link>
       <nav aria-label="主导航"><router-link to="/">今日</router-link><router-link to="/schedule">日程</router-link><router-link to="/plans">计划</router-link><router-link to="/mainlines">主线</router-link><router-link to="/stats">统计</router-link><router-link to="/reviews">复盘</router-link><router-link to="/records">记录</router-link><router-link to="/exports">导出</router-link><router-link to="/sync">同步</router-link><router-link v-if="auth.user.role==='ADMIN'" to="/members">成员</router-link><router-link to="/settings">设置</router-link></nav>
       <div class="account-tools"><PwaControl/><button class="account-button" type="button" @click="logout">{{ auth.user.displayName }} · 退出</button></div>
     </header>
@@ -39,5 +40,6 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
     <ConnectionBar v-if="auth.user" :key="auth.user.id" :busy="reconnecting" @reconnect="reconnect" />
     <ClientUpdateNotice />
     <main :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
+    <MobileNavigation v-if="auth.user" @logout="logout"/>
   </div>
 </template>
