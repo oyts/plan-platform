@@ -14,7 +14,12 @@ const tlsRoot = resolve(privateRoot, 'tls');
 const statePath = resolve(privateRoot, 'scenario.json');
 const catalogPath = resolve(privateRoot, 'catalog.json');
 export const origin = 'https://127.0.0.1:43133';
-export const scenarios = ['idle', 'optional', 'required', 'bad-hash', 'bad-signature', 'interrupted'];
+export const scenarios = ['idle', 'optional', 'required', 'bad-hash', 'bad-signature', 'invalid-artifact', 'interrupted'];
+export function buildPlan(stage = 'basic') {
+  if (stage === 'basic') return { bootstrap: { directory: 'bootstrap', version: '0.1.1', versionCode: 5 }, target: { directory: 'target', version: '0.1.2', versionCode: 6 } };
+  if (stage === 'safety') return { bootstrap: { directory: 'target', version: '0.1.2', versionCode: 6 }, target: { directory: 'safety-target', version: '0.1.3', versionCode: 7 } };
+  throw new Error('Unknown lab stage.');
+}
 const readJson = path => JSON.parse(readFileSync(path, 'utf8'));
 const saveJson = (path, value) => { const temp = path + '.tmp'; writeFileSync(temp, JSON.stringify(value, null, 2) + '\n'); renameSync(temp, path); };
 const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex');
@@ -69,10 +74,10 @@ function inspectApk(apk) {
   return { version: match[3], versionCode: Number(match[2]), signer };
 }
 
-export function registerArtifacts() {
+export function registerArtifacts(stage = 'basic') {
   const entries = {};
-  for (const [role, version, versionCode] of [['bootstrap', '0.1.1', 5], ['target', '0.1.2', 6]]) {
-    const dir = resolve(outputRoot, role);
+  for (const [role, { directory, version, versionCode }] of Object.entries(buildPlan(stage))) {
+    const dir = resolve(outputRoot, directory);
     const installer = resolve(dir, `Plan Cabin_${version}_x64-setup.exe`), apk = resolve(dir, `PlanCabin-${version}-debug.apk`);
     const signature = readFileSync(installer + '.sig', 'utf8').trim();
     if (!/^[A-Za-z0-9+/=]+$/.test(signature)) throw new Error('Invalid Windows update signature.');
@@ -86,31 +91,32 @@ export function registerArtifacts() {
   return entries;
 }
 
-export function manifestFor(platform, entry, scenario) {
+export function manifestFor(platform, entry, scenario, serverOrigin = origin) {
   if (!scenarios.includes(scenario)) throw new Error('Unknown lab scenario.');
   const artifact = entry[platform];
-  const url = `${origin}/artifacts/${platform}/${encodeURIComponent(basename(artifact.file))}`;
+  const url = `${serverOrigin}/artifacts/${platform}/${encodeURIComponent(basename(artifact.file))}`;
   const notes = '本地更新链路验收包：账号、计划与离线队列应保留。非正式发布。';
-  if (platform === 'windows') return { version: entry.version, minimumSupportedVersion: scenario === 'required' ? entry.version : '0.0.0', notes, pub_date: '2026-10-03T00:00:00Z', platforms: { 'windows-x86_64': { url, signature: scenario === 'bad-signature' ? Buffer.from('not a valid signature').toString('base64') : artifact.signature } } };
-  return { version: entry.version, versionCode: entry.versionCode, minimumSupportedVersionCode: scenario === 'required' ? entry.versionCode : 1, notes, url, size: artifact.size, sha256: scenario === 'bad-hash' ? '0'.repeat(64) : artifact.sha256 };
+  if (platform === 'windows') return { version: entry.version, minimumSupportedVersion: scenario === 'required' ? entry.version : '0.0.0', notes, pub_date: '2026-10-03T00:00:00Z', platforms: { 'windows-x86_64': { url, signature: ['bad-signature', 'invalid-artifact'].includes(scenario) ? Buffer.from('not a valid signature').toString('base64') : artifact.signature } } };
+  return { version: entry.version, versionCode: entry.versionCode, minimumSupportedVersionCode: scenario === 'required' ? entry.versionCode : 1, notes, url, size: artifact.size, sha256: ['bad-hash', 'invalid-artifact'].includes(scenario) ? '0'.repeat(64) : artifact.sha256 };
 }
 
-export function startServer() {
-  const catalog = readJson(catalogPath);
+export function startServer({ port = 43133, catalog = readJson(catalogPath), scenarioProvider = () => readJson(statePath).scenario } = {}) {
+  if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid local lab port.');
   const server = createServer({ pfx: readFileSync(resolve(tlsRoot, 'server.p12')), passphrase: readFileSync(resolve(tlsRoot, 'password.txt'), 'utf8'), minVersion: 'TLSv1.2' }, (req, res) => {
     res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff');
     if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405); res.end(); return; }
     // Exact allowlist, never resolve untrusted URL paths into filesystem paths.
     const path = req.url?.split('?')[0];
     let scenario;
-    try { scenario = readJson(statePath).scenario; if (!scenarios.includes(scenario)) throw new Error('Invalid scenario.'); }
+    try { scenario = scenarioProvider(); if (!scenarios.includes(scenario)) throw new Error('Invalid scenario.'); }
     catch { res.writeHead(503); res.end(); return; }
-    if (path === '/health') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ service: 'plan-client-update-lab', scenario })); return; }
+    if (path === '/health') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ service: 'plan-client-update-lab', scenario, baselineVersion: catalog.bootstrap.version, targetVersion: catalog.target.version })); return; }
     for (const platform of ['windows', 'android']) {
       if (path === `/${platform}/latest.json`) {
         if (scenario === 'idle') { res.writeHead(204); res.end(); return; }
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(req.method === 'HEAD' ? undefined : JSON.stringify(manifestFor(platform, catalog.target, scenario))); return;
+        const serverOrigin = `https://127.0.0.1:${server.address().port}`;
+        res.end(req.method === 'HEAD' ? undefined : JSON.stringify(manifestFor(platform, catalog.target, scenario, serverOrigin))); return;
       }
       const artifact = catalog.target[platform];
       if (path === `/artifacts/${platform}/${encodeURIComponent(basename(artifact.file))}`) {
@@ -124,7 +130,7 @@ export function startServer() {
     res.writeHead(404); res.end();
   });
   server.headersTimeout = 10000; server.requestTimeout = 30000;
-  server.listen(43133, '127.0.0.1', () => console.log(`Local HTTPS update lab ready on ${origin}; no business API or cloud changes.`));
+  server.listen(port, '127.0.0.1', () => console.log(`Local HTTPS update lab ready on https://127.0.0.1:${server.address().port}; no business API or cloud changes.`));
   return server;
 }
 
@@ -144,9 +150,10 @@ async function probe() {
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const [action, scenario] = process.argv.slice(2);
   if (action === 'prepare') console.log(`Private TLS identity ready; public CA: ${prepareTls()}`);
-  else if (action === 'register') { registerArtifacts(); console.log('Verified both APK identities and prepared local-only update catalog.'); }
+  else if (action === 'plan') console.log(JSON.stringify(buildPlan(scenario)));
+  else if (action === 'register') { registerArtifacts(scenario); console.log('Verified both APK identities and prepared local-only update catalog.'); }
   else if (action === 'scenario') { setScenario(scenario); console.log(`Local update scenario: ${scenario}`); }
   else if (action === 'serve') startServer();
   else if (action === 'probe') await probe();
-  else throw new Error('Usage: update-lab.mjs prepare|register|serve|probe|scenario <idle|optional|required|bad-hash|bad-signature|interrupted>');
+  else throw new Error('Usage: update-lab.mjs prepare|plan <basic|safety>|register <basic|safety>|serve|probe|scenario <idle|optional|required|bad-hash|bad-signature|invalid-artifact|interrupted>');
 }

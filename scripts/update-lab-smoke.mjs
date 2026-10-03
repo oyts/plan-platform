@@ -3,9 +3,18 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
-import { projectRoot, origin, setScenario } from './update-lab.mjs';
+import { projectRoot, startServer } from './update-lab.mjs';
+import { once } from 'node:events';
 
 const ca = readFileSync(resolve(projectRoot, '.desktop-tools/update-lab/tls/ca.pem'));
+const catalog = JSON.parse(readFileSync(resolve(projectRoot, '.desktop-tools/update-lab/catalog.json')));
+// A disposable server with in-memory scenarios never changes the real clients'
+// 43133 source, even while testing required policy or corrupt artifacts.
+let scenario = 'idle';
+const server = startServer({ port: 0, catalog, scenarioProvider: () => scenario });
+await once(server, 'listening');
+const origin = `https://127.0.0.1:${server.address().port}`;
+const setScenario = value => { scenario = value; };
 function get(path, options = {}) {
   return new Promise((accept, reject) => {
     const req = request(origin + path, { ca, timeout: 5000, ...options }, res => {
@@ -30,13 +39,18 @@ try {
   assert.equal(desktop.minimumSupportedVersion, '0.0.0'); assert.equal(android.minimumSupportedVersionCode, 1);
   for (const [platform, url] of [['windows', desktop.platforms['windows-x86_64'].url], ['android', android.url]]) {
     const response = await get(new URL(url).pathname); assert.equal(response.status, 200);
-    if (platform === 'android') { assert.equal(response.body.length, android.size); assert.equal(createHash('sha256').update(response.body).digest('hex'), android.sha256); }
+    assert.equal(response.body.length, catalog.target[platform].size);
+    assert.equal(createHash('sha256').update(response.body).digest('hex'), catalog.target[platform].sha256);
   }
   setScenario('required');
-  assert.equal(JSON.parse((await get('/windows/latest.json')).body).minimumSupportedVersion, '0.1.2');
-  assert.equal(JSON.parse((await get('/android/latest.json')).body).minimumSupportedVersionCode, 6);
+  assert.equal(JSON.parse((await get('/windows/latest.json')).body).minimumSupportedVersion, catalog.target.version);
+  assert.equal(JSON.parse((await get('/android/latest.json')).body).minimumSupportedVersionCode, catalog.target.versionCode);
   setScenario('bad-hash'); assert.equal(JSON.parse((await get('/android/latest.json')).body).sha256, '0'.repeat(64));
   setScenario('bad-signature'); assert.notEqual(JSON.parse((await get('/windows/latest.json')).body).platforms['windows-x86_64'].signature, desktop.platforms['windows-x86_64'].signature);
-  setScenario('interrupted'); await assert.rejects(get(new URL(android.url).pathname));
+  setScenario('invalid-artifact');
+  assert.equal(JSON.parse((await get('/android/latest.json')).body).sha256, '0'.repeat(64));
+  assert.notEqual(JSON.parse((await get('/windows/latest.json')).body).platforms['windows-x86_64'].signature, desktop.platforms['windows-x86_64'].signature);
+  setScenario('interrupted');
+  for (const url of [android.url, desktop.platforms['windows-x86_64'].url]) await assert.rejects(get(new URL(url).pathname));
   console.log('PASS: idle, optional, required, bad hash/signature and interrupted transfer scenarios.');
-} finally { setScenario('idle'); }
+} finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

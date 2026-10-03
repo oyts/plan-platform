@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { manifestFor, origin } from './update-lab.mjs';
+import { buildPlan, manifestFor, origin } from './update-lab.mjs';
 const entry = { version: '0.1.2', versionCode: 6, windows: { file: 'Plan Cabin_0.1.2_x64-setup.exe', signature: 'signed' }, android: { file: 'PlanCabin-0.1.2-debug.apk', size: 1024, sha256: 'a'.repeat(64) } };
 test('optional update does not force the bootstrap', () => {
   assert.equal(manifestFor('windows', entry, 'optional').minimumSupportedVersion, '0.0.0');
@@ -19,4 +19,17 @@ test('lab artifact URLs stay on loopback and cannot include path injection', () 
   const url = new URL(manifestFor('windows', entry, 'optional').platforms['windows-x86_64'].url);
   assert.equal(url.origin, origin); assert.match(url.pathname, /Plan%20Cabin/);
   assert.throws(() => manifestFor('android', entry, 'unknown'));
+});
+test('safety stage preserves the accepted baseline and only raises the target', () => {
+  const basic = buildPlan('basic'), safety = buildPlan('safety');
+  assert.deepEqual(safety.bootstrap, basic.target);
+  assert.equal(safety.target.version, '0.1.3'); assert.equal(safety.target.versionCode, 7);
+  assert.notEqual(safety.target.directory, basic.target.directory);
+  assert.throws(() => buildPlan('../../outside'));
+});
+test('combined corruption is optional and fails integrity on both platforms', () => {
+  const windows = manifestFor('windows', entry, 'invalid-artifact'), android = manifestFor('android', entry, 'invalid-artifact');
+  assert.equal(windows.minimumSupportedVersion, '0.0.0'); assert.equal(android.minimumSupportedVersionCode, 1);
+  assert.notEqual(windows.platforms['windows-x86_64'].signature, entry.windows.signature);
+  assert.equal(android.sha256, '0'.repeat(64));
 });

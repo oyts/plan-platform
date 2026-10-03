@@ -21,6 +21,21 @@ describe('offline identity partitioning', () => {
     const { enqueueOperation } = await import('@/offlineQueue');
     expect(enqueueOperation).not.toHaveBeenCalled();
   });
+  it.each(['POST', 'PUT', 'PATCH', 'DELETE'])('required policy blocks %s without mutating the replay payload', async (method) => {
+    saveTokens(session); updatePolicy.required = true;
+    const adapter = vi.fn();
+    await expect(api.request({ method, url: '/tasks/test', data: { title: 'retained', version: 2 }, adapter })).rejects.toThrow('请先更新');
+    const row = { id: 'original-id', ownerId: currentQueueOwner(), method, url: '/tasks/test', data: { title: 'retained', version: 2 }, status: 'PENDING', attempts: 0 } as OfflineOperation;
+    const original = structuredClone(row);
+    await expect(replayOfflineOperation(row)).rejects.toThrow('请先更新');
+    expect(row).toEqual(original); expect(adapter).not.toHaveBeenCalled();
+  });
+  it('required policy keeps read requests available for export and synchronization views', async () => {
+    saveTokens(session); updatePolicy.required = true;
+    const adapter = vi.fn(async config => ({ data: { available: true }, status: 200, statusText: 'OK', headers: {}, config }));
+    expect((await api.get('/statistics/daily', { adapter })).data).toEqual({ available: true });
+    expect(adapter).toHaveBeenCalledTimes(1);
+  });
   it('partitions desktop operations by server and account', () => {
     saveTokens(session);
     expect(currentQueueOwner()).toBe('https://one.example.cn|user-one');

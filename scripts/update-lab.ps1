@@ -1,7 +1,8 @@
 param(
     [ValidateSet('prepare','build','start','check','scenario','stop')][string]$Action = 'check',
-    [ValidateSet('idle','optional','required','bad-hash','bad-signature','interrupted')][string]$Scenario = 'idle',
-    [ValidateSet('all','windows','android')][string]$Platform = 'all'
+    [ValidateSet('idle','optional','required','bad-hash','bad-signature','invalid-artifact','interrupted')][string]$Scenario = 'idle',
+    [ValidateSet('all','windows','android')][string]$Platform = 'all',
+    [ValidateSet('basic','safety')][string]$Stage = 'basic'
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -19,7 +20,11 @@ if ($Action -eq 'prepare') { Run-Lab @('prepare'); exit 0 }
 if ($Action -eq 'scenario') { Run-Lab @('scenario', $Scenario); exit 0 }
 if ($Action -eq 'check') { Run-Lab @('probe'); exit 0 }
 if ($Action -eq 'build') {
+    if (Test-Path -LiteralPath (Join-Path $labDir 'server.pid')) { throw 'Stop the managed update lab before rebuilding its catalog. Business API does not need to stop.' }
     Run-Lab @('prepare')
+    $planJson = & $node scripts/update-lab.mjs plan $Stage
+    if ($LASTEXITCODE -ne 0) { throw 'Invalid build plan.' }
+    $buildPlan = $planJson | ConvertFrom-Json
     $certificate = Join-Path $labDir 'tls/ca.pem'
     $keyPath = Join-Path $projectRoot '.desktop-tools/test-signing/desktop-test.key'
     $publicKey = "$keyPath.pub"
@@ -32,10 +37,14 @@ if ($Action -eq 'build') {
         $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ''
         $env:PLAN_ANDROID_UPDATE_URL = 'https://127.0.0.1:43133/android/latest.json'
         $env:PLAN_ANDROID_TEST_UPDATE_CERT = Get-Content -LiteralPath $certificate -Raw
-        foreach ($role in @('bootstrap', 'target')) {
-            $version = if ($role -eq 'bootstrap') { '0.1.1' } else { '0.1.2' }
-            $code = if ($role -eq 'bootstrap') { '5' } else { '6' }
-            $destination = Join-Path $outputRoot $role
+        # Safety starts from the already installed 0.1.2 artifacts; never rebuild or
+        # overwrite that accepted baseline, and never install a lower version.
+        $roles = if ($Stage -eq 'safety') { @('target') } else { @('bootstrap', 'target') }
+        foreach ($role in $roles) {
+            $entry = $buildPlan.$role
+            $version = $entry.version
+            $code = [string]$entry.versionCode
+            $destination = Join-Path $outputRoot $entry.directory
             $env:PLAN_ANDROID_TEST_VERSION = $version
             $env:PLAN_ANDROID_TEST_VERSION_CODE = $code
             Write-Host "Building isolated $role clients ($version, Android code $code)..."
@@ -49,7 +58,8 @@ if ($Action -eq 'build') {
                 if ($LASTEXITCODE -ne 0) { throw 'Android lab build failed.' }
             }
         }
-        Run-Lab @('register')
+        Run-Lab @('register', $Stage)
+        Run-Lab @('scenario', 'idle')
     } finally {
         foreach ($name in $environmentNames) { [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process') }
     }

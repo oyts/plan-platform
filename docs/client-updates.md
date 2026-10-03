@@ -72,7 +72,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-lab.ps1 -Acti
 
 测试结束后执行 `scripts/update-lab.ps1 -Action stop`，它只停止经过进程身份检查的测试服务，不停止业务 API。回到正式源需要构建不带测试证书的同签名、更高构建号包，再经用户确认覆盖安装；不要降低 Android 构建号。本地测试版本不应发布到公网。
 
-复测测试源本身可运行 `node scripts/update-lab-smoke.mjs`（结束时恢复 `idle`），原生 TLS 检查可运行 `scripts/desktop.ps1 -Action test -IncludeLabTlsTest`。复测期间不要在客户端点击下载或安装。若重新构建包，应先停止测试源，完成两组构建和清单登记后再启动，以免使用旧清单描述新文件。
+复测测试源本身可运行 `node scripts/update-lab-smoke.mjs`，原生 TLS 检查可运行 `scripts/desktop.ps1 -Action test -IncludeLabTlsTest`。自安全验收阶段起，smoke 测试创建一次性的本机随机端口 HTTPS 服务，场景只保存在内存中，不改动客户端使用的 43133 服务或场景文件。若重新构建包，应先停止测试源，完成构建和清单登记后再启动，以免使用旧清单描述新文件。
 
 1. 普通提示可延后，自动下载默认关闭、主动勾选后保持，下载后不会自行安装。
 2. 取消安装后仍能使用原版本；更新成功后账号、计划、休息日与待同步队列保持。
@@ -80,3 +80,31 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-lab.ps1 -Acti
 4. 坏签名、错哈希、错包名、旧构建号、下载中断、系统拒绝安装均不能覆盖现有应用。
 
 验收完成后才确定正式签名并发布云端更新源。当前不能因为公网尚无 `latest.json` 而把检查错误当作业务服务器故障，也不要为此关闭 HTTPS 或签名检查。
+
+## 0.1.2 → 0.1.3 安全验收阶段
+
+本阶段保留已经验收的 0.1.2（Android 构建号 6）作为起点，仅新建 0.1.3（构建号 7）目标包，不重建或覆盖旧起点包，不向客户端手动推送目标包。两端继续使用现有测试签名、更新源和业务地址；正式源及阿里云服务不变。
+
+双击根目录 `prepare-update-safety-test.bat`，它依次停止经过身份检查的更新测试服务、只构建安全阶段目标并登记清单、以 `idle` 场景启动服务。不停止业务 API，也不安装客户端。等效命令如下：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-lab.ps1 -Action stop
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-lab.ps1 -Action build -Stage safety
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-lab.ps1 -Action start
+```
+
+已验收的起点文件仍在 `client-update-artifacts/local/target`，新目标在 `client-update-artifacts/local/safety-target`。不要重新安装旧 `bootstrap` 或用基础阶段脚本降低客户端版本。登记时核对两个 APK 的实际版本、递增构建号和相同签名身份；目标包最终必须通过应用内下载、校验及确认安装。
+
+实机验收按以下顺序进行，每次切换场景前重开客户端，并先关闭自动下载，以便分别记录用户操作：
+
+1. `invalid-artifact`：两端仍为可选更新，但 Windows 清单故意提供无效更新签名，Android 清单故意提供错误 SHA256。下载必须失败，没有安装入口，版本仍为 0.1.2，原数据仍可用。这是刻意制造的异常，不能关闭校验绕过它。
+2. `interrupted`：下载被中断；不能安装不完整文件，允许重试，旧应用和业务数据保留。
+3. `optional`：正确包下载通过；点击安装后取消确认，不应调用原生安装或更改版本。
+4. `required`：最低支持版本为 0.1.3 / 构建号 7。旧客户端暂停业务编辑和提交，保留同步中心、设置、导出与登录入口；已获取的强制策略在断网重开后仍生效。既有非空队列必须记录条数和内容，不因强制策略而被删除或提交。
+5. 用户确认安装正确 0.1.3 更新包后，再核对账号、计划、休息日、非空队列及再次检查不重复提示。专门的非空队列验收须有升级前后记录，不能由单元测试或空队列检查替代。
+
+单平台场景 `bad-signature` 和 `bad-hash` 仍保留供诊断，它们不会同时破坏另一平台的包。解除强制策略时切回 `optional` 并成功联网检查；不能只停止服务。手机保留 `adb reverse tcp:43132 tcp:43132` 与 `adb reverse tcp:43133 tcp:43133`，断开后重新建立。
+
+2026-10-03 已构建两端 0.1.3 目标包并通过 APK 签名与版本登记，Windows 已安装版本只读核验仍为 0.1.2，43132 业务 API 健康。新增回归覆盖失败下载不可安装、强制策略在下载失败后保持、收到可选策略后解除、写请求与队列重放被阻止而原操作内容不变、读请求仍可用。实际签名拒绝及安装效果仍需原生客户端验收，浏览器桥接模拟不替代它。
+
+本阶段前端 87 项、Android Java 11 项、Rust 原生 10 项、清单 6 项、桌面/手机尺寸浏览器 32 项，共 146 项测试通过；独立 HTTPS smoke 检查通过，确认两端正常包大小与 SHA256，以及坏签名、错哈希、中断、路径白名单和 TLS 拒绝行为。浏览器首轮因未指定已缓存浏览器目录而无法启动，配置 `PLAYWRIGHT_BROWSERS_PATH=.desktop-tools/playwright` 后全量重跑通过。临时 43130/43131 测试服务已退出，43132 业务服务保持运行。当前更新服务保持 `idle`，尚未触发新目标安装；手机未连接时不宣称双端实机测试完成。

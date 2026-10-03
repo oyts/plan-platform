@@ -51,4 +51,22 @@ describe('client update consent and lifecycle', () => {
   it('rejects malformed bridge results without downloading', async () => {
     await initializeClientUpdates(); native.check.mockResolvedValue({ version: '0.1.2' }); await checkClientUpdate(); expect(state.update).toBeNull(); expect(state.error).toContain('格式'); expect(native.download).not.toHaveBeenCalled();
   });
+  it.each(['签名校验失败', '更新包完整性校验失败', '下载中断'])('refuses installation after %s without changing consent', async (message) => {
+    await initializeClientUpdates(); await checkClientUpdate();
+    native.download.mockRejectedValueOnce(new Error(message));
+    await downloadClientUpdate(); await installClientUpdate();
+    expect(state.ready).toBe(false); expect(state.autoDownload).toBe(false);
+    expect(state.info?.version).toBe(info.version); expect(state.error).toContain(message);
+    expect(native.install).not.toHaveBeenCalled();
+  });
+  it('failed required download remains mandatory until a verified optional policy arrives', async () => {
+    await initializeClientUpdates(); native.check.mockResolvedValue({ ...optional, mandatory: true });
+    await checkClientUpdate(); native.download.mockRejectedValueOnce(new Error('下载中断'));
+    await downloadClientUpdate(); expect(requiredClientUpdate()).toBe(true);
+    state.update = null; await initializeClientUpdates(); expect(requiredClientUpdate()).toBe(true);
+    native.check.mockResolvedValue(optional); await checkClientUpdate();
+    expect(requiredClientUpdate()).toBe(false); state.update = null;
+    await initializeClientUpdates(); expect(requiredClientUpdate()).toBe(false);
+    expect(native.install).not.toHaveBeenCalled();
+  });
 });
