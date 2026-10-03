@@ -24,9 +24,32 @@ pub fn test_certificate() -> Result<Option<Certificate>, String> {
         .transpose()
 }
 
+/// The updater's outer error often only says "builder error". Preserve its cause.
+pub fn error_details(error: &dyn std::error::Error) -> String {
+    let mut details = error.to_string();
+    let mut source = error.source();
+    for _ in 0..8 {
+        let Some(cause) = source else { break; };
+        let message = cause.to_string();
+        if !message.is_empty() && !details.ends_with(&message) {
+            details.push_str(": ");
+            details.push_str(&message);
+        }
+        source = cause.source();
+    }
+    details
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn truncated_certificate_reports_the_builder_cause() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let truncated = Certificate::from_pem(b"-----BEGIN CERTIFICATE-----").unwrap();
+        let error = client(ClientBuilder::new(), Some(truncated)).build().unwrap_err();
+        assert_eq!(error.to_string(), "builder error");
+        assert_ne!(error_details(&error), "builder error");
+    }
     #[test] fn lab_trust_is_loopback_https_only() {
         assert!(validate_lab_url(&url::Url::parse("https://127.0.0.1:43133/windows/latest.json").unwrap()).is_ok());
         for value in ["http://127.0.0.1:43133/a", "https://localhost:43133/a", "https://127.0.0.1:443/a", "https://example.com/a", "https://user@127.0.0.1:43133/a", "https://127.0.0.1:43133/a#b"] {
@@ -40,6 +63,11 @@ mod tests {
         let _ = rustls::crypto::ring::default_provider().install_default();
         let path = std::env::var("PLAN_UPDATE_LAB_CA_PATH").expect("Set the public lab CA path.");
         let certificate = Certificate::from_pem(&std::fs::read(path).unwrap()).unwrap();
+        // Exercise the compile-time environment used by the installed application,
+        // not only a certificate loaded from disk at test runtime.
+        let embedded = test_certificate().unwrap().expect("Build the lab test with the embedded CA.");
+        let packaged = client(ClientBuilder::new(), Some(embedded)).timeout(std::time::Duration::from_secs(5)).build().unwrap();
+        assert_eq!(packaged.get("https://127.0.0.1:43133/health").send().await.unwrap().status(), 200);
         let trusted = client(ClientBuilder::new(), Some(certificate.clone())).timeout(std::time::Duration::from_secs(5)).build().unwrap();
         assert_eq!(trusted.get("https://127.0.0.1:43133/health").send().await.unwrap().status(), 200);
         let untrusted = client(ClientBuilder::new().no_proxy(), None).timeout(std::time::Duration::from_secs(5)).build().unwrap();

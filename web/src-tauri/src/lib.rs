@@ -37,7 +37,7 @@ async fn desktop_check_update(app: tauri::AppHandle, pending: State<'_, PendingU
     let update = app.updater_builder().endpoints(vec![endpoint]).map_err(|error| error.to_string())?
         .configure_client(move |client| update_tls::client(client, certificate.clone()))
         .timeout(std::time::Duration::from_secs(20)).build().map_err(|error| error.to_string())?
-        .check().await.map_err(|error| format!("更新检查失败：{error}"))?;
+        .check().await.map_err(|error| format!("更新检查失败：{}", update_tls::error_details(&error)))?;
     let info = if let Some(value) = update.as_ref() {
         if value.download_url.scheme() != "https" || !value.download_url.username().is_empty() || value.download_url.password().is_some() { return Err("安装包必须使用无凭据的 HTTPS 地址。".into()); }
         if lab { update_tls::validate_lab_url(&value.download_url)?; }
@@ -56,7 +56,7 @@ async fn desktop_check_update(app: tauri::AppHandle, pending: State<'_, PendingU
 async fn desktop_download_update(pending: State<'_, PendingUpdate>) -> Result<(), String> {
     let mut prepared = pending.0.lock().await;
     let update = prepared.update.as_ref().ok_or("请先检查新版本。")?;
-    prepared.bytes = Some(update.download(|_, _| {}, || {}).await.map_err(|error| format!("下载或签名校验失败：{error}"))?);
+    prepared.bytes = Some(update.download(|_, _| {}, || {}).await.map_err(|error| format!("下载或签名校验失败：{}", update_tls::error_details(&error)))?);
     Ok(())
 }
 

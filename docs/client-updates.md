@@ -52,7 +52,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-client-updat
 
 本地验收使用专用构建和独立的 HTTPS 发布源 `https://127.0.0.1:43133`。测试起点为 0.1.1（Android 构建号 5），更新目标为 0.1.2（构建号 6）；两者使用现有测试签名身份，不卸载或清除客户端数据。业务服务器仍为原来的 `http://127.0.0.1:43132`。正式更新源和阿里云服务不变。
 
-2026-10-03 经用户确认，Windows 在原安装目录、Android 以同签名覆盖安装了本地验收起点包。安装元数据均为 0.1.1，Android 构建号 5，43132 与 43133 的 USB 转发已恢复。测试源暂为 `idle`，0.1.2 目标包尚未安装；此验收起点的账号、计划保留及“当前已是最新版本”界面结果仍待用户确认。
+2026-10-03 经用户确认，Windows 在原安装目录、Android 以同签名覆盖安装了本地验收起点包。安装元数据均为 0.1.1，Android 构建号 5，43132 与 43133 的 USB 转发已恢复。用户确认手机正常，PC 检查更新报 `builder error`。定位为 Windows 构建脚本导入 `vcvars` 环境时，将多行公开测试 CA 从 1492 字符截断为 27 字符的 BEGIN 标记。已将证书加载移至环境导入之后，增加完整 PEM 构建保护及错误原因显示；原生回归测试同时检查编译时嵌入的证书，避免仅测试运行时从磁盘加载的证书。本次 Rust 10 项、前端 78 项测试通过。修复包的 PC 实机检查仍待复验，0.1.2 应用内安装尚未验收。
 
 双击根目录 `prepare-local-update-test.bat` 构建两组包，或执行 `scripts/update-lab.ps1 -Action build`。文件分别在 `client-update-artifacts/local/bootstrap` 和 `target`，不会覆盖原来的正式源测试包。准备完成后，执行以下命令管理测试源：
 

@@ -18,8 +18,6 @@ if ($TestCertificatePath) {
     if ($Action -ne 'build' -or $UpdateUrl -ne 'https://127.0.0.1:43133/windows/latest.json') { throw 'Test certificates are limited to local updater lab builds.' }
     $labOutputPrefix = [IO.Path]::GetFullPath((Join-Path $projectRoot 'client-update-artifacts/local')) + [IO.Path]::DirectorySeparatorChar
     if (-not $ArtifactDirectory -or -not [IO.Path]::GetFullPath($ArtifactDirectory).StartsWith($labOutputPrefix, [StringComparison]::OrdinalIgnoreCase)) { throw 'Lab builds must use an isolated local artifact directory.' }
-    $env:PLAN_DESKTOP_TEST_UPDATE_CERT = Get-Content -LiteralPath $TestCertificatePath -Raw
-    if ($env:PLAN_DESKTOP_TEST_UPDATE_CERT -notmatch '-----BEGIN CERTIFICATE-----') { throw 'Expected a PEM test certificate.' }
 }
 if ($TestVersion -and (-not $TestCertificatePath -or $TestVersion -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$')) { throw 'Version overrides require a local test certificate and x.y.z version.' }
 
@@ -55,6 +53,15 @@ if (-not ($env:LIB -split ';' | Where-Object { Test-Path -LiteralPath (Join-Path
     throw 'Windows SDK x64 libraries are missing. Install Windows SDK Desktop C++ x64, then reopen the terminal.'
 }
 if (-not (Get-Command rc.exe -ErrorAction SilentlyContinue)) { throw 'Windows SDK resource compiler is missing.' }
+
+# cmd.exe's `set` is line-oriented. Load multiline PEM only AFTER importing vcvars,
+# otherwise the environment import silently truncates it to the BEGIN marker.
+if ($TestCertificatePath -or $IncludeLabTlsTest) {
+    $certificateFile = if ($TestCertificatePath) { $TestCertificatePath } else { Join-Path $projectRoot '.desktop-tools/update-lab/tls/ca.pem' }
+    $env:PLAN_DESKTOP_TEST_UPDATE_CERT = Get-Content -LiteralPath $certificateFile -Raw
+    if ($env:PLAN_DESKTOP_TEST_UPDATE_CERT -notmatch '(?s)\A\s*-----BEGIN CERTIFICATE-----\s+[A-Za-z0-9+/=\s]+-----END CERTIFICATE-----\s*\z') { throw 'Expected a complete PEM test certificate.' }
+    if ($IncludeLabTlsTest) { $env:PLAN_DESKTOP_UPDATE_URL = 'https://127.0.0.1:43133/windows/latest.json' }
+}
 
 & rustc --version
 & cargo --version

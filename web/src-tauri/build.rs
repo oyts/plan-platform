@@ -3,6 +3,8 @@ fn main() {
     println!("cargo:rerun-if-env-changed=PLAN_DESKTOP_UPDATE_PUBKEY");
     println!("cargo:rerun-if-env-changed=PLAN_DESKTOP_TEST_UPDATE_CERT");
     if std::env::var("PLAN_DESKTOP_TEST_UPDATE_CERT").is_ok_and(|value| !value.is_empty()) {
+        let certificate = std::env::var("PLAN_DESKTOP_TEST_UPDATE_CERT").unwrap();
+        assert!(certificate.trim().starts_with("-----BEGIN CERTIFICATE-----") && certificate.trim().ends_with("-----END CERTIFICATE-----"), "Test TLS certificate was truncated before compilation.");
         let endpoint = std::env::var("PLAN_DESKTOP_UPDATE_URL").unwrap_or_default();
         assert!(endpoint.starts_with("https://127.0.0.1:43133/"), "Test TLS trust is restricted to the loopback update lab.");
     }
