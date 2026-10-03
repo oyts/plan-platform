@@ -109,12 +109,21 @@ pub fn run() {
         let path = app.path().app_config_dir()?.join("desktop.json");
         app.manage(Mutex::new(DesktopState::load(path).map_err(std::io::Error::other)?));
         app.manage(PendingUpdate(Mutex::new(PreparedUpdate::default())));
-        tauri::WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
+        let window = tauri::WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
             .on_navigation(|url| {
                 (url.scheme() == "tauri" && url.host_str() == Some("localhost"))
                     || (matches!(url.scheme(), "http" | "https") && url.host_str() == Some("tauri.localhost"))
                     || (cfg!(debug_assertions) && url.host_str() == Some("localhost") && url.port() == Some(43128))
-            }).build()?;
+            });
+        #[cfg(feature = "native-regression")]
+        let window = {
+            if !cfg!(debug_assertions) || app.config().identifier != "cn.zijun701.plan.desktop.regression" {
+                return Err("Regression debugging requires a debug build with the isolated identifier.".into());
+            }
+            window.data_directory(app.path().app_config_dir()?.join("webview"))
+                .additional_browser_args("--remote-debugging-port=43135 --remote-debugging-address=127.0.0.1")
+        };
+        window.build()?;
         Ok(())
     }).invoke_handler(tauri::generate_handler![desktop_info, desktop_save_server, desktop_probe, desktop_request, desktop_open_url, desktop_check_update, desktop_download_update, desktop_install_update, clear_native_session])
       .run(tauri::generate_context!())

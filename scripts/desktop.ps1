@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('check', 'dev', 'build', 'test')][string]$Action = 'check',
+    [ValidateSet('check', 'dev', 'build', 'test', 'regression')][string]$Action = 'check',
     [string]$UpdateUrl = '',
     [string]$PublicKeyPath = '',
     [string]$TestCertificatePath = '',
@@ -89,6 +89,18 @@ if ($Action -eq 'test') {
 if ($Action -eq 'dev') {
     & npm.cmd run desktop:dev
     exit $LASTEXITCODE
+}
+
+if ($Action -eq 'regression') {
+    if ($UpdateUrl -or $PublicKeyPath -or $TestCertificatePath -or $TestVersion) { throw 'Regression builds cannot enable updater lab overrides.' }
+    foreach ($name in @('PLAN_DESKTOP_UPDATE_URL','PLAN_DESKTOP_UPDATE_PUBKEY','PLAN_DESKTOP_TEST_UPDATE_CERT','TAURI_CONFIG')) { Remove-Item "Env:$name" -ErrorAction SilentlyContinue }
+    $regressionConfig = Join-Path $projectRoot 'web/src-tauri/tauri.regression.conf.json'
+    & npx.cmd tauri build --debug --no-bundle --config $regressionConfig --features native-regression -- --locked
+    if ($LASTEXITCODE -ne 0) { throw 'Isolated desktop regression build failed.' }
+    $regressionOutput = Join-Path $projectRoot '.desktop-tools/native-regression'
+    New-Item -ItemType Directory -Force -Path $regressionOutput | Out-Null
+    Copy-Item -LiteralPath 'src-tauri/target/debug/plan-platform-desktop.exe' -Destination (Join-Path $regressionOutput 'plan-regression.exe') -Force
+    exit 0
 }
 
 $tauriArguments = @('--ci')

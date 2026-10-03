@@ -1,4 +1,7 @@
 fn main() {
+    if std::env::var_os("CARGO_FEATURE_NATIVE_REGRESSION").is_some() {
+        assert!(std::env::var("PROFILE").unwrap_or_default() != "release", "Regression debugging cannot be built as a release client.");
+    }
     println!("cargo:rerun-if-env-changed=PLAN_DESKTOP_UPDATE_URL");
     println!("cargo:rerun-if-env-changed=PLAN_DESKTOP_UPDATE_PUBKEY");
     println!("cargo:rerun-if-env-changed=PLAN_DESKTOP_TEST_UPDATE_CERT");

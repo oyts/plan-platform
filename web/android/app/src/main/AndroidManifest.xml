@@ -10,7 +10,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:usesCleartextTraffic="false"
         android:icon="@drawable/plan_icon"
-        android:label="@string/app_name"
+        android:label="${planAppLabel}"
         android:roundIcon="@drawable/plan_icon"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
@@ -18,7 +18,7 @@
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
-            android:label="@string/title_activity_main"
+            android:label="${planAppLabel}"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"

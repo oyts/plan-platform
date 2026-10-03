@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, fs, path::PathBuf, sync::Arc, time::{Duration, SystemTime, UNIX_EPOCH}};
 use url::Url;
 
-const DEFAULT_SERVER: &str = "http://127.0.0.1:8080";
+const DEFAULT_SERVER: &str = if cfg!(feature = "native-regression") { "http://127.0.0.1:43137" } else { "http://127.0.0.1:8080" };
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,7 +71,8 @@ fn now() -> u64 { SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default
 
 fn credential_entry(server: &Url) -> Result<Entry, String> {
     let id = format!("{:x}", Sha256::digest(server.as_str().as_bytes()));
-    Entry::new("PlanCabin.RefreshSession", &id).map_err(|_| "无法打开 Windows 凭据管理器。".into())
+    let service = if cfg!(feature = "native-regression") { "PlanCabin.Regression.RefreshSession" } else { "PlanCabin.RefreshSession" };
+    Entry::new(service, &id).map_err(|_| "无法打开 Windows 凭据管理器。".into())
 }
 
 impl DesktopState {

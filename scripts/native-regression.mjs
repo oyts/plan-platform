@@ -1,0 +1,383 @@
+import { spawn, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { readFile, writeFile, mkdir, open, unlink } from 'node:fs/promises';
+import { createWriteStream, existsSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
+import { chromium, expect as baseExpect } from '../web/node_modules/@playwright/test/index.mjs';
+import { PORTS, ANDROID_PACKAGE, selectDevice, validateManifest, verifyHash, sourceFingerprint, assertPortsFree, createFaultProxy, reportHtml, junitXml } from './native-regression-support.mjs';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+const artifactDir = join(root, '.desktop-tools/native-regression');
+const exe = join(artifactDir, 'plan-regression.exe');
+const adbPath = join(process.env.ANDROID_HOME || join(root, '.desktop-tools/android-sdk'), 'platform-tools/adb.exe');
+const java = join(process.env.JAVA_HOME || '', 'bin/java.exe');
+const exec = promisify(execFile);
+const options = { platform: 'both', check: false, serial: '' };
+for (let i = 2; i < process.argv.length; i++) {
+  const arg = process.argv[i];
+  if (arg === '--platform') options.platform = process.argv[++i];
+  else if (arg === '--serial') options.serial = process.argv[++i];
+  else if (arg === '--check') options.check = true;
+  else throw new Error(`Unknown argument: ${arg}`);
+}
+if (!['both', 'windows', 'android'].includes(options.platform)) throw new Error('Invalid --platform.');
+const runId = new Date().toISOString().replace(/[:.]/g, '-') + '-' + randomUUID().slice(0, 8);
+const resultsRoot = join(root, 'acceptance-results/native');
+const runDir = join(resultsRoot, runId);
+const report = { startedAt: new Date().toISOString(), platform: options.platform, status: 'FAIL', environment: {}, cases: [] };
+const clients = [];
+const expect = baseExpect.configure({ timeout: 20_000 });
+const PASSWORD = 'NativeRegression123!'; // Synthetic local account only; never used on a public server.
+const secrets = [PASSWORD];
+const redact = value => secrets.reduce((text, secret) => text.replaceAll(secret, '[redacted]'), String(value));
+let apiProcess, lock, apiLog;
+let reverseOwned = false, forwardOwned = false, serial;
+let formalAndroidBefore;
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+async function adb(...args) {
+  const { stdout } = await exec(adbPath, ...(serial ? [['-s', serial, ...args]] : [args]), { windowsHide: true, timeout: 45_000, maxBuffer: 2 * 1024 * 1024 });
+  return stdout.trim();
+}
+async function waitFor(check, label, timeout = 45_000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) { if (await check()) return; await delay(300); }
+  throw new Error(`Timed out: ${label}`);
+}
+async function stopChild(child) {
+  if (!child || child.exitCode !== null) return;
+  child.kill();
+  await waitFor(() => child.exitCode !== null || child.signalCode !== null, 'owned child process exit', 15_000);
+}
+async function api(path, data, token, method = data === undefined ? 'GET' : 'POST', status = 200) {
+  const response = await fetch(`http://127.0.0.1:${PORTS.api}/api${path}`, {
+    method, headers: { ...(data === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: data === undefined ? undefined : JSON.stringify(data), signal: AbortSignal.timeout(20_000),
+  });
+  expect(response.status, `${method} ${path}`).toBe(status);
+  return status === 204 ? null : response.json();
+}
+async function account(name) {
+  const email = `native-${randomUUID()}@example.test`;
+  const data = await api('/auth/register', { email, password: PASSWORD, displayName: name }, undefined, 'POST', 201);
+  secrets.push(data.accessToken);
+  return { email, token: data.accessToken, name };
+}
+async function route(client, path) {
+  await client.page.evaluate(path => { location.hash = path; }, path);
+  const heading = path.startsWith('/schedule') ? '执行日程' : path === '/plans' ? '我的计划' : path.startsWith('/plans/') ? '原生回归计划' : path === '/sync' ? '同步中心' : null;
+  if (heading) await expect(client.page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+}
+async function refresh(client, path) {
+  await client.page.reload();
+  // Native session bootstrap can redirect a reloaded protected route to the dashboard.
+  // Wait for identity restoration before navigating, just as a user would.
+  await expect(client.page.getByRole('button', { name: / · 退出$/ })).toBeVisible();
+  await route(client, path);
+}
+async function attach(client) {
+  if (client.kind === 'android') {
+    const pid = await adb('shell', 'pidof', ANDROID_PACKAGE);
+    if (!/^\d+$/.test(pid)) throw new Error('Regression Android process was not uniquely identified.');
+    const sockets = await adb('shell', 'cat', '/proc/net/unix');
+    const socket = sockets.split(/\r?\n/).map(line => line.split(/\s+/).at(-1)).find(name => name === `@webview_devtools_remote_${pid}`);
+    if (!socket) throw new Error('Debug WebView socket missing for the regression package. Unlock phone and retry.');
+    await adb('forward', `tcp:${PORTS.androidCdp}`, `localabstract:${socket.slice(1)}`);
+    forwardOwned = true;
+  }
+  await waitFor(async () => {
+    if (client.process?.exitCode !== null && client.process?.exitCode !== undefined) throw new Error('Regression EXE exited before WebView attached.');
+    try { const response = await fetch(`http://127.0.0.1:${client.cdp}/json/list`, { signal: AbortSignal.timeout(1000) }); return (await response.json()).some(page => page.type === 'page'); } catch { return false; }
+  }, `${client.kind} WebView debugger`);
+  client.browser = await chromium.connectOverCDP(`http://127.0.0.1:${client.cdp}`, { timeout: 20_000, noDefaults: true });
+  const pages = client.browser.contexts().flatMap(context => context.pages());
+  const candidates = pages.filter(page => client.kind === 'windows' ? /^https?:\/\/tauri\.localhost\//.test(page.url()) : /^https?:\/\/localhost\//.test(page.url()));
+  if (candidates.length !== 1) throw new Error(`Expected one bundled ${client.kind} WebView, found ${candidates.length}.`);
+  client.page = candidates[0]; client.page.setDefaultTimeout(20_000);
+  await expect(client.page.locator('html')).toHaveClass(new RegExp(client.kind === 'windows' ? 'desktop-client' : 'android-client'));
+  // Bridge identity is checked, not replaced. No page.route() or mocked invoke().
+  if (client.kind === 'windows') expect(await client.page.evaluate(() => Boolean(window.__TAURI_INTERNALS__))).toBe(true);
+  else expect(await client.page.evaluate(() => window.Capacitor?.isNativePlatform())).toBe(true);
+}
+async function launch(client) {
+  if (client.kind === 'windows') {
+    // Process-scoped WebView flags only: never modify registry/system browser settings.
+    const env = { ...process.env };
+    delete env.WEBVIEW2_BROWSER_EXECUTABLE_FOLDER; delete env.WEBVIEW2_USER_DATA_FOLDER;
+    delete env.WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS; delete env.WEBVIEW2_PIPE_FOR_SCRIPT_DEBUGGER;
+    client.process = spawn(exe, [], { cwd: artifactDir, windowsHide: false, env, stdio: 'ignore' });
+    client.process.on('error', error => { client.launchError = error.message; });
+  } else await adb('shell', 'am', 'start', '-W', '-n', `${ANDROID_PACKAGE}/cn.zijun701.plan.mobile.MainActivity`);
+  await delay(1200);
+  if (client.launchError) throw new Error(client.launchError);
+  await attach(client);
+}
+async function restart(client) {
+  if (client.browser) { await client.browser.close(); client.browser = null; }
+  if (client.kind === 'windows') await stopChild(client.process);
+  else {
+    await adb('shell', 'am', 'force-stop', ANDROID_PACKAGE);
+    if (forwardOwned) { await adb('forward', '--remove', `tcp:${PORTS.androidCdp}`); forwardOwned = false; }
+  }
+  await launch(client);
+}
+async function configure(client, user) {
+  await route(client, '/desktop');
+  await client.page.getByLabel('服务器根地址').fill(`http://127.0.0.1:${client.proxyPort}`);
+  await client.page.getByRole('button', { name: '测试连接', exact: true }).click();
+  await expect(client.page.getByRole('status').filter({ hasText: /^连接成功，/ })).toBeVisible();
+  await client.page.getByRole('button', { name: '保存并重新连接', exact: true }).click();
+  await expect(client.page.getByRole('heading', { name: '登录计划平台' })).toBeVisible();
+  await login(client, user);
+}
+async function login(client, user) {
+  await client.page.getByLabel('邮箱', { exact: true }).fill(user.email);
+  await client.page.getByLabel('密码', { exact: true }).fill(PASSWORD);
+  await client.page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(client.page.getByRole('heading', { name: '今日控制台' })).toBeVisible();
+}
+async function editTask(client, before, after) {
+  const row = client.page.locator('.task-row').filter({ has: client.page.getByRole('heading', { name: before, exact: true }) });
+  await row.getByRole('button', { name: '编辑', exact: true }).click();
+  await client.page.getByLabel('任务标题', { exact: true }).fill(after);
+  await client.page.getByRole('button', { name: '保存修改', exact: true }).click();
+  await expect(client.page.getByRole('heading', { name: after, exact: true })).toBeVisible();
+}
+async function capture(row) {
+  for (const client of clients) {
+    if (!client.page || client.page.isClosed()) continue;
+    const file = `${String(report.cases.length).padStart(2, '0')}-${client.kind}-${row.status.toLowerCase()}.png`;
+    try { await client.page.screenshot({ path: join(runDir, file), timeout: 5000 }); row.screenshots.push(`${runId}/${file}`); }
+    catch {
+      if (client.kind !== 'android') continue;
+      // Some Android WebView versions do not support CDP captureScreenshot.
+      // Capture the physical display only when our synthetic test app is foreground.
+      try {
+        const activity = await adb('shell', 'dumpsys', 'activity', 'activities');
+        if (!activity.split(/\r?\n/).some(line => /mResumedActivity|topResumedActivity/.test(line) && line.includes(`${ANDROID_PACKAGE}/`))) continue;
+        const { stdout } = await exec(adbPath, ['-s', serial, 'exec-out', 'screencap', '-p'], { windowsHide: true, encoding: 'buffer', maxBuffer: 8 * 1024 * 1024, timeout: 10_000 });
+        await writeFile(join(runDir, file), stdout); row.screenshots.push(`${runId}/${file}`);
+      } catch { /* A lost screenshot must not hide a failed assertion. */ }
+    }
+  }
+}
+async function scenario(name, action) {
+  const started = Date.now(); const row = { name, status: 'PASS', durationMs: 0, screenshots: [] };
+  report.cases.push(row);
+  try { await action(); }
+  catch (error) { row.status = 'FAIL'; row.error = redact(error.stack || error.message); throw error; }
+  finally { row.durationMs = Date.now() - started; await capture(row); console.log(`[${row.status}] ${name} (${row.durationMs} ms)`); }
+}
+async function preflight() {
+  const manifest = validateManifest(JSON.parse(await readFile(join(artifactDir, 'build.json'), 'utf8')));
+  if (await sourceFingerprint(root) !== manifest.sourceSha256) throw new Error('Client source changed after building; run prepare-native-regression.bat first.');
+  await verifyHash(join(root, 'backend/target/plan-platform-api-0.1.0.jar'), manifest.apiSha256);
+  await verifyHash(exe, manifest.desktopSha256);
+  const apk = join(artifactDir, manifest.apkName); await verifyHash(apk, manifest.apkSha256);
+  if (!existsSync(java)) throw new Error('Set JAVA_HOME to Java 21.');
+  await assertPortsFree(Object.values(PORTS));
+  if (options.platform !== 'windows') {
+    serial = selectDevice(await adb('devices'), options.serial);
+    const forwards = await adb('forward', '--list'); const reverses = await adb('reverse', '--list');
+    if (forwards.split(/\r?\n/).some(line => line.split(/\s+/)[1] === `tcp:${PORTS.androidCdp}`) || reverses.includes(`tcp:${PORTS.androidProxy}`)) throw new Error('A regression ADB port is already mapped. No existing mapping was changed.');
+    const badging = (await exec(join(process.env.ANDROID_HOME || join(root, '.desktop-tools/android-sdk'), 'build-tools/36.0.0/aapt.exe'), ['dump', 'badging', manifest.apkName], { cwd: artifactDir, windowsHide: true })).stdout;
+    if (!badging.includes(`package: name='${ANDROID_PACKAGE}'`)) throw new Error('Refusing to install a non-regression APK.');
+    formalAndroidBefore = await adb('shell', 'dumpsys', 'package', 'cn.zijun701.plan.mobile');
+    formalAndroidBefore = formalAndroidBefore.match(/versionCode=\d+[^\r\n]*|versionName=[^\r\n]+/g)?.join('\n') || 'not installed';
+    report.environment.android = { model: await adb('shell', 'getprop', 'ro.product.model'), release: await adb('shell', 'getprop', 'ro.build.version.release'), package: ANDROID_PACKAGE, installedMainVersionBefore: formalAndroidBefore };
+  }
+  report.environment.ports = PORTS;
+  report.environment.artifacts = { desktopSha256: manifest.desktopSha256, apkSha256: manifest.apkSha256 };
+  return apk;
+}
+async function startApi() {
+  apiLog = createWriteStream(join(runDir, 'api.log'));
+  const args = ['-Duser.timezone=Asia/Shanghai', '-jar', join(root, 'backend/target/plan-platform-api-0.1.0.jar'),
+    '--server.address=127.0.0.1', `--server.port=${PORTS.api}`, '--spring.profiles.active=acceptance',
+    `--spring.datasource.url=jdbc:h2:mem:native_${randomUUID().replaceAll('-', '')};MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1`,
+    '--spring.datasource.driver-class-name=org.h2.Driver', '--spring.datasource.username=sa', '--spring.datasource.password=',
+    '--app.security.registration-enabled=true', '--app.security.email-verification-enabled=false', '--app.security.invitation-enabled=false',
+    '--app.security.refresh-cookie-secure=false', '--app.security.refresh-cookie-name=plan_refresh', '--app.security.max-sessions=40',
+    '--app.security.password-reset-enabled=false', '--app.security.bootstrap-admin-email=', '--spring.h2.console.enabled=false',
+    '--app.jwt.secret=native-regression-not-production-at-least-32-bytes', '--app.jwt.issuer=plan-platform-native-regression'];
+  apiProcess = spawn(java, args, { cwd: join(root, 'backend'), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  apiProcess.stdout.pipe(apiLog); apiProcess.stderr.pipe(apiLog);
+  let startup = '';
+  apiProcess.stdout.on('data', chunk => { startup = (startup + chunk).slice(-16_384); });
+  await waitFor(async () => {
+    if (apiProcess.exitCode !== null) throw new Error('Isolated API exited. See api.log.');
+    if (!startup.includes(`Tomcat started on port ${PORTS.api}`)) return false;
+    try { const response = await fetch(`http://127.0.0.1:${PORTS.api}/actuator/health`, { signal: AbortSignal.timeout(1000) }); return response.ok && (await response.json()).status === 'UP'; } catch { return false; }
+  }, 'isolated memory API health', 90_000);
+}
+async function run() {
+  const apk = await preflight();
+  if (options.check) { console.log('Preflight passed; no app was launched or installed.'); return; }
+  await startApi();
+  if (options.platform !== 'android') clients.push({ kind: 'windows', proxyPort: PORTS.windowsProxy, cdp: PORTS.desktopCdp, browser: null });
+  if (options.platform !== 'windows') {
+    const install = await adb('install', '-r', apk);
+    if (!install.includes('Success')) throw new Error('Regression APK installation failed; do not uninstall the main app.');
+    await adb('reverse', `tcp:${PORTS.androidProxy}`, `tcp:${PORTS.androidProxy}`); reverseOwned = true;
+    clients.push({ kind: 'android', proxyPort: PORTS.androidProxy, cdp: PORTS.androidCdp, browser: null });
+  }
+  for (const client of clients) { client.proxy = await createFaultProxy(client.proxyPort, PORTS.api); await launch(client); }
+  const owner = await account('原生回归账号'); const other = await account('隔离回归账号');
+  const first = clients[0]; const editor = clients.at(-1);
+  let currentPlan, tasks;
+  const date = (await api('/dashboard/today', undefined, owner.token)).date;
+  const end = new Date(`${date}T12:00:00+08:00`); end.setUTCDate(end.getUTCDate() + 6);
+  const endDate = end.toISOString().slice(0, 10);
+  await scenario('真实原生桥接、服务器配置与双端登录', async () => {
+    for (const client of clients) await configure(client, owner);
+  });
+  await scenario('UI 创建计划和任务，其他客户端可见；默认不把周末当休息日', async () => {
+    await route(first, '/plans');
+    await first.page.getByLabel('计划名称', { exact: true }).fill('原生回归计划');
+    await first.page.getByLabel('开始日期', { exact: true }).fill(date);
+    await first.page.getByLabel('结束日期', { exact: true }).fill(endDate);
+    await first.page.getByRole('button', { name: '保存计划', exact: true }).click();
+    await expect(first.page.getByRole('heading', { name: '原生回归计划', exact: true })).toBeVisible();
+    currentPlan = (await api('/plans', undefined, owner.token)).find(plan => plan.name === '原生回归计划');
+    expect(currentPlan.restDays).toEqual([]);
+    for (const title of ['任务 A', '任务 B']) {
+      await first.page.getByLabel('任务标题', { exact: true }).fill(title);
+      await first.page.getByRole('button', { name: '保存任务', exact: true }).click();
+      await expect(first.page.getByRole('heading', { name: title, exact: true })).toBeVisible();
+    }
+    tasks = await api(`/plans/${currentPlan.id}/tasks`, undefined, owner.token);
+    expect(tasks).toHaveLength(2);
+    for (const client of clients) {
+      await refresh(client, `/plans/${currentPlan.id}`);
+      await expect(client.page.getByRole('heading', { name: '任务 A', exact: true })).toBeVisible();
+      await route(client, `/schedule?plan=${currentPlan.id}`);
+      await expect(client.page.locator('.rail-day')).toHaveCount(7);
+      await expect(client.page.locator('.rail-day--rest')).toHaveCount(0);
+    }
+  });
+  await scenario('休息日二次编辑互通：只有星期日休息，星期六为计划日', async () => {
+    await route(editor, `/plans/${currentPlan.id}`);
+    await editor.page.getByRole('button', { name: '编辑计划设置', exact: true }).click();
+    await editor.page.getByLabel('星期日', { exact: true }).check();
+    await editor.page.getByRole('button', { name: '保存计划设置', exact: true }).click();
+    await expect(editor.page.getByRole('button', { name: '编辑计划设置', exact: true })).toBeEnabled();
+    expect((await api('/plans', undefined, owner.token))[0].restDays).toEqual([7]);
+    for (const client of clients) {
+      await refresh(client, `/schedule?plan=${currentPlan.id}`);
+      await expect(client.page.locator('.rail-day--rest')).toHaveCount(1);
+      await expect(client.page.locator('.rail-day--rest')).toContainText('周日');
+      await expect(client.page.locator('.rail-day').filter({ hasText: '周六' })).toContainText('计划日');
+      await expect(client.page.getByRole('button', { name: /任务 A/ })).toBeVisible();
+    }
+  });
+  await scenario('终止并重开真实 EXE/APK：原生会话与计划保留', async () => {
+    for (const client of clients) {
+      await restart(client);
+      await expect(client.page.getByRole('heading', { name: '今日控制台' })).toBeVisible();
+      await route(client, `/plans/${currentPlan.id}`);
+      await expect(client.page.getByRole('heading', { name: '任务 A', exact: true })).toBeVisible();
+      await expect(client.page.getByText('每周 星期日 休息', { exact: true })).toBeVisible();
+    }
+  });
+  await scenario('真实网络中断：离线修改可见，重开后仍有 1 项本地操作', async () => {
+    for (let i = 0; i < clients.length; i++) {
+      const client = clients[i]; const title = i === 0 ? '任务 A' : '任务 B';
+      client.task = tasks.find(task => task.title === title); client.offlineTitle = `${title}－${client.kind}离线`;
+      client.proxy.setOnline(false);
+      await editTask(client, title, client.offlineTitle);
+      await expect(client.page.locator('.task-row').filter({ hasText: client.offlineTitle })).toContainText('本地修改 · 待同步');
+      await restart(client);
+      await route(client, `/plans/${currentPlan.id}`);
+      await expect(client.page.getByRole('heading', { name: client.offlineTitle, exact: true })).toBeVisible();
+      await expect(client.page.getByLabel('连接状态')).toContainText('离线工作区');
+      await route(client, '/sync'); await expect(client.page.locator('.sync-row')).toHaveCount(1);
+      await expect(client.page.locator('.sync-row--conflict')).toHaveCount(0);
+      expect((await api(`/plans/${currentPlan.id}/tasks`, undefined, owner.token)).find(task => task.id === client.task.id).title).toBe(title);
+    }
+  });
+  await scenario('恢复网络：真实队列重放、双端刷新可见且没有重复任务', async () => {
+    for (const client of clients) {
+      client.proxy.setOnline(true);
+      await client.page.getByRole('button', { name: '同步等待项', exact: true }).click();
+      await expect(client.page.getByText('队列为空', { exact: true })).toBeVisible();
+    }
+    const rows = await api(`/plans/${currentPlan.id}/tasks`, undefined, owner.token); expect(rows).toHaveLength(2);
+    for (const client of clients) {
+      expect(rows.find(task => task.id === client.task.id).title).toBe(client.offlineTitle);
+      await refresh(client, `/plans/${currentPlan.id}`);
+      for (const peer of clients) await expect(client.page.getByRole('heading', { name: peer.offlineTitle, exact: true })).toBeVisible();
+    }
+  });
+  await scenario('旧版本冲突停靠：不覆盖远端，后续操作保持等待', async () => {
+    const latest = await api(`/plans/${currentPlan.id}/tasks`, undefined, owner.token);
+    const a = latest.find(task => task.id === tasks[0].id); const b = latest.find(task => task.id === tasks[1].id);
+    await refresh(editor, `/plans/${currentPlan.id}`);
+    await expect(editor.page.getByRole('heading', { name: a.title, exact: true })).toBeVisible();
+    editor.proxy.setOnline(false);
+    await editTask(editor, a.title, '任务 A－冲突本地版');
+    await editTask(editor, b.title, '任务 B－队首后等待');
+    if (clients.length === 2) {
+      await refresh(first, `/plans/${currentPlan.id}`);
+      await editTask(first, a.title, '任务 A－PC远端版');
+    } else await api(`/tasks/${a.id}`, { ...a, title: '任务 A－另一会话版', version: a.version }, owner.token, 'PUT');
+    editor.proxy.setOnline(true); await route(editor, '/sync');
+    await editor.page.getByRole('button', { name: '同步等待项', exact: true }).click();
+    await expect(editor.page.locator('.sync-row')).toHaveCount(2);
+    await expect(editor.page.locator('.sync-row--conflict')).toHaveCount(1);
+    await expect(editor.page.locator('.sync-row--pending')).toHaveCount(1);
+    await expect(editor.page.locator('.sync-row--pending')).toContainText('0 次尝试');
+    const server = await api(`/plans/${currentPlan.id}/tasks`, undefined, owner.token);
+    expect(server.find(task => task.id === a.id).title).toBe(clients.length === 2 ? '任务 A－PC远端版' : '任务 A－另一会话版');
+    expect(server.find(task => task.id === b.id).title).toBe(b.title);
+  });
+  await scenario('退出与账号隔离：不自动恢复原账号、不泄露原计划和待同步队列', async () => {
+    await editor.page.getByRole('button', { name: `${owner.name} · 退出`, exact: true }).click();
+    await expect(editor.page.getByRole('heading', { name: '登录计划平台' })).toBeVisible();
+    await restart(editor);
+    await expect(editor.page.getByRole('heading', { name: '登录计划平台' })).toBeVisible();
+    await login(editor, other); await route(editor, '/plans');
+    await expect(editor.page.getByText('创建第一个计划后，它会显示在这里。')).toBeVisible();
+    await route(editor, '/sync'); await expect(editor.page.getByText('队列为空', { exact: true })).toBeVisible();
+    if (clients.length === 2) { await refresh(first, `/plans/${currentPlan.id}`); await expect(first.page.getByRole('heading', { name: '原生回归计划', exact: true })).toBeVisible(); }
+    expect(await api('/plans', undefined, other.token)).toEqual([]);
+    await api(`/plans/${currentPlan.id}/tasks`, undefined, other.token, 'GET', 404);
+  });
+  report.status = 'PASS';
+}
+async function cleanup() {
+  const errors = [];
+  const attempt = async fn => { try { await fn(); } catch (error) { errors.push(redact(error.message)); } };
+  for (const client of clients) {
+    await attempt(async () => { if (client.browser) await client.browser.close(); });
+    await attempt(async () => client.kind === 'windows' ? stopChild(client.process) : adb('shell', 'am', 'force-stop', ANDROID_PACKAGE));
+    await attempt(async () => { if (client.proxy) await client.proxy.close(); });
+  }
+  if (forwardOwned) await attempt(() => adb('forward', '--remove', `tcp:${PORTS.androidCdp}`));
+  if (reverseOwned) await attempt(() => adb('reverse', '--remove', `tcp:${PORTS.androidProxy}`));
+  await attempt(() => stopChild(apiProcess));
+  apiLog?.end();
+  if (formalAndroidBefore !== undefined) await attempt(async () => {
+    const after = (await adb('shell', 'dumpsys', 'package', 'cn.zijun701.plan.mobile')).match(/versionCode=\d+[^\r\n]*|versionName=[^\r\n]+/g)?.join('\n') || 'not installed';
+    report.environment.android.installedMainVersionAfter = after;
+    expect(after).toBe(formalAndroidBefore);
+  });
+  if (errors.length) throw new Error(`Cleanup failed: ${errors.join('; ')}`);
+}
+await mkdir(runDir, { recursive: true });
+try {
+  lock = await open(join(resultsRoot, 'run.lock'), 'wx');
+  await lock.writeFile(String(process.pid));
+  await run();
+} catch (error) {
+  report.error = redact(error.stack || error.message); console.error(redact(error.message)); process.exitCode = 1;
+} finally {
+  try { await cleanup(); } catch (error) { report.status = 'FAIL'; report.cleanupError = redact(error.message); report.error = [report.error, report.cleanupError].filter(Boolean).join('\n'); process.exitCode = 1; }
+  if (lock) { await lock.close(); await unlink(join(resultsRoot, 'run.lock')); }
+  if (!options.check || report.error) {
+    await writeFile(join(runDir, 'report.json'), JSON.stringify(report, null, 2));
+    await writeFile(join(resultsRoot, 'latest.html'), reportHtml(report));
+    await writeFile(join(resultsRoot, 'latest.junit.xml'), junitXml(report));
+    console.log(`Report: ${join(resultsRoot, 'latest.html')}`);
+  }
+}

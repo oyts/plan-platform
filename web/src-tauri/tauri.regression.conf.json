@@ -1,0 +1,8 @@
+{
+  "productName": "Plan Cabin Regression",
+  "identifier": "cn.zijun701.plan.desktop.regression",
+  "app": {
+    "windows": [{ "label": "main", "create": false, "title": "计划舱回归测试", "width": 1280, "height": 860, "minWidth": 800, "minHeight": 600 }]
+  },
+  "bundle": { "active": false }
+}

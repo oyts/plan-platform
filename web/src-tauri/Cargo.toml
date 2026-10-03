@@ -9,6 +9,9 @@ rust-version = "1.99"
 name = "plan_platform_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+native-regression = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
