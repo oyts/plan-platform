@@ -12,7 +12,7 @@ if (url.protocol !== 'https:' || url.username || url.password || url.hash) throw
 const apk = resolve(apkArg);
 if (!apk.endsWith('.apk')) throw new Error('Expected a signed APK. Verify with apksigner before generating a manifest.');
 const gradle = readFileSync(resolve(root,'web/android/app/build.gradle'),'utf8');
-const version = gradle.match(/versionName\s+"([0-9.]+)"/)?.[1], versionCode = Number(gradle.match(/versionCode\s+(\d+)/)?.[1]);
+const version = gradle.match(/versionName[^\r\n]*"([0-9.]+)"/)?.[1], versionCode = Number(gradle.match(/versionCode[^\r\n]*'([0-9]+)'/)?.[1]);
 const sdk = process.env.ANDROID_HOME || resolve(root,'.desktop-tools/android-sdk');
 const tools = resolve(sdk, 'build-tools/36.0.0');
 // aapt on Windows cannot read a Unicode APK path. Inspect a byte-identical private temporary copy.

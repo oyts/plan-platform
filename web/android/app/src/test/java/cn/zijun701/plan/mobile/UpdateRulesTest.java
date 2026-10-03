@@ -20,4 +20,8 @@ public class UpdateRulesTest {
         assertThrows(IllegalArgumentException.class, () -> UpdateRules.artifact("bad", 1024));
         assertThrows(IllegalArgumentException.class, () -> UpdateRules.artifact("a".repeat(64), UpdateRules.MAX_APK_BYTES + 1));
     }
+    @Test public void testCertificateIsRestrictedToOneLoopbackOrigin() {
+        UpdateRules.labUrl(java.net.URI.create("https://127.0.0.1:43133/android/latest.json"));
+        for (String value : new String[]{"http://127.0.0.1:43133/a", "https://localhost:43133/a", "https://127.0.0.1:443/a", "https://example.com/a", "https://user@127.0.0.1:43133/a", "https://127.0.0.1:43133/a#b"}) assertThrows(IllegalArgumentException.class, () -> UpdateRules.labUrl(java.net.URI.create(value)));
+    }
 }

@@ -35,7 +35,9 @@ final class ClientUpdater {
         HttpURLConnection connection = open(UpdateRules.url(BuildConfig.PLAN_UPDATE_URL, BuildConfig.DEBUG));
         JSONObject manifest;
         try {
-            if (connection.getResponseCode() != 200) throw new IllegalStateException("更新清单暂不可用，请稍后重试。");
+            int status = connection.getResponseCode();
+            if (status == 204) { pending = null; ready = null; return null; }
+            if (status != 200) throw new IllegalStateException("更新清单暂不可用，请稍后重试。");
             try (InputStream input = connection.getInputStream(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
                 byte[] chunk = new byte[4096]; int read;
                 while ((read = input.read(chunk)) != -1) { if (output.size() + read > 65536) throw new IllegalStateException("更新清单过大。"); output.write(chunk, 0, read); }
@@ -120,7 +122,20 @@ final class ClientUpdater {
     }
     private static String hex(byte[] bytes) { StringBuilder result = new StringBuilder(); for (byte value : bytes) result.append(String.format(java.util.Locale.ROOT, "%02x", value & 255)); return result.toString(); }
     private static HttpURLConnection open(URI uri) throws Exception {
+        if (!BuildConfig.PLAN_TEST_UPDATE_CERT.isEmpty()) UpdateRules.labUrl(uri);
         HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
+        if (!BuildConfig.PLAN_TEST_UPDATE_CERT.isEmpty()) {
+            if (!BuildConfig.DEBUG) throw new IllegalStateException("正式包禁止使用本地测试证书。");
+            // Private updater-only trust store. Keep Android's hostname verification enabled.
+            java.security.cert.Certificate cert = java.security.cert.CertificateFactory.getInstance("X.509").generateCertificate(new java.io.ByteArrayInputStream(BuildConfig.PLAN_TEST_UPDATE_CERT.getBytes(StandardCharsets.US_ASCII)));
+            java.security.KeyStore store = java.security.KeyStore.getInstance(java.security.KeyStore.getDefaultType());
+            store.load(null); store.setCertificateEntry("update-lab", cert);
+            javax.net.ssl.TrustManagerFactory factory = javax.net.ssl.TrustManagerFactory.getInstance(javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm());
+            factory.init(store);
+            javax.net.ssl.SSLContext context = javax.net.ssl.SSLContext.getInstance("TLS");
+            context.init(null, factory.getTrustManagers(), null);
+            ((javax.net.ssl.HttpsURLConnection) connection).setSSLSocketFactory(context.getSocketFactory());
+        }
         connection.setInstanceFollowRedirects(false); connection.setConnectTimeout(15000); connection.setReadTimeout(30000); connection.setRequestProperty("Accept-Encoding", "identity"); return connection;
     }
 }

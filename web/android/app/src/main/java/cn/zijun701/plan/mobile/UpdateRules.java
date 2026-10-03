@@ -19,6 +19,9 @@ public final class UpdateRules {
         if (current < 1 || latest < 1 || latest > Integer.MAX_VALUE || minimum < 1 || minimum > latest) throw new IllegalArgumentException("发布版本策略无效。");
         return current < minimum;
     }
+    public static void labUrl(URI uri) {
+        if (!"https".equals(uri.getScheme()) || !"127.0.0.1".equals(uri.getHost()) || uri.getPort() != 43133 || uri.getUserInfo() != null || uri.getFragment() != null) throw new IllegalArgumentException("本地验收更新仅允许 https://127.0.0.1:43133。");
+    }
     public static void artifact(String sha256, long size) {
         if (sha256 == null || !sha256.matches("[a-fA-F0-9]{64}") || size < 1 || size > MAX_APK_BYTES) throw new IllegalArgumentException("安装包校验值或大小无效。");
     }

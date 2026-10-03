@@ -8,9 +8,10 @@ android {
         applicationId "cn.zijun701.plan.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "0.1.1"
+        versionCode Integer.parseInt(System.getenv('PLAN_ANDROID_TEST_VERSION_CODE') ?: '5')
+        versionName System.getenv('PLAN_ANDROID_TEST_VERSION') ?: "0.1.1"
         buildConfigField 'String', 'PLAN_UPDATE_URL', groovy.json.JsonOutput.toJson(System.getenv('PLAN_ANDROID_UPDATE_URL') ?: 'https://plan.zijun701.cn/client-updates/android/latest.json')
+        buildConfigField 'String', 'PLAN_TEST_UPDATE_CERT', groovy.json.JsonOutput.toJson(System.getenv('PLAN_ANDROID_TEST_UPDATE_CERT') ?: '')
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -43,6 +44,12 @@ android {
     }
     testOptions { unitTests.returnDefaultValues = true }
 }
+
+if (System.getenv('PLAN_ANDROID_TEST_UPDATE_CERT')) {
+    if (!(System.getenv('PLAN_ANDROID_UPDATE_URL') ?: '').startsWith('https://127.0.0.1:43133/')) throw new GradleException('Test TLS trust is restricted to the loopback update lab.')
+    if (gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) throw new GradleException('Test TLS certificates cannot be included in release APKs.')
+}
+if ((System.getenv('PLAN_ANDROID_TEST_VERSION') || System.getenv('PLAN_ANDROID_TEST_VERSION_CODE')) && !System.getenv('PLAN_ANDROID_TEST_UPDATE_CERT')) throw new GradleException('Version overrides are only allowed in the isolated update lab.')
 
 repositories {
     flatDir{

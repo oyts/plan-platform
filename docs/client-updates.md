@@ -46,11 +46,31 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-client-updat
 
 ## 本地验收与待办
 
-本轮前端 78 项、Android Java 10 项、Rust 原生 7 项和浏览器 28 项测试通过，其中浏览器包含桌面/手机尺寸的更新桥接模拟。Web、EXE、APK 构建通过，APK 签名验证通过；发布目录生成器已验证实际包的版本与签名。浏览器模拟并不证明操作系统原生安装成功。
+本轮前端 78 项、Android Java 11 项、Rust 原生 9 项（包含本地 HTTPS 集成）、浏览器 28 项和测试清单 4 项，共 130 项测试通过。浏览器包含桌面/手机尺寸的更新桥接模拟，不证明操作系统原生安装成功。两组 EXE 和 APK 构建及 APK 签名验证通过，实际包版本与两组 APK 签名身份一致。HTTPS 功能检查确认可信 CA 可连接，不受信 CA、错误主机名及明文连接被拒绝；测试服务不提供私钥、密码或路径穿越访问。浏览器测试结束时额外清理了本次 43130 预览和 43131 临时验收 API，43132 业务服务保持运行。
 
 2026-10-03 已将 Windows 原安装目录中的客户端覆盖升级至 0.1.1，Android 同签名覆盖升级至 0.1.1（构建号 5），未卸载应用或清除数据。用户确认两端安装版本正确、自动下载默认未勾选、原账号保持登录、计划和任务保留、仍只有星期日休息。用户随后确认两端主动勾选与取消自动下载后，关闭重开均保持对应偏好。这些结果只证明手动引导升级和偏好持久化，不代表应用内下载与安装已经通过。
 
-下一步用更高版本的同签名测试包和独立测试发布源验证。当前客户端固定连接正式域名，不能直接用电脑上的临时清单触发更新；本地验收需要专用测试构建和可信本地 HTTPS 发布源，不应修改系统 hosts 或关闭证书校验来绕过这一限制。测试源证书只供专用构建使用，不加入系统全局信任，现有业务服务器配置保持不变。尚未实施这套测试构建或替换已安装的更新源。
+本地验收使用专用构建和独立的 HTTPS 发布源 `https://127.0.0.1:43133`。测试起点为 0.1.1（Android 构建号 5），更新目标为 0.1.2（构建号 6）；两者使用现有测试签名身份，不卸载或清除客户端数据。业务服务器仍为原来的 `http://127.0.0.1:43132`。正式更新源和阿里云服务不变。
+
+2026-10-03 经用户确认，Windows 在原安装目录、Android 以同签名覆盖安装了本地验收起点包。安装元数据均为 0.1.1，Android 构建号 5，43132 与 43133 的 USB 转发已恢复。测试源暂为 `idle`，0.1.2 目标包尚未安装；此验收起点的账号、计划保留及“当前已是最新版本”界面结果仍待用户确认。
+
+双击根目录 `prepare-local-update-test.bat` 构建两组包，或执行 `scripts/update-lab.ps1 -Action build`。文件分别在 `client-update-artifacts/local/bootstrap` 和 `target`，不会覆盖原来的正式源测试包。准备完成后，执行以下命令管理测试源：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-lab.ps1 -Action start
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-lab.ps1 -Action scenario -Scenario optional
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-lab.ps1 -Action check
+```
+
+手机额外需要 USB 转发 `adb reverse tcp:43133 tcp:43133`，同时保留业务 API 的 43132 转发。只有在保存编辑内容并获用户确认后，才覆盖安装 `bootstrap` 包；`target` 包必须通过应用内下载并由用户确认安装，不能手动推送后宣称更新链路通过。Windows 保持原安装目录，Android 必须同签名安装，不得用卸载绕过签名检查。
+
+测试源默认 `idle`（没有更新）。`optional` 为可选更新，`required` 将最低版本提高到目标版本；`bad-hash` 用于 Android 错误哈希，`bad-signature` 用于 Windows 错误更新签名，`interrupted` 模拟下载中断。切换场景前重开客户端，避免已校验的下载缓存影响结果。切回可选场景并成功联网检查后，才解除此前获取的强制策略；仅停止测试源不会解除缓存的必要升级策略。
+
+证书由 JDK keytool 生成，30 天有效，私钥及密码保存在 Git 忽略的 `.desktop-tools/update-lab/tls`，不进入下载目录。只有公开 CA 证书嵌入专用验收包的更新 HTTP 客户端；保留证书、主机名与包签名校验，限制到固定本机 HTTPS 地址，不接受重定向，不影响业务 HTTP 客户端、系统证书信任或 hosts。Android release 构建禁止包含此测试证书。测试源只监听本机，按白名单提供清单与目标安装包，不提供任意目录访问。
+
+测试结束后执行 `scripts/update-lab.ps1 -Action stop`，它只停止经过进程身份检查的测试服务，不停止业务 API。回到正式源需要构建不带测试证书的同签名、更高构建号包，再经用户确认覆盖安装；不要降低 Android 构建号。本地测试版本不应发布到公网。
+
+复测测试源本身可运行 `node scripts/update-lab-smoke.mjs`（结束时恢复 `idle`），原生 TLS 检查可运行 `scripts/desktop.ps1 -Action test -IncludeLabTlsTest`。复测期间不要在客户端点击下载或安装。若重新构建包，应先停止测试源，完成两组构建和清单登记后再启动，以免使用旧清单描述新文件。
 
 1. 普通提示可延后，自动下载默认关闭、主动勾选后保持，下载后不会自行安装。
 2. 取消安装后仍能使用原版本；更新成功后账号、计划、休息日与待同步队列保持。

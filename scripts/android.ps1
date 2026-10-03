@@ -1,7 +1,11 @@
-param([ValidateSet('check','build','test','release')][string]$Action = 'build')
+param([ValidateSet('check','build','test','release')][string]$Action = 'build', [string]$ArtifactDirectory = '')
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
+if ($env:PLAN_ANDROID_TEST_UPDATE_CERT) {
+    $labOutputPrefix = [IO.Path]::GetFullPath((Join-Path $projectRoot 'client-update-artifacts/local')) + [IO.Path]::DirectorySeparatorChar
+    if (-not $ArtifactDirectory -or -not [IO.Path]::GetFullPath($ArtifactDirectory).StartsWith($labOutputPrefix, [StringComparison]::OrdinalIgnoreCase)) { throw 'Lab builds must use an isolated local artifact directory.' }
+}
 $portableNode = Join-Path $projectRoot '.desktop-tools/node22/node-v22.23.3-win-x64'
 if (Test-Path "$portableNode/node.exe") { $env:PATH = "$portableNode;$env:PATH" }
 $nodeMajor = [int]((& node --version).Trim().TrimStart('v').Split('.')[0])
@@ -66,7 +70,8 @@ if (-not (Test-Path $debugKey)) {
 Set-Location (Join-Path $projectRoot 'web')
 $version = (Get-Content 'package.json' -Raw | ConvertFrom-Json).version
 $androidGradle = Get-Content 'android/app/build.gradle' -Raw
-if ($androidGradle -notmatch ('versionName\s+"' + [regex]::Escape($version) + '"')) { throw 'Android versionName differs from web/package.json. Align the release versions first.' }
+if ($androidGradle -notmatch ('versionName[^\r\n]*"' + [regex]::Escape($version) + '"')) { throw 'Android versionName differs from web/package.json. Align the release versions first.' }
+if ($env:PLAN_ANDROID_TEST_VERSION) { $version = $env:PLAN_ANDROID_TEST_VERSION }
 if (-not (Test-Path 'node_modules/@capacitor/cli')) { & npm.cmd ci; if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' } }
 & npm.cmd test
 if ($LASTEXITCODE -ne 0) { throw 'Frontend tests failed.' }
@@ -84,7 +89,7 @@ $variant = if ($Action -eq 'release') { 'release' } else { 'debug' }
 $appBuildRoot = if ($env:PLAN_ANDROID_BUILD_ROOT) { Join-Path $env:PLAN_ANDROID_BUILD_ROOT 'app' } else { 'app/build' }
 $apk = Join-Path $appBuildRoot "outputs/apk/$variant/app-$variant.apk"
 if (-not (Test-Path $apk)) { throw 'The expected signed APK was not generated.' }
-$artifactDir = Join-Path $projectRoot 'android-artifacts'
+$artifactDir = if ($ArtifactDirectory) { [IO.Path]::GetFullPath($ArtifactDirectory) } else { Join-Path $projectRoot 'android-artifacts' }
 New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
 $destination = Join-Path $artifactDir "PlanCabin-$version-$variant.apk"
 Copy-Item -LiteralPath $apk -Destination $destination -Force

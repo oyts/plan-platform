@@ -1,12 +1,27 @@
 param(
     [ValidateSet('check', 'dev', 'build', 'test')][string]$Action = 'check',
     [string]$UpdateUrl = '',
-    [string]$PublicKeyPath = ''
+    [string]$PublicKeyPath = '',
+    [string]$TestCertificatePath = '',
+    [string]$TestVersion = '',
+    [string]$ArtifactDirectory = '',
+    [switch]$IncludeLabTlsTest
 )
 $ErrorActionPreference = 'Stop'
 $publicKeyFile = if ($PublicKeyPath) { (Resolve-Path -LiteralPath $PublicKeyPath).Path } else { '' }
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
+$portableNode = Join-Path $projectRoot '.desktop-tools/node22/node-v22.23.3-win-x64'
+if (Test-Path -LiteralPath "$portableNode/node.exe") { $env:PATH = "$portableNode;$env:PATH" }
+Remove-Item Env:PLAN_DESKTOP_TEST_UPDATE_CERT -ErrorAction SilentlyContinue
+if ($TestCertificatePath) {
+    if ($Action -ne 'build' -or $UpdateUrl -ne 'https://127.0.0.1:43133/windows/latest.json') { throw 'Test certificates are limited to local updater lab builds.' }
+    $labOutputPrefix = [IO.Path]::GetFullPath((Join-Path $projectRoot 'client-update-artifacts/local')) + [IO.Path]::DirectorySeparatorChar
+    if (-not $ArtifactDirectory -or -not [IO.Path]::GetFullPath($ArtifactDirectory).StartsWith($labOutputPrefix, [StringComparison]::OrdinalIgnoreCase)) { throw 'Lab builds must use an isolated local artifact directory.' }
+    $env:PLAN_DESKTOP_TEST_UPDATE_CERT = Get-Content -LiteralPath $TestCertificatePath -Raw
+    if ($env:PLAN_DESKTOP_TEST_UPDATE_CERT -notmatch '-----BEGIN CERTIFICATE-----') { throw 'Expected a PEM test certificate.' }
+}
+if ($TestVersion -and (-not $TestCertificatePath -or $TestVersion -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$')) { throw 'Version overrides require a local test certificate and x.y.z version.' }
 
 $portableCargo = Join-Path $projectRoot '.desktop-tools/cargo'
 if (Test-Path -LiteralPath "$portableCargo/bin/cargo.exe") {
@@ -55,6 +70,11 @@ if ($Action -eq 'test') {
     if ($LASTEXITCODE -ne 0) { throw 'Desktop frontend build failed.' }
     & cargo test --manifest-path src-tauri/Cargo.toml --locked
     if ($LASTEXITCODE -ne 0) { throw 'Rust tests failed.' }
+    if ($IncludeLabTlsTest) {
+        $env:PLAN_UPDATE_LAB_CA_PATH = Join-Path $projectRoot '.desktop-tools/update-lab/tls/ca.pem'
+        & cargo test --manifest-path src-tauri/Cargo.toml --locked local_https_requires -- --ignored
+        if ($LASTEXITCODE -ne 0) { throw 'Native updater TLS integration failed.' }
+    }
     & npm.cmd test
     if ($LASTEXITCODE -ne 0) { throw 'Web tests failed.' }
     exit 0
@@ -73,6 +93,11 @@ if ($UpdateUrl -or $PublicKeyPath) {
     $env:PLAN_DESKTOP_UPDATE_URL = $UpdateUrl
     $env:PLAN_DESKTOP_UPDATE_PUBKEY = (Get-Content -LiteralPath $publicKeyFile -Raw).Trim()
     $updaterConfig = @{ bundle = @{ createUpdaterArtifacts = $true }; plugins = @{ updater = @{ pubkey = $env:PLAN_DESKTOP_UPDATE_PUBKEY; endpoints = @($UpdateUrl) } } } | ConvertTo-Json -Depth 5 -Compress
+    if ($TestVersion) {
+        $configObject = $updaterConfig | ConvertFrom-Json
+        $configObject | Add-Member -NotePropertyName version -NotePropertyValue $TestVersion
+        $updaterConfig = $configObject | ConvertTo-Json -Depth 5 -Compress
+    }
     $generatedConfigDir = Join-Path $projectRoot 'web/src-tauri/gen'
     New-Item -ItemType Directory -Force -Path $generatedConfigDir | Out-Null
     $generatedConfig = Join-Path $generatedConfigDir 'updater-build.json'
@@ -86,9 +111,10 @@ if ($UpdateUrl -or $PublicKeyPath) {
 $tauriArguments += @('--', '--locked')
 & npm.cmd run desktop:build -- @tauriArguments
 if ($LASTEXITCODE -ne 0) { throw 'Desktop installer build failed.' }
-$artifactDirectory = Join-Path $projectRoot 'desktop-artifacts'
+$artifactDirectory = if ($ArtifactDirectory) { [IO.Path]::GetFullPath($ArtifactDirectory) } else { Join-Path $projectRoot 'desktop-artifacts' }
 New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
-$installers = Get-ChildItem -LiteralPath 'src-tauri/target/release/bundle/nsis' -Filter '*-setup.exe'
+$builtVersion = if ($TestVersion) { $TestVersion } else { (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version }
+$installers = Get-ChildItem -LiteralPath 'src-tauri/target/release/bundle/nsis' -Filter "Plan Cabin_${builtVersion}_x64-setup.exe"
 if (-not $installers) { throw 'Build succeeded but no Windows installer was found.' }
 foreach ($installer in $installers) {
     Copy-Item -LiteralPath $installer.FullName -Destination $artifactDirectory -Force

@@ -1,5 +1,6 @@
 mod transport;
 mod update_policy;
+mod update_tls;
 
 use serde::Serialize;
 use tauri::{Manager, State};
@@ -30,12 +31,16 @@ async fn desktop_check_update(app: tauri::AppHandle, pending: State<'_, PendingU
     if !updates_enabled() { return Err("当前安装包尚未配置签名更新源。".into()); }
     let endpoint = url::Url::parse(option_env!("PLAN_DESKTOP_UPDATE_URL").unwrap()).map_err(|_| "更新源地址无效。")?;
     if endpoint.scheme() != "https" || !endpoint.username().is_empty() || endpoint.password().is_some() || endpoint.fragment().is_some() { return Err("更新源必须使用无凭据的 HTTPS 地址。".into()); }
+    let certificate = update_tls::test_certificate()?;
+    if certificate.is_some() { update_tls::validate_lab_url(&endpoint)?; }
+    let lab = certificate.is_some();
     let update = app.updater_builder().endpoints(vec![endpoint]).map_err(|error| error.to_string())?
-        .configure_client(|client| client.https_only(true))
+        .configure_client(move |client| update_tls::client(client, certificate.clone()))
         .timeout(std::time::Duration::from_secs(20)).build().map_err(|error| error.to_string())?
         .check().await.map_err(|error| format!("更新检查失败：{error}"))?;
     let info = if let Some(value) = update.as_ref() {
         if value.download_url.scheme() != "https" || !value.download_url.username().is_empty() || value.download_url.password().is_some() { return Err("安装包必须使用无凭据的 HTTPS 地址。".into()); }
+        if lab { update_tls::validate_lab_url(&value.download_url)?; }
         let minimum = match value.raw_json.get("minimumSupportedVersion") {
             None => "0.0.0",
             Some(value) => value.as_str().ok_or("最低支持版本格式无效。")?,
