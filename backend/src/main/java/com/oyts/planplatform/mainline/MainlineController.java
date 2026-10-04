@@ -18,4 +18,7 @@ class MainlineController {
     @PostMapping("/items/{itemId}/start") MainlineDtos.ItemResponse start(@AuthenticationPrincipal Jwt jwt, @PathVariable String itemId, @RequestParam(required = false) Long version) { return service.start(jwt.getSubject(), itemId, version); }
     @PostMapping("/items/{itemId}/pause") MainlineDtos.ItemResponse pause(@AuthenticationPrincipal Jwt jwt, @PathVariable String itemId, @RequestParam(required = false) Long version) { return service.pause(jwt.getSubject(), itemId, version); }
     @PostMapping("/items/{itemId}/complete") MainlineDtos.ItemResponse complete(@AuthenticationPrincipal Jwt jwt, @PathVariable String itemId, @Valid @RequestBody MainlineDtos.CompleteRequest r) { return service.complete(jwt.getSubject(), itemId, r); }
+    @PostMapping("/{id}/stages") @ResponseStatus(HttpStatus.CREATED) MainlineDtos.StageResponse addStage(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @Valid @RequestBody MainlineDtos.StageRequest r) { return service.addStage(jwt.getSubject(), id, r); }
+    @PutMapping("/stages/{id}") MainlineDtos.StageResponse updateStage(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @Valid @RequestBody MainlineDtos.StageRequest r) { return service.updateStage(jwt.getSubject(), id, r); }
+    @DeleteMapping("/stages/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) void deleteStage(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestParam(required = false) Long version) { service.deleteStage(jwt.getSubject(), id, version); }
 }

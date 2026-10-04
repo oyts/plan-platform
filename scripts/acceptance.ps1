@@ -16,7 +16,7 @@ else { throw 'Install Maven 3.9+ and add it to PATH.' }
 foreach ($port in @(43130,43131)) {
     if (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue) { throw "Port $port is already occupied. Close only the test server you started, then retry." }
 }
-& $mavenPath -f backend/pom.xml -B package
+& $mavenPath -f backend/pom.xml -Dplan.build.directory=target-acceptance -B package
 if ($LASTEXITCODE -ne 0) { throw 'Backend tests or packaging failed.' }
 $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $projectRoot '.desktop-tools/playwright'
 Set-Location web

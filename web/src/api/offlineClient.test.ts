@@ -17,6 +17,17 @@ beforeEach(async () => {
   connectionState.cacheAvailable = true;
 });
 describe('offline API safety', () => {
+  it('queues route content edits but refuses topology changes during an outage', async () => {
+    const routeCache: AxiosAdapter = async config => ({ data: [{ id:'l',name:'路线',completed:0,items:[{id:'i',title:'原步骤',plannedMinutes:20,unlocked:true,version:0}] }], status:200,statusText:'OK',headers:{},config });
+    await api.get('/mainlines', {adapter:routeCache});
+    await expect(api.put('/mainlines/items/i',{title:'离线步骤',version:0},{adapter:disconnected})).rejects.toBeInstanceOf(OfflineQueuedError);
+    expect((await api.get('/mainlines',{adapter:disconnected})).data[0].items[0]).toMatchObject({title:'离线步骤',localState:'PENDING'});
+    connectionState.reachable=true;
+    await expect(api.put('/mainlines/items/other',{title:'调整',routing:{dependencyMode:'NONE'}},{adapter:disconnected})).rejects.not.toBeInstanceOf(OfflineQueuedError);
+    connectionState.reachable=true;
+    await expect(api.post('/mainlines/l/stages',{name:'新阶段'},{adapter:disconnected})).rejects.not.toBeInstanceOf(OfflineQueuedError);
+    expect(await listOperations('one')).toHaveLength(1);
+  });
   it('falls back only after a network failure and projects a queued edit immediately', async () => {
     await api.get('/plans/p/tasks', { adapter: successful });
     await expect(api.put('/tasks/t', { title: '本地任务', version: 0 }, { adapter: disconnected })).rejects.toBeInstanceOf(OfflineQueuedError);

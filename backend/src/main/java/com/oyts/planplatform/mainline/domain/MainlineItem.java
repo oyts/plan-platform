@@ -21,6 +21,9 @@ public class MainlineItem extends BaseEntity {
     private Instant startedAt;
     private Instant completedAt;
     @Column(name = "deleted_at") private Instant deletedAt;
+    @Column(name = "stage_id", length = 36) private String stageId;
+    @Column(name = "dependency_mode", nullable = false, length = 20) private String dependencyMode = "INHERIT";
+    @Column(name = "prerequisite_ids_json", nullable = false, length = 4000) private String prerequisiteIdsJson = "[]";
     protected MainlineItem() {}
     public MainlineItem(Mainline mainline) { this.mainline = mainline; }
     public void update(String title, String description, String acceptanceJson, int plannedMinutes, int sortOrder) {
@@ -43,4 +46,9 @@ public class MainlineItem extends BaseEntity {
     public Status getStatus() { return Status.valueOf(status); } public long getAccumulatedSeconds() { return accumulatedSeconds; }
     public String getNote() { return note; } public Instant getStartedAt() { return startedAt; } public Instant getCompletedAt() { return completedAt; }
     public Instant getDeletedAt() { return deletedAt; }
+    public String getStageId() { return stageId; }
+    public String getDependencyMode() { return dependencyMode; }
+    public String getPrerequisiteIdsJson() { return prerequisiteIdsJson; }
+    public void route(String stageId, String mode, String idsJson) { this.stageId = stageId; this.dependencyMode = mode; this.prerequisiteIdsJson = idsJson; }
+    public void clearStage() { stageId = null; }
 }

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 public interface MainlineItemRepository extends JpaRepository<MainlineItem, String> {
+    List<MainlineItem> findByMainlineIdOrderBySortOrderAsc(String mainlineId);
     List<MainlineItem> findByMainlineIdAndDeletedAtIsNullOrderBySortOrderAsc(String mainlineId);
     List<MainlineItem> findByMainlineOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(String ownerId);
     Optional<MainlineItem> findByIdAndMainlineOwnerIdAndDeletedAtIsNull(String id, String ownerId);

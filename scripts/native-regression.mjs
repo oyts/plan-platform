@@ -1,6 +1,6 @@
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, writeFile, mkdir, open, unlink } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, open, unlink, copyFile } from 'node:fs/promises';
 import { createWriteStream, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -91,9 +91,13 @@ async function attach(client) {
     try { const response = await fetch(`http://127.0.0.1:${client.cdp}/json/list`, { signal: AbortSignal.timeout(1000) }); return (await response.json()).some(page => page.type === 'page'); } catch { return false; }
   }, `${client.kind} WebView debugger`);
   client.browser = await chromium.connectOverCDP(`http://127.0.0.1:${client.cdp}`, { timeout: 20_000, noDefaults: true });
-  const pages = client.browser.contexts().flatMap(context => context.pages());
-  const candidates = pages.filter(page => client.kind === 'windows' ? /^https?:\/\/tauri\.localhost\//.test(page.url()) : /^https?:\/\/localhost\//.test(page.url()));
-  if (candidates.length !== 1) throw new Error(`Expected one bundled ${client.kind} WebView, found ${candidates.length}.`);
+  let candidates = [];
+  await waitFor(async () => {
+    const pages = client.browser.contexts().flatMap(context => context.pages());
+    candidates = pages.filter(page => client.kind === 'windows' ? /^https?:\/\/tauri\.localhost\//.test(page.url()) : /^https?:\/\/localhost\//.test(page.url()));
+    if (candidates.length > 1) throw new Error(`Expected one bundled ${client.kind} WebView, found ${candidates.length}.`);
+    return candidates.length === 1;
+  }, `${client.kind} bundled page navigation`);
   client.page = candidates[0]; client.page.setDefaultTimeout(20_000);
   await expect(client.page.locator('html')).toHaveClass(new RegExp(client.kind === 'windows' ? 'desktop-client' : 'android-client'));
   // Bridge identity is checked, not replaced. No page.route() or mocked invoke().
@@ -172,7 +176,7 @@ async function scenario(name, action) {
 async function preflight() {
   const manifest = validateManifest(JSON.parse(await readFile(join(artifactDir, 'build.json'), 'utf8')));
   if (await sourceFingerprint(root) !== manifest.sourceSha256) throw new Error('Client source changed after building; run prepare-native-regression.bat first.');
-  await verifyHash(join(root, 'backend/target/plan-platform-api-0.1.0.jar'), manifest.apiSha256);
+  await verifyHash(join(root, 'backend/target-acceptance/plan-platform-api-0.1.0.jar'), manifest.apiSha256);
   await verifyHash(exe, manifest.desktopSha256);
   const apk = join(artifactDir, manifest.apkName); await verifyHash(apk, manifest.apkSha256);
   if (!existsSync(java)) throw new Error('Set JAVA_HOME to Java 21.');
@@ -193,7 +197,11 @@ async function preflight() {
 }
 async function startApi() {
   apiLog = createWriteStream(join(runDir, 'api.log'));
-  const args = ['-Duser.timezone=Asia/Shanghai', '-jar', join(root, 'backend/target/plan-platform-api-0.1.0.jar'),
+  const snapshot = join(runDir, 'api.jar');
+  await copyFile(join(root, 'backend/target-acceptance/plan-platform-api-0.1.0.jar'), snapshot);
+  const manifest = JSON.parse(await readFile(join(artifactDir, 'build.json'), 'utf8'));
+  await verifyHash(snapshot, manifest.apiSha256);
+  const args = ['-Duser.timezone=Asia/Shanghai', '-jar', snapshot,
     '--server.address=127.0.0.1', `--server.port=${PORTS.api}`, '--spring.profiles.active=acceptance',
     `--spring.datasource.url=jdbc:h2:mem:native_${randomUUID().replaceAll('-', '')};MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1`,
     '--spring.datasource.driver-class-name=org.h2.Driver', '--spring.datasource.username=sa', '--spring.datasource.password=',
@@ -318,6 +326,52 @@ async function run() {
       await expect(client.page.getByRole('heading', {name:'任务 A',exact:true})).toBeVisible();
     }
   });
+  await scenario('目标路线阶段与编辑面板：前置依赖互通，真实离线编辑重开与同步', async () => {
+    const line = await api('/mainlines', {name:'原生阶段路线',color:'#002FA7',executionMode:'FLEXIBLE'}, owner.token, 'POST', 201);
+    const stage = await api(`/mainlines/${line.id}/stages`, {name:'基础练习',description:'合成阶段',sortOrder:0}, owner.token, 'POST', 201);
+    const firstStep = await api(`/mainlines/${line.id}/items`, {title:'基础知识',description:'合成步骤',acceptance:['验收'],plannedMinutes:20,sortOrder:0,routing:{stageId:stage.id,dependencyMode:'INHERIT',prerequisiteIds:[]}}, owner.token, 'POST', 201);
+    const second = await api(`/mainlines/${line.id}/items`, {title:'和弦练习',description:'合成步骤',acceptance:['验收'],plannedMinutes:20,sortOrder:1,routing:{stageId:stage.id,dependencyMode:'EXPLICIT',prerequisiteIds:[firstStep.id]}}, owner.token, 'POST', 201);
+    for (const client of clients) {
+      await refresh(client, `/mainlines?line=${line.id}`);
+      const row = client.page.locator('.mainline-step').filter({has:client.page.getByRole('heading',{name:'和弦练习',exact:true})});
+      await expect(row.getByRole('button',{name:'开始',exact:true})).toBeDisabled();
+      await row.getByRole('button',{name:'编辑步骤',exact:true}).click();
+      const panel = client.page.getByRole('dialog');
+      await expect(panel.getByLabel('步骤标题',{exact:true})).toHaveValue('和弦练习');
+      await expect(panel.getByLabel('基础知识',{exact:true})).toBeChecked();
+      await capture(report.cases.at(-1), `-step-panel-${client.kind}`);
+      await panel.getByRole('button',{name:'关闭面板',exact:true}).click();
+      await client.page.getByRole('button',{name:'折叠全部',exact:true}).click(); await expect(client.page.locator('.mainline-step')).toHaveCount(0);
+      await client.page.getByRole('button',{name:'展开全部',exact:true}).click(); await expect(client.page.locator('.mainline-step')).toHaveCount(2);
+      expect(await client.page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+    }
+    await api(`/mainlines/items/${firstStep.id}/complete`,{note:'验收',version:firstStep.version},owner.token);
+    let title='和弦练习';
+    for (const client of clients) {
+      await refresh(client, `/mainlines?line=${line.id}`);
+      const row=client.page.locator('.mainline-step').filter({has:client.page.getByRole('heading',{name:title,exact:true})});
+      await expect(row.getByRole('button',{name:'开始',exact:true})).toBeEnabled();
+      client.proxy.setOnline(false);
+      // Reload through the actual native bridge before editing so the app knows it is offline.
+      await refresh(client, `/mainlines?line=${line.id}`);
+      await expect(client.page.getByLabel('连接状态')).toContainText('离线工作区');
+      await client.page.locator('.mainline-step').filter({has:client.page.getByRole('heading',{name:title,exact:true})}).getByRole('button',{name:'编辑步骤',exact:true}).click();
+      const panel=client.page.getByRole('dialog'); await expect(panel.getByLabel('前置条件',{exact:true})).toBeDisabled();
+      title = `和弦练习－${client.kind}离线`; await panel.getByLabel('步骤标题',{exact:true}).fill(title);
+      await panel.getByRole('button',{name:'保存步骤',exact:true}).click(); await expect(panel).not.toBeVisible();
+      await restart(client); await route(client, `/mainlines?line=${line.id}`);
+      await expect(client.page.getByRole('heading',{name:title,exact:true})).toBeVisible();
+      await route(client,'/sync'); await expect(client.page.locator('.sync-row')).toHaveCount(1);
+      client.proxy.setOnline(true); await client.page.getByRole('button',{name:'同步等待项',exact:true}).click();
+      await expect(client.page.getByText('队列为空',{exact:true})).toBeVisible();
+      const updated=(await api('/mainlines',undefined,owner.token)).find(l=>l.id===line.id).items.find(i=>i.id===second.id);
+      expect(updated.title).toBe(title); expect(updated.prerequisiteIds).toEqual([firstStep.id]); expect(updated.stageId).toBe(stage.id);
+    }
+    for (const client of clients) {
+      await refresh(client, `/mainlines?line=${line.id}`); await expect(client.page.getByRole('heading',{name:title,exact:true})).toBeVisible();
+      await client.page.getByLabel('工作模式').selectOption('plan'); await route(client, `/plans/${currentPlan.id}`);
+    }
+  });
   await scenario('终止并重开真实 EXE/APK：原生会话与计划保留', async () => {
     for (const client of clients) {
       await restart(client);
@@ -404,6 +458,7 @@ async function cleanup() {
   if (forwardOwned) await attempt(() => adb('forward', '--remove', `tcp:${PORTS.androidCdp}`));
   if (reverseOwned) await attempt(() => adb('reverse', '--remove', `tcp:${PORTS.androidProxy}`));
   await attempt(() => stopChild(apiProcess));
+  if (apiProcess) await attempt(async () => { await unlink(join(runDir, 'api.jar')); });
   apiLog?.end();
   if (formalAndroidBefore !== undefined) await attempt(async () => {
     const after = (await adb('shell', 'dumpsys', 'package', 'cn.zijun701.plan.mobile')).match(/versionCode=\d+[^\r\n]*|versionName=[^\r\n]+/g)?.join('\n') || 'not installed';

@@ -17,6 +17,7 @@
 
   <properties>
     <java.version>21</java.version>
+    <plan.build.directory>target</plan.build.directory>
   </properties>
 
   <dependencies>
@@ -80,6 +81,7 @@
   </dependencies>
 
   <build>
+    <directory>${plan.build.directory}</directory>
     <plugins>
       <plugin>
         <groupId>org.springframework.boot</groupId>

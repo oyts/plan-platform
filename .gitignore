@@ -4,6 +4,7 @@
 *.log
 .env
 backend/target/
+backend/target-acceptance/
 backend/data/
 web/node_modules/
 web/dist/

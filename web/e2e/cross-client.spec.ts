@@ -212,10 +212,10 @@ test('mainline step two remains locked until another session completes step one'
   await secondPage(browser, async mobile => {
     await login(mobile, owner); await navigate(mobile, '主线');
     await mobile.locator('.mainline-step').filter({ has: mobile.getByRole('heading', { name: '第一步', exact: true }) }).getByRole('button', { name: '完成', exact: true }).click();
-    await expect(mobile.locator('.mainline-step').first()).toContainText('COMPLETED');
+    await expect(mobile.locator('.mainline-step').first()).toContainText('已完成');
   });
   await page.reload(); await expect(nextRow.getByRole('button', { name: '开始', exact: true })).toBeEnabled();
-  await nextRow.getByRole('button', { name: '开始', exact: true }).click(); await expect(nextRow).toContainText('RUNNING');
+  await nextRow.getByRole('button', { name: '开始', exact: true }).click(); await expect(nextRow).toContainText('进行中');
   expect(first.id).not.toBe(next.id);
 });
 

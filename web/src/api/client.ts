@@ -138,11 +138,18 @@ export function apiMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败。';
 }
 
-function isQueueable(config: { method?: string; url?: string; offlineReplay?: boolean }): boolean {
+function isQueueable(config: { method?: string; url?: string; data?: unknown; offlineReplay?: boolean }): boolean {
   const method = config.method?.toUpperCase();
   const url = config.url ?? '';
   if (!method || !['POST', 'PUT', 'PATCH'].includes(method)) return false;
   if (!/^\/(plans|tags|tasks|milestones|templates|mainlines)(\/|$)/.test(url)) return false;
+  if (url.startsWith('/mainlines')) {
+    // Topology needs an authoritative graph. Never queue linked creations or
+    // prerequisite/stage changes after an ambiguous network failure.
+    if (method === 'POST' || /\/stages(\/|$)/.test(url)) return false;
+    const data = clone(config.data);
+    if (data && typeof data === 'object' && ('routing' in data || 'executionMode' in data)) return false;
+  }
   return !/\/(timer|start|pause|complete|manual-time|defer|progress|recurring|recurrences)(\/|$)/.test(url);
 }
 

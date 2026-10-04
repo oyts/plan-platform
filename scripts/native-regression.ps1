@@ -19,7 +19,7 @@ if ($Action -eq 'test') {
     exit 0
 }
 if (-not $env:JAVA_HOME -or -not (Test-Path -LiteralPath "$env:JAVA_HOME/bin/java.exe")) { throw 'Set JAVA_HOME to Java 21.' }
-if (-not (Test-Path -LiteralPath 'backend/target/plan-platform-api-0.1.0.jar')) { throw 'Build the API with Maven package first.' }
+if (-not (Test-Path -LiteralPath 'backend/target-acceptance/plan-platform-api-0.1.0.jar')) { throw 'Build the API with Maven -Dplan.build.directory=target-acceptance package first.' }
 if ($Action -eq 'build') {
     $fingerprintCode = "import {sourceFingerprint} from './scripts/native-regression-support.mjs'; console.log(await sourceFingerprint(process.cwd()));"
     $sourceHash = & $node --input-type=module -e $fingerprintCode
@@ -46,7 +46,7 @@ if ($Action -eq 'build') {
         Set-Location -LiteralPath $output
         $badging = & "$env:ANDROID_HOME/build-tools/36.0.0/aapt.exe" dump badging ([IO.Path]::GetFileName($apk))
         if ($LASTEXITCODE -ne 0 -or ($badging -join "`n") -notmatch "package: name='cn.zijun701.plan.mobile.regression'") { throw 'Refusing a non-isolated APK.' }
-        $manifest = @{ schema = 1; sourceSha256 = $sourceHash; apiSha256 = (Get-FileHash (Join-Path $projectRoot 'backend/target/plan-platform-api-0.1.0.jar') -Algorithm SHA256).Hash; androidPackage = 'cn.zijun701.plan.mobile.regression'; desktopIdentifier = 'cn.zijun701.plan.desktop.regression'; desktopSha256 = (Get-FileHash (Join-Path $output 'plan-regression.exe') -Algorithm SHA256).Hash; apkName = [IO.Path]::GetFileName($apk); apkSha256 = (Get-FileHash $apk -Algorithm SHA256).Hash }
+        $manifest = @{ schema = 1; sourceSha256 = $sourceHash; apiSha256 = (Get-FileHash (Join-Path $projectRoot 'backend/target-acceptance/plan-platform-api-0.1.0.jar') -Algorithm SHA256).Hash; androidPackage = 'cn.zijun701.plan.mobile.regression'; desktopIdentifier = 'cn.zijun701.plan.desktop.regression'; desktopSha256 = (Get-FileHash (Join-Path $output 'plan-regression.exe') -Algorithm SHA256).Hash; apkName = [IO.Path]::GetFileName($apk); apkSha256 = (Get-FileHash $apk -Algorithm SHA256).Hash }
         [IO.File]::WriteAllText((Join-Path $output 'build.json'), ($manifest | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
     } finally {
         Set-Location -LiteralPath $projectRoot

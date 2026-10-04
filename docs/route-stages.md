@@ -1,0 +1,56 @@
+# 目标路线：阶段与灵活推进
+
+本阶段把长期目标组织成阶段和步骤。阶段只用于分组，不规定日期，也不自动锁定下一阶段。界面沿用蓝白配色与细分隔线；手机通过底部面板编辑步骤，PC 使用右侧面板，不再跳到页面顶部编辑。
+
+## 使用规则
+
+- 新建路线默认“自由推进”，没有前置条件的步骤可独立开始或完成。也可以选择“顺序推进”。
+- 已有路线及旧版导入路线保持原顺序规则，不会自动改成自由推进。
+- 每个步骤可继承路线规则、明确不设前置条件，或指定同一路线中的多个前置步骤。指定时需要全部完成才能推进。
+- 阶段支持新增、编辑名称/说明/位置、删除。删除阶段后步骤进入“未分组步骤”，包含回收站中的步骤，不丢失进度。
+- 步骤支持搜索、未完成筛选、阶段折叠及每组每页 10 项展示。这是客户端展示分页，API 目前仍返回完整路线，不是服务端分页。
+- 被其他有效步骤明确依赖的步骤不能直接移入回收站；先调整依赖。循环依赖、自身依赖、跨路线或跨账号依赖会被拒绝。
+- 切换规则或修改依赖若会锁定正在进行的步骤，需先暂停该步骤。所有解锁判断由后端执行，不能通过界面绕过。
+
+## 离线边界
+
+先联网加载路线，离线后可查看缓存并编辑已有步骤的标题、说明、验收项和参考分钟。修改保留在本地队列，关闭重开仍可见；恢复联网后复用幂等重放和版本冲突处理。
+
+新建路线/步骤、阶段管理、路线规则、步骤归属与前置依赖调整要求在线。计时、完成、删除也仍要求在线。离线普通编辑不提交 `routing`，避免覆盖新设备已经调整的阶段与依赖。未缓存或已过期的内容仍需联网加载。
+
+## 接口与数据兼容
+
+内部名称和 `/api/mainlines` 路径保留，避免破坏旧客户端和迁移格式：
+
+| 字段 | 语义 |
+| --- | --- |
+| 路线 `executionMode` | `SEQUENTIAL` 或 `FLEXIBLE`；创建时省略保持旧默认，更新时省略保留现值 |
+| 路线 `stages` | 阶段列表；含 `id/name/description/sortOrder/version` |
+| 路线 `nextSortOrder` | 含回收站步骤的最大位置加一，避免占用已有位置 |
+| 步骤 `routing`（请求） | `{stageId, dependencyMode, prerequisiteIds}`；省略则保留现有组织信息 |
+| 步骤 `dependencyMode` | `INHERIT`、`NONE`、`EXPLICIT` |
+| 步骤 `blockers` | 尚未完成的前置步骤 ID；客户端展示对应名称 |
+
+新增 `POST /mainlines/{id}/stages`、`PUT /mainlines/stages/{id}`、`DELETE /mainlines/stages/{id}?version=...`。编辑提交读取到的版本，过期返回 409；不存在或不属于当前用户返回 404。完整契约见 [OpenAPI](openapi.yaml)。
+
+Flyway V12 新增阶段表和组织字段，不删除旧路线或修改旧完成记录。拓扑写入锁定所属路线，再验证整张依赖图；包括回收站节点，避免未来恢复引入循环。已永久移除的依赖 ID 保留为阻塞信息，不错误视为已完成。
+
+## 本地构建与验收
+
+验收 JAR 使用独立输出目录，不能重新打包正在被原业务服务加载的默认 `backend/target`：
+
+```powershell
+cd backend
+mvn -Dplan.build.directory=target-acceptance package
+cd ..
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/native-regression.ps1 -Action build
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/native-regression.ps1 -Action run
+```
+
+浏览器与原生测试把 JAR 复制到本轮独立目录再启动，避免后续构建覆盖运行中的文件。使用合成账号、内存数据库与独立客户端，不修改原 43132/43133 服务、正式客户端或阿里云。
+
+本阶段后端 23 项、前端 108 项单元测试通过；完整浏览器回归 50 项通过、6 项手机专用用例在桌面项目中按设计跳过。新增测试覆盖 V11 升级保留数据、归属与版本校验、循环依赖、并发相反依赖、阶段删除保留步骤、折叠分页、编辑回显和离线重开重放。真实客户端结果以 `acceptance-results/native/latest.html` 为准，未完成的手机安装不能计为 Android 通过。
+
+Windows 独立 EXE 已完整通过 11 项回归，记录为 `acceptance-results/native/2026-10-04T04-58-00-740Z-c18286ce/report.json`，使用真实原生桥接和 TCP 断网。Android 测试包已构建，但本轮安装返回 `INSTALL_FAILED_ABORTED: User rejected permissions`，需要手机允许安装后重新运行双端测试。此前 PC 重开时测试脚本过早连接空白 WebView，已经增加目标页面等待，并通过完整重跑；失败报告保留，不计入通过结果。
+
+当前数据库测试使用 H2 MySQL 兼容模式，尚未新增真实 MySQL 8.4 的迁移验收。阶段折叠/搜索/页码为当前页面状态，不承诺跨设备同步。AI 规划导入、模板复用、路线暂停状态、服务器分页与正式发布仍属于后续阶段。

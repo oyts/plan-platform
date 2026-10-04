@@ -8,14 +8,20 @@ export function projectPending(data: unknown, url: string, operations: OfflineOp
     if (Array.isArray(value)) { value.forEach(visit); return; }
     if (!value || typeof value !== 'object') return;
     const item = value as Record<string, unknown>;
-    const kind = 'progress' in item && 'plannedMinutes' in item ? 'tasks' : 'taskCount' in item ? 'plans' : 'overall' in item && 'color' in item ? 'tags' : null;
+    const kind = 'progress' in item && 'plannedMinutes' in item ? 'tasks' : 'unlocked' in item && 'plannedMinutes' in item ? 'mainlines/items' : 'items' in item && 'completed' in item ? 'mainlines' : 'taskCount' in item ? 'plans' : 'overall' in item && 'color' in item ? 'tags' : null;
     if (kind && typeof item.id === 'string') {
       for (const row of edits.filter((row) => row.url === `/${kind}/${item.id}`)) {
         item.localState = row.status;
         // A conflict shows the server snapshot, not a silent local overwrite.
         if (row.status !== 'PENDING' || !row.data || typeof row.data !== 'object') continue;
-        const allowed = kind === 'tasks' ? ['tagId','date','startTime','endTime','plannedMinutes','category','title','description','acceptance','resourceUrl','required','sortOrder'] : kind === 'plans' ? ['name','description','startDate','endDate','restDays'] : ['name','color'];
+        const allowed = kind === 'tasks' ? ['tagId','date','startTime','endTime','plannedMinutes','category','title','description','acceptance','resourceUrl','required','sortOrder'] : kind === 'mainlines/items' ? ['title','description','acceptance','plannedMinutes','sortOrder'] : kind === 'mainlines' ? ['name','description','color','executionMode'] : kind === 'plans' ? ['name','description','startDate','endDate','restDays'] : ['name','color'];
         for (const key of allowed) if (key in row.data) item[key] = (row.data as Record<string, unknown>)[key];
+        if (kind === 'mainlines/items' && 'routing' in row.data) {
+          const routing = (row.data as Record<string, unknown>).routing;
+          if (routing && typeof routing === 'object') {
+            for (const key of ['stageId','dependencyMode','prerequisiteIds']) if (key in routing) item[key] = (routing as Record<string,unknown>)[key];
+          }
+        }
       }
     }
     Object.values(item).forEach(visit);
