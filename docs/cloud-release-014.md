@@ -87,6 +87,8 @@ MySQL 原迁移 V7/V9 使用了其不支持的 `ADD COLUMN IF NOT EXISTS`。已�
 
 上传时校验 SHA256；在独立版本目录复制权限 600 的服务器配置，先备份 MySQL，再构建预编译镜像并升级新 Compose 项目。最后验证健康和版本，更新 `current`。它不会自动切换旧公网入口，也不会卸载客户端。缺少配置、工作区未提交、重复版本目录或镜像不可用时安全停止；基础镜像必须事先可用。本次首次初始化通过单独部署完成，不应在一个尚无 MySQL 的空目录直接运行升级脚本。
 
+Android CI 显式仅安装 `platform-tools`，避免 setup-android 默认列表里的已移除 `tools` 包在真正编译前失败。输入配置依据 [setup-android 的 action 定义](https://github.com/android-actions/setup-android/blob/v3/action.yml)。
+
 ## 备份和真实旧数据
 
 用户级 cron 每日 03:15 执行 `/home/oyts/plan-platform/daily-mysql-backup.sh`，新 MySQL 的逻辑备份及 SHA256 侧文件上传到现有私有 OSS `plan-console-backups/mysql/`。首次实际备份和上传已通过，使用 ECS RAM Role，不保存长期 AccessKey。旧版 03:00 定时备份不受影响。当前不自动删除历史 MySQL/OSS 备份，需后续按容量设计保留策略。

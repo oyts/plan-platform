@@ -42,7 +42,9 @@ ln -s '__REMOTE__' '__ROOT__/current.new'
 mv -T '__ROOT__/current.new' '__ROOT__/current'
 '@
 $commands = $commands.Replace('__REMOTE__', $remote).Replace('__ROOT__', $RemoteRoot).Replace('__HASH__', $hash).Replace('__VERSION__', $version).Replace("`r`n", "`n")
-& ssh -o BatchMode=yes $SshTarget $commands
+# Send shell code through stdin. Windows PowerShell's native argument quoting
+# otherwise strips nested JSON/shell quotes when passing a multiline argument.
+$commands | & ssh -o BatchMode=yes $SshTarget 'sh -s'
 if ($LASTEXITCODE -ne 0) { throw 'Independent deployment failed. Public Nginx entry was not changed. Inspect the new release directory.' }
 Write-Host "Independent release prepared: $remote. Verify MySQL, login and recovery before sudo switch-public-entry.sh."
 Write-Host 'No formal client was installed; no old container, image or volume was deleted.'
