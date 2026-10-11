@@ -70,7 +70,7 @@ MySQL 原迁移 V7/V9 使用了其不支持的 `ADD COLUMN IF NOT EXISTS`。已�
    sudo sh scripts/switch-public-entry.sh
    ```
 
-   脚本要求旧代理确实为 43127，先保存旧配置，验证健康、关闭注册，再切换至 43140。Nginx 校验或公网健康失败时恢复旧入口；不删除新数据库。通过后在 `https://plan.zijun701.cn` 验证登录、三模式、刷新保持登录、同步和导出。管理员会话确认后，在受限 `.env` 中清空 `BOOTSTRAP_ADMIN_EMAIL`、`BOOTSTRAP_ADMIN_TOKEN_HASH`、`BOOTSTRAP_ADMIN_EXPIRES_AT`，并执行 `docker compose -p plan-platform -f docker-compose.production.yml up -d backend`。
+   脚本要求旧代理确实为 43127，先保存旧配置，验证健康、关闭注册，再切换至 43140。Nginx 校验或公网健康失败时恢复旧入口；不删除新数据库。通过后在 `https://plan.zijun701.cn` 验证登录、三模式、刷新保持登录、同步和导出。管理员会话确认后，在当前版本受限 `.env` 及部署根目录用于后续升级的 `.env` 中清空 `BOOTSTRAP_ADMIN_EMAIL`、`BOOTSTRAP_ADMIN_TOKEN_HASH`、`BOOTSTRAP_ADMIN_EXPIRES_AT`，并执行 `docker compose -p plan-platform -f docker-compose.production.yml up -d backend`。
 
 4. 如需恢复旧入口：
 

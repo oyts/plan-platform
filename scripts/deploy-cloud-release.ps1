@@ -44,7 +44,9 @@ mv -T '__ROOT__/current.new' '__ROOT__/current'
 $commands = $commands.Replace('__REMOTE__', $remote).Replace('__ROOT__', $RemoteRoot).Replace('__HASH__', $hash).Replace('__VERSION__', $version).Replace("`r`n", "`n")
 # Send shell code through stdin. Windows PowerShell's native argument quoting
 # otherwise strips nested JSON/shell quotes when passing a multiline argument.
-$commands | & ssh -o BatchMode=yes $SshTarget 'sh -s'
+$commands | & ssh -o BatchMode=yes $SshTarget 'tr -d ''\015'' | sh -s'
 if ($LASTEXITCODE -ne 0) { throw 'Independent deployment failed. Public Nginx entry was not changed. Inspect the new release directory.' }
+& ssh -o BatchMode=yes $SshTarget "readlink -f '$RemoteRoot/current' | grep -Fx '$remote'"
+if ($LASTEXITCODE -ne 0) { throw 'Current release pointer validation failed. No public cutover performed.' }
 Write-Host "Independent release prepared: $remote. Verify MySQL, login and recovery before sudo switch-public-entry.sh."
 Write-Host 'No formal client was installed; no old container, image or volume was deleted.'
