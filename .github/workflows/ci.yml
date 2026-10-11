@@ -19,6 +19,7 @@ jobs:
         with: { node-version: '22', cache: npm, cache-dependency-path: web/package-lock.json }
       - run: npm ci
         working-directory: web
+      - run: node scripts/verify-release.mjs
       - run: npm run build
         working-directory: web
       - run: npm test
@@ -31,7 +32,7 @@ jobs:
         with: { distribution: temurin, java-version: '21', cache: maven }
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: npm, cache-dependency-path: web/package-lock.json }
-      - run: mvn -B -DskipTests package
+      - run: mvn -B -DskipTests -Dplan.build.directory=target-acceptance package
         working-directory: backend
       - run: npm ci
         working-directory: web

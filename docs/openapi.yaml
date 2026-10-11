@@ -1,15 +1,19 @@
 openapi: 3.0.3
 info:
   title: Plan Platform API
-  version: 0.1.0
+  version: 0.1.4
   description: 多用户周期计划、目标路线、今日待办、计时与统计 API。除认证入口外，所有接口均需 Bearer Access Token。客户端可为写操作提供 X-Idempotency-Key；相同用户、键和请求内容在 24 小时内会重放已完成响应。
 servers:
   - url: /api
 paths:
+  /health:
+    get:
+      summary: 公开版本和协议标识；数据库就绪状态另见 actuator health
+      responses: { '200': { description: 服务标识, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean }, service: { type: string, example: plan-platform-api }, version: { type: string, example: 0.1.4 }, apiVersion: { type: integer, example: 1 } } } } } } }
   /auth/config:
     get:
       summary: 获取公开账号功能开关
-      responses: { '200': { description: 公开账号功能开关与业务能力, content: { application/json: { schema: { type: object, properties: { registrationEnabled: { type: boolean }, planRestDaysEnabled: { type: boolean }, todoEnabled: { type: boolean } } } } } } }
+      responses: { '200': { description: 公开账号功能开关与业务能力, content: { application/json: { schema: { type: object, properties: { registrationEnabled: { type: boolean }, planRestDaysEnabled: { type: boolean }, todoEnabled: { type: boolean }, serverVersion: { type: string }, apiVersion: { type: integer } } } } } } }
   /todos:
     get:
       summary: 查询当前用户独立待办；连续日期范围最多31天且最多2000项，超限返回400

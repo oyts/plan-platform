@@ -36,7 +36,7 @@ public class PlanNativePlugin extends Plugin {
     @Override public void load() {
         vault = new SessionVault(getContext());
         updater = new ClientUpdater(getActivity());
-        server = getContext().getSharedPreferences("plan-native-settings", 0).getString("server", "");
+        server = getContext().getSharedPreferences("plan-native-settings", 0).getString("server", "https://plan.zijun701.cn");
         try { if (!server.isEmpty()) server = TransportRules.server(server, BuildConfig.DEBUG); }
         catch (IllegalArgumentException invalid) { server = ""; }
     }

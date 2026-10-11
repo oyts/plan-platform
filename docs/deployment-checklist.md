@@ -2,10 +2,12 @@
 
 ## 上线前
 
+生产独立部署流程及本次验收见 [0.1.4 云端发布交接](cloud-release-014.md)。下列普通 Compose 命令仅用于本地体验或独立测试环境，不能直接替换现有旧版 43127 服务。
+
 1. 复制 `.env.example` 为 `.env`，填写新的 `DB_PASSWORD`、`MYSQL_ROOT_PASSWORD` 与至少 32 位随机 `JWT_SECRET`；这些值绝不提交 Git。
 2. 设置 `CORS_ALLOWED_ORIGINS=https://你的域名`、`APP_PUBLIC_URL=https://你的域名` 和 `REFRESH_COOKIE_SECURE=true`。
-3. 默认保持 `REGISTRATION_ENABLED=false`。仅在明确邀请新用户时短暂开启，并在创建完成后关闭。
-4. 使用邀请制时，先以已有账号邮箱设置 `BOOTSTRAP_ADMIN_EMAIL` 并重启一次服务；该账号会获得管理员权限，可在“成员邀请”页创建邀请。确认管理员账号后可清空该变量。
+3. 生产环境始终保持 `REGISTRATION_ENABLED=false`，由管理员签发绑定邮箱的邀请链接，不为首个账号无限制开放注册。
+4. 已有账号可通过受限配置 `BOOTSTRAP_ADMIN_EMAIL` 提升为管理员。全新库使用 `initialize-production.sh` 生成有期限的授权链接，管理员自行设置密码；实际邮箱、链接、token hash 只在权限 600 的服务器配置中保存。注册后清空 bootstrap 三项配置并重建 backend；只修改 `.env` 不会自动刷新容器环境。
 5. 仅在邮件服务已可用时开启 `EMAIL_VERIFICATION_ENABLED=true` 或 `PASSWORD_RESET_ENABLED=true`。
 6. 若启用找回密码，同时配置 `PASSWORD_RESET_ENABLED=true`、`MAIL_FROM` 和 SMTP 参数。没有可用 SMTP 时保持该功能关闭。
 7. 在反向代理或安全组层仅开放 80/443；数据库 3306 不对公网开放。

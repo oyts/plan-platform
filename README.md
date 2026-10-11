@@ -2,7 +2,7 @@
 
 一个支持周期计划、目标路线、今日待办和任务计时的开源多用户平台。项目由原本的纯前端“计划控制台”重构而来，面向 Java 学习、个人部署和跨设备任务管理。
 
-后端版本：`0.1.0`；Web 工程版本：`0.1.1`；已人工验收的本地原生更新版本：`0.1.3`。这些版本分别管理，不代表已公开发布安装包。
+当前候选版本统一为 `0.1.4`：后端、Web、Windows 和 Android；Android 构建号 `8`。此前人工验收的本地原生更新版本为 `0.1.3`。版本号一致不代表正式签名安装包已公开发布。
 
 ## 当前状态
 
@@ -14,7 +14,7 @@
 >
 > 已分离周期计划、目标路线和今日待办的工作区。新增公开产品首页、网页版入口、受发布清单控制的 Windows 下载与 Android 二维码，以及独立待办的日期、完成状态、编辑面板、分页、回收站和离线队列。当前阶段详情见 [官网与待办](docs/product-website-and-todos.md)。上一阶段 Windows 独立 EXE 与 Android 真机的 11 项回归记录见 [路线阶段](docs/route-stages.md)；本阶段不以浏览器手机视口测试代替 APK 真机验收。
 >
-> 现有阿里云域名仍连接旧版 `plan-console-sync 1.10.1`，不是本仓库的 Spring Boot API。新版云端切换、MySQL 部署验收、正式客户端签名与公开下载尚未完成。请勿把新版客户端连接到旧服务，也不要删除旧服务或数据后再尝试部署。
+> 阿里云新版已在独立 Compose 项目、MySQL 卷与本机 43140 端口部署。MySQL 8.4 全部 13 个迁移、核心业务隔离与冲突、备份恢复及 OSS 上传通过；0.1.4 独立 Windows EXE 的 12 项回归通过。域名仍连接旧版 `plan-console-sync 1.10.1`：切换宿主机 Nginx 需要管理员 sudo 操作。正式客户端签名、公开下载和 Android 本轮真机验收仍待完成。详见 [云端发布交接](docs/cloud-release-014.md)。不要删除旧服务或数据。
 
 ## 技术栈
 
@@ -37,7 +37,7 @@
 - 今日控制台、日期范围统计、每日复盘。
 - 目标路线与阶段 CRUD；自由推进、顺序推进及指定前置依赖由后端校验，拒绝循环和越权依赖。
 - JPA `@Version` 乐观锁，多设备使用旧版本提交时返回 HTTP 409。
-- Flyway 数据库版本管理；H2/MySQL 共用迁移脚本。
+- Flyway 数据库版本管理；公共迁移加 H2/MySQL 厂商迁移目录，保留已运行 H2 脚本的校验和。
 - 旧版 1.x JSON 预检、原始快照、关系型导入、幂等控制、迁移报告与批次回滚。
 - Docker Compose 一键启动 MySQL、Spring Boot、Vue/Nginx。
 - PWA 安装、应用壳离线缓存、版本更新提示与移动端响应式布局；Service Worker 不缓存私有 API，已访问的业务数据使用账号与服务器隔离的 IndexedDB 快照。
@@ -107,6 +107,8 @@ docker compose up -d --build
 本地 Docker 首次体验可临时设置 `REGISTRATION_ENABLED=true`，创建账号后再关闭。生产环境必须修改 `JWT_SECRET`、数据库密码和允许跨域的域名，并设置 `REFRESH_COOKIE_SECURE=true`；阿里云部署时建议使用 HTTPS、独立数据库备份、日志采集和安全组最小开放原则。
 
 部署前、上线和回滚检查见 [部署清单](docs/deployment-checklist.md)。接口契约见 [OpenAPI 文档](docs/openapi.yaml)。
+
+生产环境使用 `docker-compose.production.yml`，不是上面的本地体验配置。`prepare-cloud-release.bat` 构建并验证不含凭据的部署包；`deploy-cloud-release.bat` 在已初始化的新平台上备份、上传、独立升级，不自动切换旧公网入口。初始化、端口与回滚步骤见 [云端发布交接](docs/cloud-release-014.md)。
 
 PWA 能力边界、手机回归步骤和自动检查见 [PWA 与跨端测试](docs/pwa-and-cross-client-testing.md)。离线协议、幂等键与冲突处理见 [离线同步说明](docs/offline-sync.md)。
 

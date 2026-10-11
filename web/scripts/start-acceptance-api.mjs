@@ -6,7 +6,7 @@ import { resolve, join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const jar = join(root, 'backend/target-acceptance/plan-platform-api-0.1.0.jar');
+const jar = join(root, 'backend/target-acceptance/plan-platform-api.jar');
 if (!existsSync(jar)) throw new Error('Build the isolated acceptance API first: mvn -f ../backend/pom.xml -Dplan.build.directory=target-acceptance package');
 const java = process.env.JAVA_HOME ? join(process.env.JAVA_HOME, 'bin', process.platform === 'win32' ? 'java.exe' : 'java') : 'java';
 // Command-line properties override inherited production .env / datasource settings.

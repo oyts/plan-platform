@@ -8,7 +8,7 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 RUN addgroup -S plan && adduser -S plan -G plan
-COPY --from=build /workspace/target/plan-platform-api-0.1.0.jar app.jar
+COPY --from=build /workspace/target/plan-platform-api.jar app.jar
 USER plan
 EXPOSE 8080
 ENTRYPOINT ["java","-XX:MaxRAMPercentage=75","-jar","/app/app.jar","--spring.profiles.active=mysql"]

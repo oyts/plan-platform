@@ -11,7 +11,7 @@
 
   <groupId>com.oyts</groupId>
   <artifactId>plan-platform-api</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.4</version>
   <name>plan-platform-api</name>
   <description>Multi-user planning and time tracking platform</description>
 
@@ -81,11 +81,13 @@
   </dependencies>
 
   <build>
+    <finalName>plan-platform-api</finalName>
     <directory>${plan.build.directory}</directory>
     <plugins>
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions><execution><goals><goal>build-info</goal></goals></execution></executions>
       </plugin>
     </plugins>
   </build>

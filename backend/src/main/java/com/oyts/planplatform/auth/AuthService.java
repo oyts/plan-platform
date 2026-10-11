@@ -5,6 +5,7 @@ import com.oyts.planplatform.common.ForbiddenException;
 import com.oyts.planplatform.common.UnauthorizedException;
 import com.oyts.planplatform.config.JwtProperties;
 import com.oyts.planplatform.config.SecurityProperties;
+import com.oyts.planplatform.config.BootstrapProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -35,12 +36,13 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final SecurityProperties securityProperties;
     private final LoginAttemptService loginAttempts;
+    private final BootstrapProperties bootstrap;
 
     public AuthService(UserAccountRepository users, RefreshTokenRepository refreshTokens, PasswordResetTokenRepository passwordResetTokens,
                        InvitationRepository invitations, EmailVerificationTokenRepository emailVerificationTokens,
                        PasswordResetMailService passwordResetMail, PasswordEncoder passwordEncoder,
                        JwtEncoder jwtEncoder, JwtProperties jwtProperties, SecurityProperties securityProperties,
-                       LoginAttemptService loginAttempts) {
+                       LoginAttemptService loginAttempts, BootstrapProperties bootstrap) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.passwordResetTokens = passwordResetTokens;
@@ -52,6 +54,7 @@ public class AuthService {
         this.jwtProperties = jwtProperties;
         this.securityProperties = securityProperties;
         this.loginAttempts = loginAttempts;
+        this.bootstrap = bootstrap;
     }
 
     @Transactional
@@ -59,12 +62,16 @@ public class AuthService {
         String email = request.email().trim().toLowerCase();
         if (users.existsByEmailIgnoreCase(email)) throw new ConflictException("该邮箱已经注册。");
         Invitation invitation = null;
-        if (!securityProperties.registrationEnabled()) {
+        boolean firstAdmin = bootstrap.active() && email.equalsIgnoreCase(securityProperties.bootstrapAdminEmail())
+            && request.invitationToken() != null && MessageDigest.isEqual(
+                hash(request.invitationToken()).getBytes(StandardCharsets.US_ASCII), bootstrap.tokenHash().getBytes(StandardCharsets.US_ASCII));
+        if (!securityProperties.registrationEnabled() && !firstAdmin) {
             if (!securityProperties.invitationEnabled() || request.invitationToken() == null || request.invitationToken().isBlank()) throw new ForbiddenException("当前仅接受有效邀请注册链接注册。");
             invitation = invitations.findByTokenHashAndEmailIgnoreCase(hash(request.invitationToken()), email)
                 .filter(candidate -> candidate.isActive(Instant.now())).orElseThrow(() -> new ForbiddenException("邀请链接无效、已使用或已经过期。"));
         }
         UserAccount user = users.save(new UserAccount(email, passwordEncoder.encode(request.password()), request.displayName().trim()));
+        if (firstAdmin) user.makeAdmin();
         if (invitation != null) invitation.accept();
         if (securityProperties.emailVerificationEnabled()) sendEmailVerification(user);
         return issueTokens(user);

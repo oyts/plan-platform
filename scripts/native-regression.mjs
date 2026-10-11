@@ -176,7 +176,7 @@ async function scenario(name, action) {
 async function preflight() {
   const manifest = validateManifest(JSON.parse(await readFile(join(artifactDir, 'build.json'), 'utf8')));
   if (await sourceFingerprint(root) !== manifest.sourceSha256) throw new Error('Client source changed after building; run prepare-native-regression.bat first.');
-  await verifyHash(join(root, 'backend/target-acceptance/plan-platform-api-0.1.0.jar'), manifest.apiSha256);
+  await verifyHash(join(root, 'backend/target-acceptance/plan-platform-api.jar'), manifest.apiSha256);
   await verifyHash(exe, manifest.desktopSha256);
   const apk = join(artifactDir, manifest.apkName); await verifyHash(apk, manifest.apkSha256);
   if (!existsSync(java)) throw new Error('Set JAVA_HOME to Java 21.');
@@ -198,7 +198,7 @@ async function preflight() {
 async function startApi() {
   apiLog = createWriteStream(join(runDir, 'api.log'));
   const snapshot = join(runDir, 'api.jar');
-  await copyFile(join(root, 'backend/target-acceptance/plan-platform-api-0.1.0.jar'), snapshot);
+  await copyFile(join(root, 'backend/target-acceptance/plan-platform-api.jar'), snapshot);
   const manifest = JSON.parse(await readFile(join(artifactDir, 'build.json'), 'utf8'));
   await verifyHash(snapshot, manifest.apiSha256);
   const args = ['-Duser.timezone=Asia/Shanghai', '-jar', snapshot,
@@ -370,6 +370,34 @@ async function run() {
     for (const client of clients) {
       await refresh(client, `/mainlines?line=${line.id}`); await expect(client.page.getByRole('heading',{name:title,exact:true})).toBeVisible();
       await client.page.getByLabel('工作模式').selectOption('plan'); await route(client, `/plans/${currentPlan.id}`);
+    }
+  });
+  await scenario('今日待办独立模式：原生新增、离线编辑、重开与幂等同步', async () => {
+    for (const client of clients) {
+      await client.page.getByLabel('工作模式').selectOption('todo');
+      await expect(client.page.getByRole('heading', {name:'今日待办',exact:true})).toBeVisible();
+      await client.page.getByLabel('查看日期').fill('2026-10-12');
+      const title=`原生待办-${client.kind}`;
+      await client.page.getByLabel('快速记录').fill(title);
+      await client.page.getByRole('button',{name:'记一件事',exact:true}).click();
+      await expect(client.page.getByRole('heading',{name:title,exact:true})).toBeVisible();
+      client.proxy.setOnline(false); await refresh(client,'/todos');
+      await client.page.getByLabel('查看日期').fill('2026-10-12');
+      await client.page.locator('.todo-row').filter({hasText:title}).getByRole('button',{name:'编辑',exact:true}).click();
+      const panel=client.page.getByRole('dialog');
+      await panel.getByLabel('待办标题').fill(`${title}-离线`);
+      await panel.getByRole('button',{name:'保存待办',exact:true}).click();
+      await expect(panel).not.toBeVisible();
+      await restart(client); await route(client,'/todos');
+      await client.page.getByLabel('查看日期').fill('2026-10-12');
+      await expect(client.page.getByRole('heading',{name:`${title}-离线`,exact:true})).toBeVisible();
+      await route(client,'/sync'); await expect(client.page.locator('.sync-row')).toHaveCount(1);
+      client.proxy.setOnline(true); await client.page.getByRole('button',{name:'同步等待项',exact:true}).click();
+      await expect(client.page.getByText('队列为空',{exact:true})).toBeVisible();
+      const todos=await api('/todos?from=2026-10-12&to=2026-10-12',undefined,owner.token);
+      expect(todos.filter(todo=>todo.title===`${title}-离线`)).toHaveLength(1);
+      await client.page.getByLabel('工作模式').selectOption('plan'); await route(client,`/plans/${currentPlan.id}`);
+      await expect(client.page.getByRole('heading',{name:'任务 A',exact:true})).toBeVisible();
     }
   });
   await scenario('终止并重开真实 EXE/APK：原生会话与计划保留', async () => {

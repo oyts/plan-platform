@@ -17,7 +17,7 @@ try {
 if (-not $env:JAVA_HOME -and (Test-Path 'E:/biancheng/JDK21/bin/java.exe')) { $env:JAVA_HOME = 'E:/biancheng/JDK21' }
 if (-not $env:JAVA_HOME) { throw 'Set JAVA_HOME to Java 21 before starting the local test API.' }
 $java = Join-Path $env:JAVA_HOME 'bin/java.exe'
-$jar = Join-Path $projectRoot 'backend/target/plan-platform-api-0.1.0.jar'
+$jar = Join-Path $projectRoot 'backend/target/plan-platform-api.jar'
 if (-not (Test-Path -LiteralPath $jar)) { throw 'Run verify-cross-client.bat to build the API first.' }
 Write-Host "Local native test API: http://127.0.0.1:$Port. Keep this window open."
 Write-Host "Use synthetic test accounts only. Database: backend/data/$DatabaseName."

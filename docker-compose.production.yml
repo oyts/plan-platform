@@ -1,0 +1,49 @@
+# Run under a separate Compose project; no published database or API port.
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    mem_limit: 640m
+    environment:
+      MYSQL_DATABASE: plan_platform
+      MYSQL_USER: plan_app
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD required}
+      TZ: Asia/Shanghai
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--innodb-buffer-pool-size=128M", "--max-connections=40", "--performance-schema=OFF"]
+    volumes: ["mysql-data:/var/lib/mysql"]
+    healthcheck: { test: ["CMD", "mysqladmin", "ping", "-h", "localhost"], interval: 10s, timeout: 5s, retries: 30 }
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+  backend:
+    image: plan-platform-api:${PLAN_VERSION:?PLAN_VERSION required}
+    restart: unless-stopped
+    mem_limit: 640m
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms96m -Xmx320m -XX:MaxMetaspaceSize=160m -XX:+ExitOnOutOfMemoryError
+      SPRING_PROFILES_ACTIVE: mysql
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 8
+      DB_URL: jdbc:mysql://mysql:3306/plan_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      DB_USERNAME: plan_app
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
+      CORS_ALLOWED_ORIGINS: https://plan.zijun701.cn
+      APP_PUBLIC_URL: https://plan.zijun701.cn
+      REGISTRATION_ENABLED: "false"
+      REFRESH_COOKIE_SECURE: "true"
+      EMAIL_VERIFICATION_ENABLED: "false"
+      PASSWORD_RESET_ENABLED: "false"
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_TOKEN_HASH: ${BOOTSTRAP_ADMIN_TOKEN_HASH:-}
+      BOOTSTRAP_ADMIN_EXPIRES_AT: ${BOOTSTRAP_ADMIN_EXPIRES_AT:-}
+    depends_on: { mysql: { condition: service_healthy } }
+    healthcheck: { test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness || exit 1"], interval: 10s, timeout: 5s, retries: 30 }
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+  web:
+    image: plan-platform-web:${PLAN_VERSION:?PLAN_VERSION required}
+    restart: unless-stopped
+    mem_limit: 64m
+    ports: ["127.0.0.1:${PLAN_PORT:-43140}:80"]
+    depends_on: { backend: { condition: service_healthy } }
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+volumes:
+  mysql-data:

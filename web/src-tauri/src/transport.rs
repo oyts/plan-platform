@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, fs, path::PathBuf, sync::Arc, time::{Duration, SystemTime, UNIX_EPOCH}};
 use url::Url;
 
-const DEFAULT_SERVER: &str = if cfg!(feature = "native-regression") { "http://127.0.0.1:43137" } else { "http://127.0.0.1:8080" };
+const DEFAULT_SERVER: &str = if cfg!(feature = "native-regression") { "http://127.0.0.1:43137" } else { "https://plan.zijun701.cn" };
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

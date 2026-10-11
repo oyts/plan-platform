@@ -23,6 +23,7 @@ public class AuthController {
     private final AuthService authService;
     private final RefreshCookieService cookies;
     private final SecurityProperties security;
+    @org.springframework.beans.factory.annotation.Value("${app.version}") private String serverVersion;
 
     public AuthController(AuthService authService, RefreshCookieService cookies, SecurityProperties security) {
         this.authService = authService; this.cookies = cookies; this.security = security;
@@ -52,7 +53,7 @@ public class AuthController {
     }
 
     @GetMapping("/config")
-    AuthDtos.AuthConfigResponse config() { return new AuthDtos.AuthConfigResponse(security.registrationEnabled(), security.passwordResetEnabled(), security.invitationEnabled(), security.emailVerificationEnabled(), true, true); }
+    AuthDtos.AuthConfigResponse config() { return new AuthDtos.AuthConfigResponse(security.registrationEnabled(), security.passwordResetEnabled(), security.invitationEnabled(), security.emailVerificationEnabled(), true, true, serverVersion, 1); }
 
     @GetMapping("/me")
     AuthDtos.UserResponse me(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) {

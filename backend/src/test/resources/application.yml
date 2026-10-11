@@ -9,7 +9,9 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+    locations: classpath:db/migration,classpath:db/vendor/{vendor}
 app:
+  version: 0.1.4
   cors-allowed-origins: http://localhost:43128
   jwt:
     issuer: plan-platform-test

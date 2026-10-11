@@ -1,0 +1,7 @@
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+RUN addgroup -S plan && adduser -S plan -G plan
+COPY api.jar /app/api.jar
+USER plan
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/api.jar"]

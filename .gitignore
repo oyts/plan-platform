@@ -39,6 +39,9 @@ web/src-tauri/target/
 .desktop-signing/
 desktop-artifacts/
 client-update-artifacts/
+production-artifacts/
+admin-registration.url
+acceptance.env
 web/src-tauri/gen/
 web/src-tauri/icons/*
 !web/src-tauri/icons/icon.ico
