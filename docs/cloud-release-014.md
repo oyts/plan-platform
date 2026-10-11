@@ -28,6 +28,8 @@ Web、Spring Boot、Tauri Windows 与 Android 版本统一为 `0.1.4`，Android 
 
 本地证据位于被 Git 忽略的 `acceptance-results/`：`native/latest.html`、`browser-release-014.log`、`desktop-unit-014.log`、`cloud/desktop-home.png` 与 `cloud/mobile-home.png`。原生测试使用独立应用身份，没有安装、卸载或清理正式客户端。本轮没有重新实测正式安装包应用内升级，因此不把此前 0.1.3 的人工升级证据当作 0.1.4 的正式发布验收。
 
+GitHub 远程 [CI](https://github.com/oyts/plan-platform/actions/runs/38179331806)、[Windows 构建](https://github.com/oyts/plan-platform/actions/runs/38178989137) 和修复后的 [Android 构建](https://github.com/oyts/plan-platform/actions/runs/38179182006) 均已成功。流水线生成的 unsigned/debug 安装包仍不等于正式签名发布。
+
 ## 服务器独立部署
 
 当前实例通过现有 SSH 密钥连接，账号为 `oyts`。新部署根目录 `/home/oyts/plan-platform`，首次候选目录 `release-0.1.4`；后续脚本目录为 `releases/版本-提交`，`current` 指向独立服务当前版本。
@@ -86,6 +88,8 @@ MySQL 原迁移 V7/V9 使用了其不支持的 `ADD COLUMN IF NOT EXISTS`。已�
 在已经初始化的新平台上，先提交通过测试的代码，再双击 `deploy-cloud-release.bat`。它调用 `prepare-cloud-release.bat` 重新校验版本、运行后端和前端测试、构建并打包；只打包列举的 JAR、静态文件和部署脚本，不打包仓库、凭据、账号、日志或数据库。
 
 上传时校验 SHA256；在独立版本目录复制权限 600 的服务器配置，先备份 MySQL，再构建预编译镜像并升级新 Compose 项目。最后验证健康和版本，更新 `current`。它不会自动切换旧公网入口，也不会卸载客户端。缺少配置、工作区未提交、重复版本目录或镜像不可用时安全停止；基础镜像必须事先可用。本次首次初始化通过单独部署完成，不应在一个尚无 MySQL 的空目录直接运行升级脚本。
+
+本次已实际执行部署脚本全流程，验收目录为 `/home/oyts/plan-platform/releases/0.1.4-ac183f601a0a`，对应应用提交 `ac183f601a0a1badb0d3fd63978ce4b094dd7956`；本地记录 `acceptance-results/cloud-deploy-014-verified.log`。后续纯文档提交不改变已部署的应用。Windows SSH 通过 stdin 传送脚本并过滤 CRLF，避免嵌套引号丢失及错误的版本指针名称；升级后还核对 `current` 实际目标。启动期间瞬时连接重置会重试，最终健康和版本校验未通过不会宣告成功。
 
 Android CI 显式仅安装 `platform-tools`，避免 setup-android 默认列表里的已移除 `tools` 包在真正编译前失败。输入配置依据 [setup-android 的 action 定义](https://github.com/android-actions/setup-android/blob/v3/action.yml)。
 
