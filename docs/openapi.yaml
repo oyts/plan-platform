@@ -2,14 +2,57 @@ openapi: 3.0.3
 info:
   title: Plan Platform API
   version: 0.1.0
-  description: 多用户计划、主线、计时与统计 API。除认证入口外，所有接口均需 Bearer Access Token。客户端可为写操作提供 X-Idempotency-Key；相同用户、键和请求内容在 24 小时内会重放已完成响应。
+  description: 多用户周期计划、目标路线、今日待办、计时与统计 API。除认证入口外，所有接口均需 Bearer Access Token。客户端可为写操作提供 X-Idempotency-Key；相同用户、键和请求内容在 24 小时内会重放已完成响应。
 servers:
   - url: /api
 paths:
   /auth/config:
     get:
       summary: 获取公开账号功能开关
-      responses: { '200': { description: 功能开关；planRestDaysEnabled 为 true 表示支持每周休息日配置, content: { application/json: { schema: { type: object, properties: { planRestDaysEnabled: { type: boolean } } } } } } }
+      responses: { '200': { description: 公开账号功能开关与业务能力, content: { application/json: { schema: { type: object, properties: { registrationEnabled: { type: boolean }, planRestDaysEnabled: { type: boolean }, todoEnabled: { type: boolean } } } } } } }
+  /todos:
+    get:
+      summary: 查询当前用户独立待办；连续日期范围最多31天且最多2000项，超限返回400
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: deleted, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '200': { description: 日期及创建时间排序的待办列表, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/TodoResponse' } } } } }
+        '400': { description: 日期范围或结果数量超限 }
+    post:
+      summary: 新建待办；初始未完成且未删除
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TodoCreate' } } } }
+      responses:
+        '201': { description: 已创建, content: { application/json: { schema: { $ref: '#/components/schemas/TodoResponse' } } } }
+        '400': { description: 输入无效 }
+        '409': { description: 幂等键冲突 }
+  /todos/{id}:
+    put:
+      summary: 编辑、完成、软删除或恢复待办；所有操作都必须提交基础版本
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - { $ref: '#/components/schemas/TodoCreate' }
+                - type: object
+                  required: [done, deleted, version]
+                  properties:
+                    done: { type: boolean }
+                    deleted: { type: boolean }
+                    version: { type: integer, format: int64, minimum: 0 }
+      responses:
+        '200': { description: 已更新, content: { application/json: { schema: { $ref: '#/components/schemas/TodoResponse' } } } }
+        '400': { description: 输入无效或缺少版本 }
+        '404': { description: 不存在或不属于当前用户 }
+        '409': { description: 基础版本过期或幂等键冲突 }
   /auth/register:
     post:
       summary: 注册账号（服务端开启注册时）
@@ -267,6 +310,24 @@ components:
         completedCount: { type: integer, format: int64 }
         updatedAt: { type: string, format: date-time }
         restDays: { type: array, maxItems: 7, uniqueItems: true, description: 升序的每周休息日；不影响已有任务, items: { type: integer, minimum: 1, maximum: 7 } }
+    TodoCreate:
+      type: object
+      required: [title, dueDate]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 180 }
+        note: { type: string, maxLength: 2000, nullable: true }
+        dueDate: { type: string, format: date }
+    TodoResponse:
+      allOf:
+        - { $ref: '#/components/schemas/TodoCreate' }
+        - type: object
+          required: [id, done, deleted, version, updatedAt]
+          properties:
+            id: { type: string }
+            done: { type: boolean }
+            deleted: { type: boolean }
+            version: { type: integer, format: int64 }
+            updatedAt: { type: string, format: date-time }
     RegisterRequest: { type: object, required: [email, password, displayName], properties: { email: { type: string, format: email }, password: { type: string, minLength: 10 }, displayName: { type: string, maxLength: 80 } } }
     LoginRequest: { type: object, required: [email, password], properties: { email: { type: string, format: email }, password: { type: string } } }
     EmailRequest: { type: object, required: [email], properties: { email: { type: string, format: email } } }

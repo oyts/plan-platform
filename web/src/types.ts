@@ -2,6 +2,7 @@ export interface User { id: string; email: string; displayName: string; role: st
 export interface TokenResponse { accessToken: string; expiresInSeconds: number; user: User }
 export interface SessionInfo { id: string; createdAt: string; expiresAt: string; current: boolean }
 export interface LocalRecord { localState?: 'PENDING' | 'CONFLICT' | 'FAILED'; localOnly?: boolean }
+export interface Todo extends LocalRecord { id: string; title: string; note: string; dueDate: string; done: boolean; deleted: boolean; version: number; updatedAt: string }
 export interface Plan extends LocalRecord { id: string; name: string; description: string; startDate: string; endDate: string; restDays?: number[]; archived: boolean; version: number; taskCount: number; completedCount: number; updatedAt: string }
 export interface Tag extends LocalRecord { id: string; name: string; color: string; overall: boolean; version: number }
 export interface Progress { status: string; accumulatedSeconds: number; startedAt: string | null; completedAt: string | null; acceptanceChecks: boolean[]; note: string; deferTo: string | null; skipReason: string; version: number }

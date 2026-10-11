@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { freshWorkspace, pathWorkspace, readWorkspace, rememberWorkspace, workspaceDestination, workspaceKey } from './workspaceModel';
 describe('independent workspace preferences', () => {
+  it('adds todo without losing prior mode positions', () => {
+    let state = rememberWorkspace(freshWorkspace(), '/plans/one'); state = rememberWorkspace(state, '/mainlines?line=guitar');
+    state = rememberWorkspace(state, '/todos'); expect(state.mode).toBe('todo');
+    expect(workspaceDestination(state,'plan')).toBe('/plans/one'); expect(workspaceDestination(state,'route')).toBe('/mainlines?line=guitar');
+    expect(workspaceDestination(state)).toBe('/todos');
+    const old = readWorkspace({getItem:()=>JSON.stringify({version:1,mode:'route',planPath:'/plans',routePath:'/routes'})},'s','u');
+    expect(old.todoPath).toBe('/todos'); expect(old.mode).toBe('route');
+  });
   it('classifies old route URLs and plan details without renaming API identifiers', () => {
     expect(pathWorkspace('/mainlines?line=one')).toBe('route'); expect(pathWorkspace('/plans/uuid-1/studio')).toBe('plan');
     expect(pathWorkspace('/routes')).toBe('route'); expect(pathWorkspace('/route-records')).toBe('route');

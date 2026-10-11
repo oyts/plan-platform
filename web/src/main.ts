@@ -29,7 +29,7 @@ async function bootstrap(): Promise<void> {
       const dialog = document.querySelector<HTMLDialogElement>('dialog[open]');
       if (dialog) { dialog.dispatchEvent(new Event('cancel', { cancelable: true })); return; }
       const path = router.currentRoute.value.path;
-      if (['/', '/routes', '/login'].includes(path)) {
+      if (['/', '/routes', '/todos', '/login'].includes(path)) {
         if (window.confirm('退出计划舱？正在运行的计时不会因此停止。')) void androidApp.exitApp();
       } else if (canGoBack) router.back();
       else void router.replace(auth.user ? workspaceHome(workspace.mode) : '/login');

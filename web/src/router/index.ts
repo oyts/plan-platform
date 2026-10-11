@@ -3,13 +3,16 @@ import { hasSession } from '@/api/client';
 import { isNativeClient as isDesktop } from '@/desktop';
 import { requiredClientUpdate, updateRouteAllowed } from '@/clientUpdates';
 import { observeWorkspacePath, workspaceEntry } from '@/workspace';
-import DashboardView from '@/views/DashboardView.vue';
+import HomeEntryView from '@/views/HomeEntryView.vue';
+import ProductHomeView from '@/views/ProductHomeView.vue';
 const router = createRouter({ history: isDesktop() ? createWebHashHistory() : createWebHistory(), routes: [
   { path: '/desktop', component: () => import('@/views/DesktopView.vue'), meta: { public: true, allowAuthenticated: true } },
   { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
   { path: '/register', component: () => import('@/views/RegisterView.vue'), meta: { public: true } },
   { path: '/reset-password', component: () => import('@/views/ResetPasswordView.vue'), meta: { public: true } },
-  { path: '/', component: DashboardView },
+  { path: '/', component: HomeEntryView, meta: { public: true, allowAuthenticated: true } },
+  { path: '/welcome', component: ProductHomeView, meta: { public: true, allowAuthenticated: true, landing: true } },
+  { path: '/todos', component: () => import('@/views/TodosView.vue') },
   { path: '/schedule', component: () => import('@/views/ScheduleView.vue') },
   { path: '/plans', component: () => import('@/views/PlansView.vue') },
   { path: '/plans/:id', component: () => import('@/views/PlanDetailView.vue') },
@@ -27,6 +30,6 @@ const router = createRouter({ history: isDesktop() ? createWebHashHistory() : cr
   { path: '/sync', component: () => import('@/views/SyncView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },
 ] });
-router.beforeEach((to) => { if (requiredClientUpdate() && !updateRouteAllowed(to.path)) return '/desktop'; if (!to.meta.public && !hasSession()) return '/login'; if (to.meta.public && hasSession() && !to.meta.allowAuthenticated) return requiredClientUpdate() ? '/desktop' : workspaceEntry(); });
-router.beforeResolve(async (to) => { if (hasSession() && !to.meta.public) await observeWorkspacePath(to.fullPath); });
+router.beforeEach((to) => { if (requiredClientUpdate() && !updateRouteAllowed(to.path)) return '/desktop'; if ((isDesktop() && to.path === '/' || !to.meta.public) && !hasSession()) return '/login'; if (to.meta.public && hasSession() && !to.meta.allowAuthenticated) return requiredClientUpdate() ? '/desktop' : workspaceEntry(); });
+router.beforeResolve(async (to) => { if (hasSession() && (!to.meta.public || to.path === '/')) await observeWorkspacePath(to.fullPath); });
 export default router;

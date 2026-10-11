@@ -3,6 +3,10 @@
 *.iml
 *.log
 .env
+.env.*
+!.env.example
+*.pem
+*.key
 backend/target/
 backend/target-acceptance/
 backend/data/

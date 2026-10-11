@@ -6,8 +6,8 @@ import type { WorkspaceMode } from '@/workspaceModel';
 const router = useRouter();
 async function change(event: Event) {
   const value = (event.target as HTMLSelectElement).value;
-  if (requiredClientUpdate() || !['plan', 'route'].includes(value)) return;
+  if (requiredClientUpdate() || !['plan', 'route', 'todo'].includes(value)) return;
   await router.push(await workspaceSwitchTarget(value as WorkspaceMode));
 }
 </script>
-<template><div class="workspace-switcher"><select aria-label="工作模式" :value="workspace.mode" :disabled="requiredClientUpdate()" @change="change"><option value="plan">周期计划</option><option value="route">目标路线</option></select></div></template>
+<template><div class="workspace-switcher"><select aria-label="工作模式" :value="workspace.mode" :disabled="requiredClientUpdate()" @change="change"><option value="plan">周期计划</option><option value="route">目标路线</option><option value="todo">今日待办</option></select></div></template>

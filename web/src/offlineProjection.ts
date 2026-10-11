@@ -1,7 +1,9 @@
 import type { OfflineOperation } from '@/offlineQueue';
+import { projectTodos } from '@/todos';
 
 export interface LocalRecord { localState?: OfflineOperation['status']; localOnly?: boolean }
-export function projectPending(data: unknown, url: string, operations: OfflineOperation[]): unknown {
+export function projectPending(data: unknown, url: string, operations: OfflineOperation[], params?: unknown): unknown {
+  if (url === '/todos') return projectTodos(data, operations, params);
   const copy = structuredClone(data);
   const edits = operations.filter((row) => row.method === 'PUT' || row.method === 'PATCH');
   function visit(value: unknown): void {

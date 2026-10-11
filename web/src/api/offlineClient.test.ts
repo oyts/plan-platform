@@ -17,6 +17,15 @@ beforeEach(async () => {
   connectionState.cacheAvailable = true;
 });
 describe('offline API safety', () => {
+  it('queues standalone todo completion and deletion with a retained version', async () => {
+    const params = {from:'2026-10-12',to:'2026-10-12',deleted:false};
+    const todoCache:AxiosAdapter = async config => ({data:[{id:'todo',title:'临时事项',dueDate:'2026-10-12',done:false,deleted:false,version:3}],status:200,statusText:'OK',headers:{},config});
+    await api.get('/todos',{params,adapter:todoCache});
+    await expect(api.put('/todos/todo',{title:'完成事项',dueDate:'2026-10-12',done:true,deleted:false,version:3},{adapter:disconnected})).rejects.toBeInstanceOf(OfflineQueuedError);
+    expect((await api.get('/todos',{params,adapter:disconnected})).data).toMatchObject([{title:'完成事项',done:true,version:3,localState:'PENDING'}]);
+    await expect(api.put('/todos/todo',{title:'删除事项',version:3,deleted:true})).rejects.toThrow('已有本地修改');
+    expect(await listOperations('one')).toHaveLength(1);
+  });
   it('queues route content edits but refuses topology changes during an outage', async () => {
     const routeCache: AxiosAdapter = async config => ({ data: [{ id:'l',name:'路线',completed:0,items:[{id:'i',title:'原步骤',plannedMinutes:20,unlocked:true,version:0}] }], status:200,statusText:'OK',headers:{},config });
     await api.get('/mainlines', {adapter:routeCache});

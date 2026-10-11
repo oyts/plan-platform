@@ -20,7 +20,7 @@ public final class AuthDtos {
     public record LoginRequest(@Email @NotBlank String email, @NotBlank String password) {}
     public record UserResponse(String id, String email, String displayName, String role, boolean emailVerified) {}
     public record TokenResponse(String accessToken, long expiresInSeconds, UserResponse user) {}
-    public record AuthConfigResponse(boolean registrationEnabled, boolean passwordResetEnabled, boolean invitationEnabled, boolean emailVerificationEnabled, boolean planRestDaysEnabled) {}
+    public record AuthConfigResponse(boolean registrationEnabled, boolean passwordResetEnabled, boolean invitationEnabled, boolean emailVerificationEnabled, boolean planRestDaysEnabled, boolean todoEnabled) {}
     public record SessionResponse(String id, Instant createdAt, Instant expiresAt, boolean current) {}
     public record ProfileRequest(@NotBlank @Size(max = 80) String displayName) {}
     public record ChangePasswordRequest(@NotBlank String currentPassword,

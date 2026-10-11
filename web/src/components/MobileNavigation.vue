@@ -5,20 +5,20 @@ import { useAuthStore } from '@/stores/auth';
 import { requiredClientUpdate, updateRouteAllowed } from '@/clientUpdates';
 import { isNativeClient } from '@/desktop';
 import { workspace } from '@/workspace';
-import { planNavigation, routeNavigation } from '@/workspaceModel';
+import { planNavigation, routeNavigation, todoNavigation } from '@/workspaceModel';
 import AppIcon from './AppIcon.vue';
 import AppSheet from './AppSheet.vue';
 import PwaControl from './PwaControl.vue';
 const emit = defineEmits<{ logout: [] }>();
 const auth = useAuthStore(); const route = useRoute(); const open = ref(false);
-const primary = computed(() => workspace.mode === 'plan' ? planNavigation : routeNavigation);
+const primary = computed(() => workspace.mode === 'plan' ? planNavigation : workspace.mode === 'route' ? routeNavigation : todoNavigation);
 const secondary = computed(() => [
   ...(workspace.mode === 'plan' ? [
   { path: '/stats', label: '统计', description: '计划与实际用时' },
   { path: '/reviews', label: '复盘', description: '回顾每天的执行' },
   { path: '/records', label: '记录', description: '计时流水与回收站' },
   { path: '/exports', label: '导出', description: '保存数据到文件' },
-  ] : [{ path: '/route-records', label: '记录', description: '已删除的路线与步骤' }]),
+  ] : workspace.mode === 'route' ? [{ path: '/route-records', label: '记录', description: '已删除的路线与步骤' }] : []),
   { path: '/sync', label: '同步', description: '待同步操作与冲突' },
   { path: '/settings', label: '设置', description: '账号与安全' },
   ...(isNativeClient() ? [{ path: '/desktop', label: '客户端', description: '服务器连接与更新' }] : []),
@@ -30,7 +30,7 @@ watch(() => route.fullPath, () => { open.value = false; });
 function logout() { open.value = false; emit('logout'); }
 </script>
 <template>
-  <nav class="mobile-navigation" aria-label="手机主导航">
+  <nav class="mobile-navigation" :class="{ 'mobile-navigation--todo': workspace.mode === 'todo' }" aria-label="手机主导航">
     <template v-for="item in primary" :key="item.path">
       <router-link v-if="allowed(item.path)" :to="item.path" :class="{ active: item.path === '/' ? route.path === '/' : route.path.startsWith(item.path) }"><AppIcon :name="item.icon"/><span>{{ item.label }}</span></router-link>
       <button v-else disabled type="button"><AppIcon :name="item.icon"/><span>{{ item.label }}</span></button>
@@ -49,3 +49,4 @@ function logout() { open.value = false; emit('logout'); }
     <button class="btn mobile-logout" type="button" @click="logout">{{ auth.user?.displayName }} · 退出</button>
   </AppSheet>
 </template>
+<style scoped>@media(max-width:900px){.mobile-navigation--todo{grid-template-columns:repeat(2,minmax(0,1fr))}}</style>

@@ -6,14 +6,28 @@ import { cachedIdentity, forgetScope, isSignedOut, rememberIdentity, signOutScop
 import { markDisconnected, requiresConnection } from '@/connectionState';
 import type { TokenResponse, User } from '@/types';
 import { clearNativeSession } from '@/desktop';
+import { validateServerConfig, serverConnectionIssue } from '@/serverCompatibility';
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null); const ready = ref(false); const registrationEnabled = ref(false); const passwordResetEnabled = ref(false); const invitationEnabled = ref(false); const emailVerificationEnabled = ref(false);
   let sessionAttempt = 0;
   const planRestDaysEnabled = ref(false);
+  const connectionError = ref('');
   async function accept(data: TokenResponse) { saveTokens(data); user.value = data.user; await rememberIdentity(serverScope(), currentQueueOwner()!, data.user); }
   async function bootstrap() {
     const attempt = ++sessionAttempt; const scope = serverScope();
-    try { const config = (await api.get<{registrationEnabled:boolean;passwordResetEnabled:boolean;invitationEnabled:boolean;emailVerificationEnabled:boolean;planRestDaysEnabled?:boolean}>('/auth/config', { timeout: 3000 })).data; registrationEnabled.value = config.registrationEnabled; passwordResetEnabled.value = config.passwordResetEnabled; invitationEnabled.value = config.invitationEnabled; emailVerificationEnabled.value = config.emailVerificationEnabled; planRestDaysEnabled.value = config.planRestDaysEnabled === true; } catch { registrationEnabled.value = false; passwordResetEnabled.value = false; invitationEnabled.value = false; emailVerificationEnabled.value = false; planRestDaysEnabled.value = false; }
+    connectionError.value = '';
+    try {
+      const config = validateServerConfig((await api.get('/auth/config', { timeout: 3000 })).data);
+      if (attempt !== sessionAttempt || scope !== serverScope()) return;
+      registrationEnabled.value = config.registrationEnabled; passwordResetEnabled.value = config.passwordResetEnabled;
+      invitationEnabled.value = config.invitationEnabled; emailVerificationEnabled.value = config.emailVerificationEnabled;
+      planRestDaysEnabled.value = config.planRestDaysEnabled === true;
+    } catch (error) {
+      if (attempt !== sessionAttempt || scope !== serverScope()) return;
+      connectionError.value = serverConnectionIssue(error);
+      registrationEnabled.value = false; passwordResetEnabled.value = false; invitationEnabled.value = false;
+      emailVerificationEnabled.value = false; planRestDaysEnabled.value = false;
+    }
     if (await isSignedOut(scope)) { clearTokens(); user.value = null; ready.value = true; return; }
     try {
       const { data } = await api.post<TokenResponse>('/auth/refresh', null, { timeout: 3000 });
@@ -37,5 +51,5 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout() { try { if (!requiresConnection()) await api.post('/auth/logout'); } finally { await forgetSession(); } }
   async function logoutAll() { try { if (requiresConnection()) throw new Error('当前设备已退出；全设备会话撤销需要联网后重新执行。'); await api.post('/auth/logout-all'); } finally { await forgetSession(); } }
   function updateProfile(profile: User) { user.value = profile; }
-  return { user, ready, registrationEnabled, passwordResetEnabled, invitationEnabled, emailVerificationEnabled, planRestDaysEnabled, bootstrap, login, register, logout, logoutAll, updateProfile };
+  return { user, ready, connectionError, registrationEnabled, passwordResetEnabled, invitationEnabled, emailVerificationEnabled, planRestDaysEnabled, bootstrap, login, register, logout, logoutAll, updateProfile };
 });

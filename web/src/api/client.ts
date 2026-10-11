@@ -64,7 +64,7 @@ api.interceptors.response.use(async (response) => {
     if (request.method?.toUpperCase() === 'DELETE' && request.cacheOwner) await clearResponses(request.cacheScope!).catch(() => { connectionState.cacheAvailable = false; });
   }
   if (!response.headers['x-plan-local-cache'] && request.method?.toUpperCase() === 'GET' && request.cacheOwner && cacheable(request.url ?? '')) {
-    response.data = projectPending(response.data, request.url!, await readableOperations(request.cacheOwner));
+    response.data = projectPending(response.data, request.url!, await readableOperations(request.cacheOwner), request.params);
   }
   return response;
 }, async (error: AxiosError) => {
@@ -142,7 +142,7 @@ function isQueueable(config: { method?: string; url?: string; data?: unknown; of
   const method = config.method?.toUpperCase();
   const url = config.url ?? '';
   if (!method || !['POST', 'PUT', 'PATCH'].includes(method)) return false;
-  if (!/^\/(plans|tags|tasks|milestones|templates|mainlines)(\/|$)/.test(url)) return false;
+  if (!/^\/(plans|tags|tasks|milestones|templates|mainlines|todos)(\/|$)/.test(url)) return false;
   if (url.startsWith('/mainlines')) {
     // Topology needs an authoritative graph. Never queue linked creations or
     // prerequisite/stage changes after an ambiguous network failure.
@@ -173,7 +173,7 @@ async function cachedReply(request: InternalOfflineRequestConfig) {
   if (!cached) throw new OfflineUnavailableError();
   if (request.sessionEpoch !== epoch || owner !== currentQueueOwner()) throw new OfflineUnavailableError('登录身份已变化，请重新登录。');
   connectionState.cacheReadAt = Math.max(connectionState.cacheReadAt, cached.savedAt);
-  return { data: projectPending(cached.data, request.url!, await readableOperations(owner)), status: 200, statusText: 'Local cache', headers: { 'x-plan-local-cache': String(cached.savedAt) }, config: request };
+  return { data: projectPending(cached.data, request.url!, await readableOperations(owner), request.params), status: 200, statusText: 'Local cache', headers: { 'x-plan-local-cache': String(cached.savedAt) }, config: request };
 }
 async function readableOperations(owner: string): Promise<OfflineOperation[]> {
   try { return await listOperations(owner); }
