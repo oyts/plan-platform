@@ -1,6 +1,6 @@
 # 客户端更新与本地验收
 
-0.1.1 为 Windows EXE 与 Android APK 加入更新提示、下载和安装入口。两端现已通过应用内更新至本地验收版 0.1.3，完成可选更新、取消安装、异常包拒绝、下载中断、强制升级及断网策略保留验收；手机的非空待同步队列在升级后保留，并在恢复连接后同步成功。阿里云线上服务未改动，正式签名和公网发布仍待后续阶段。界面沿用现有白蓝配色，在服务器设置中展示安装版本、发布说明和明确的操作状态。
+0.1.1 为 Windows EXE 与 Android APK 加入更新提示、下载和安装入口。两端已通过应用内更新至本地验收版 0.1.3，完成可选更新、取消安装、异常包拒绝、下载中断、强制升级及断网策略保留验收；手机的非空待同步队列在升级后保留，并在恢复连接后同步成功。后续 0.1.4 长期签名包已完成正式安装、云端连接和会话重开验收；Windows 公网发布文件已在本机准备，尚未启用，见 [Windows 正式更新源准备](windows-public-release.md)。界面沿用现有白蓝配色，在服务器设置中展示安装版本、发布说明和明确的操作状态。
 
 ## 用户如何更新
 
@@ -27,7 +27,7 @@ Windows 通过 Tauri 验证下载包的更新签名；Android 校验大小、SHA
 
 先构建两个客户端，再双击根目录 `prepare-client-update-release.bat`。它只准备本地测试目录 `client-update-artifacts/debug`，不上传、不安装。Android 清单生成器核对实际 APK 的包名、版本及签名，避免把旧包写成新版本。
 
-正式候选包优先使用 `scripts/prepare-formal-clients.ps1` 的隔离构建与核验流程。以下旧目录清单工具要求当前版本的 release APK 与长期签名 EXE，不接受调试 APK 或仅格式合法但签名错误的 EXE：
+正式候选包优先使用 `scripts/prepare-formal-clients.ps1` 的隔离构建与核验流程。当前仅发布 Windows 的准备使用 `scripts/prepare-windows-public-release.ps1`，直接读取已验收候选包并核对独立备份，不生成 Android 发布文件。以下旧目录清单工具用于双端同时准备，要求当前版本的 release APK 与长期签名 EXE，不接受调试 APK 或仅格式合法但签名错误的 EXE；APP 备案尚未完成时不要用它开放双端下载：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-client-update-release.ps1

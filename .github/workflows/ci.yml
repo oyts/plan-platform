@@ -21,6 +21,7 @@ jobs:
         working-directory: web
       - run: node scripts/verify-release.mjs
       - run: node --test scripts/switch-public-entry.test.mjs
+      - run: node --test scripts/formal-release.test.mjs scripts/windows-public-release.test.mjs
       - run: npm run build
         working-directory: web
       - run: npm test
