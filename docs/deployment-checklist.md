@@ -7,7 +7,7 @@
 1. 复制 `.env.example` 为 `.env`，填写新的 `DB_PASSWORD`、`MYSQL_ROOT_PASSWORD` 与至少 32 位随机 `JWT_SECRET`；这些值绝不提交 Git。
 2. 设置 `CORS_ALLOWED_ORIGINS=https://你的域名`、`APP_PUBLIC_URL=https://你的域名` 和 `REFRESH_COOKIE_SECURE=true`。
 3. 生产环境始终保持 `REGISTRATION_ENABLED=false`，由管理员签发绑定邮箱的邀请链接，不为首个账号无限制开放注册。
-4. 已有账号可通过受限配置 `BOOTSTRAP_ADMIN_EMAIL` 提升为管理员。全新库使用 `initialize-production.sh` 生成有期限的授权链接，管理员自行设置密码；实际邮箱、链接、token hash 只在权限 600 的服务器配置中保存。注册后清空 bootstrap 三项配置并重建 backend；只修改 `.env` 不会自动刷新容器环境。
+4. 已有账号可通过受限配置 `BOOTSTRAP_ADMIN_EMAIL` 提升为管理员。全新库使用 `initialize-production.sh` 生成有期限的授权链接，管理员自行设置密码；实际邮箱、链接、token hash 只在权限 600 的服务器配置中保存。注册后清空当前版本和升级根目录的 bootstrap 三项配置，并清除 shell 中同名变量，再重建 backend；只修改 `.env` 不会自动刷新容器环境。确认 backend healthy 后重建 web 代理，验证 HTTPS 健康及管理员权限仍存在。
 5. 仅在邮件服务已可用时开启 `EMAIL_VERIFICATION_ENABLED=true` 或 `PASSWORD_RESET_ENABLED=true`。
 6. 若启用找回密码，同时配置 `PASSWORD_RESET_ENABLED=true`、`MAIL_FROM` 和 SMTP 参数。没有可用 SMTP 时保持该功能关闭。
 7. 在反向代理或安全组层仅开放 80/443；数据库 3306 不对公网开放。

@@ -1,6 +1,6 @@
 # 计划舱云端发布交接
 
-2026 年 10 月 12 日，0.1.4 新版已独立部署并完成数据库及 PC 自动验收。现有公网域名仍使用旧服务，尚未正式切换；正式签名安装包和公开更新清单没有发布。本次保留了旧容器、旧镜像、旧数据卷、原安装客户端和本地离线队列。
+2026 年 10 月 12 日，0.1.4 新版已独立部署并完成数据库及 PC 自动验收，正式 HTTPS 域名已经切换到 Spring Boot。用户确认管理员注册、页面显示及刷新后保持登录正常；数据库中的管理员权限已验证，一次性初始化授权已关闭。正式签名安装包和公开更新清单尚未发布。旧容器、旧镜像、旧数据卷、原安装客户端和本地离线队列继续保留。
 
 ## 已完成与版本
 
@@ -37,14 +37,16 @@ GitHub 远程 [CI](https://github.com/oyts/plan-platform/actions/runs/3817933180
 - 新 Compose 项目 `plan-platform`，独立卷 `plan-platform_mysql-data`；Web 仅绑定 `127.0.0.1:43140`，MySQL 不发布端口。
 - 旧项目 `/opt/plan-console`、旧入口 `127.0.0.1:43127`、旧容器及旧备份均保留。
 - 新配置 `.env` 权限为 600，独立随机数据库密码与 JWT 密钥；管理员实际邮箱不进入仓库。
-- 首次注册只允许受限授权链接中的邮箱和 token，七天过期。管理员密码由用户自己设置，当前未代建正式账号。SMTP 未配置，邮件验证和找回密码保持关闭；注册始终关闭，正常成员使用邀请。
+- 正式管理员已由用户通过受限授权链接自行注册、设置密码，数据库确认存在 1 位启用的管理员。当前版本与部署根目录的三项 bootstrap 配置均已清空，运行中的 API 也确认为空；管理员角色不依赖这些初始化变量继续保留。SMTP 未配置，邮件验证和找回密码保持关闭；公开注册始终关闭，正常成员使用邀请。
 - MySQL、API、Web 内存上限分别 640、640、64 MiB；实际验收后约 201、285、3 MiB。另有系统和旧服务开销，2 GB 主机不适合同时跑编译、MQ 或大数据服务。
 
 官方基础镜像为 MySQL 8.4、Temurin 21 JRE Alpine、Nginx 1.27 Alpine。实例直拉 Docker Hub 曾超时，本轮通过经过官方校验和检查的 crane 工具下载 linux/amd64 官方镜像再导入，没有关闭 TLS 检查或使用未知公共镜像。
 
 MySQL 原迁移 V7/V9 使用了其不支持的 `ADD COLUMN IF NOT EXISTS`。已将原 H2 文件原样保留至 `db/vendor/h2`，MySQL 使用 `db/vendor/mysql`，Flyway 同时扫描公共目录与 `{vendor}`。只修复了新建且无业务账号的新库的失败历史行，未修改旧服务数据库；已有正式 MySQL 实例升级前仍需独立检查历史与备份，不能自动删除 Flyway 记录。
 
-## 先完成管理员自己的操作
+## 首次部署操作参考
+
+本实例以下首次切换与管理员注册已完成，不要重新初始化配置或重复注册。后续独立部署可参考以下步骤。
 
 服务器 `sudo` 仍要求密码，本轮不能修改宿主机 Nginx。不要向聊天发送该密码，也不要授权无限制免密 sudo。以下操作由用户在 FinalShell 执行。
 
@@ -77,7 +79,9 @@ MySQL 原迁移 V7/V9 使用了其不支持的 `ADD COLUMN IF NOT EXISTS`。已�
 
    在浏览器打开原始完整 `https://plan.zijun701.cn/register?...` 链接，不替换为本机地址。链接只能用于指定邮箱，用户自选密码。初始文件仍放在首次候选目录，不会在升级时公开复制。
 
-   注册后在正式 HTTPS 入口验证登录、三模式、刷新保持登录、同步和导出。管理员会话确认后，在当前版本受限 `.env` 及部署根目录用于后续升级的 `.env` 中清空 `BOOTSTRAP_ADMIN_EMAIL`、`BOOTSTRAP_ADMIN_TOKEN_HASH`、`BOOTSTRAP_ADMIN_EXPIRES_AT`，并在 `current` 目录执行 `docker compose -p plan-platform -f docker-compose.production.yml up -d backend`。
+   注册后在正式 HTTPS 入口验证登录、三模式、刷新保持登录、同步和导出。管理员会话确认后，在当前版本受限 `.env` 及部署根目录用于后续升级的 `.env` 中清空 `BOOTSTRAP_ADMIN_EMAIL`、`BOOTSTRAP_ADMIN_TOKEN_HASH`、`BOOTSTRAP_ADMIN_EXPIRES_AT`。如果此前将旧配置导出到 shell 环境，先 `unset BOOTSTRAP_ADMIN_EMAIL BOOTSTRAP_ADMIN_TOKEN_HASH BOOTSTRAP_ADMIN_EXPIRES_AT`，避免环境变量覆盖已清空的文件。然后在 `current` 目录执行 `docker compose -p plan-platform -f docker-compose.production.yml up -d backend`；确认 backend healthy 后，再执行 `docker compose -p plan-platform -f docker-compose.production.yml up -d --force-recreate --no-deps web`，刷新代理对 backend 的 DNS。短暂重启期间不要编辑或提交任务；最后检查公网健康、bootstrap 运行环境确实为空及管理员角色仍存在。
+
+   本实例已完成上述关闭与运行时核对，注册后的数据库备份及 SHA256 侧文件已上传到现有私有 OSS；账号、密码、JWT、计划数据和正常邀请功能未修改。
 
 4. 如需恢复旧入口：
 
