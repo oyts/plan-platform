@@ -14,12 +14,20 @@
 - 外部备案/帮助链接在系统浏览器打开；主窗口拒绝导航到远程网页。
 - 0.1.1 已加入启动检查、普通更新延后、最低支持版本限制和默认关闭的自动下载。安装始终需要确认。本次签名测试包绑定现有域名的更新源，但清单尚未上线，暂不能从公网下载。见 [客户端更新与本地验收](client-updates.md)。
 
-Android APK 已在后续阶段增加，见 [Android 客户端说明](android-client.md)。macOS/Linux 安装包和微信小程序仍未交付。公网现有 `plan.zijun701.cn` 在新版 Spring Boot 部署验收前仍是旧版服务，不可直接用于新版账号登录。
+Android APK 已在后续阶段增加，见 [Android 客户端说明](android-client.md)。macOS/Linux 安装包和微信小程序仍未交付。正式 HTTPS `https://plan.zijun701.cn` 已启用 Spring Boot 0.1.4，可用于新版云端账号登录；公开注册仍关闭，普通成员通过邀请注册。
 
-## 立即测试
+## 正式云端连接
+
+已安装的 0.1.4 客户端在“服务器连接与客户端更新”中填写 `https://plan.zijun701.cn`，测试连接后保存，再登录云端账号。不要附加 `/api` 或登录路径。旧的 `http://127.0.0.1:43132` 是本机测试环境，停止测试服务器后不能连接；保存旧地址不代表云端故障。
+
+换服务器会重新登录，本机测试计划和离线队列按原服务器保留，不会自动合并或发送到云端。正式候选包已在原目录以 `/UPDATE` 覆盖安装，首次启动前 350 个原数据文件哈希未改变。正式用户会话与重开验收、独立签名备份副本及公开发布条件见 [正式客户端发布](formal-client-release.md)。
+
+## 本机开发测试
+
+以下是独立本机环境，不是正式云端安装步骤；0.1.1 为历史测试包。不要为运行本机测试而将正式账号的服务器地址改回本机，优先使用 [独立原生回归包](native-regression.md)。
 
 1. 双击项目根目录 `start-desktop-server.bat`，保留该窗口，启动本地 Spring Boot（仅监听本机 43129，避免占用其他工程的 8080）。使用独立的 `backend/data/desktop-local` H2 数据库，开启本地注册，不改动原开发数据库或云端注册开关。
-2. 运行 `desktop-artifacts/Plan Cabin_0.1.1_x64-setup.exe` 覆盖安装客户端，打开“计划舱”。不要卸载重装。
+2. 本机手工测试仅使用自己单独准备的测试客户端，不覆盖已安装的正式 0.1.4，也不要安装旧 0.1.1 包降级。若要自动回归，按 [独立原生回归包](native-regression.md) 运行 `prepare-native-regression.bat` 和 `verify-native-clients.bat`；它们使用独立测试服务，不需要上述 43129 服务。
 3. 登录页点击“服务器连接与客户端更新”，填写 `http://127.0.0.1:43129`，测试连接后保存。初始默认是 8080，请按实际启动方式修改。
 4. 使用新版账号登录。若没有账号，使用本地允许注册的环境创建；不要把旧版同步密钥当作新版密码。
 5. 同一账号在浏览器和 EXE 中测试新增计划、主线锁定、任务计时、导出和冲突中心。不同账号不得看到对方计划。若要浏览器连接同一个本地测试库，在 `web` 终端设置 `$env:VITE_API_BASE='http://127.0.0.1:43129/api'` 后运行 `npm run dev`，用 `http://localhost:43128` 打开页面（默认开发 CORS 允许此地址）。关闭终端即可清除这个临时设置。
@@ -42,27 +50,16 @@ powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 -Action test
 
 安装机不需要 Java、Node 或 Rust；只需要服务端可访问，以及 Windows WebView2。安装器在缺少 WebView2 时下载官方运行时，因此首次安装可能需要网络。HTTPS 证书属于服务器连接安全，与 EXE 能否在本地安装无关。
 
-## 签名发布与后续自动更新
+## 正式签名与后续自动更新
 
-首次由维护者生成更新密钥，存入被 Git 忽略的 `.desktop-signing`，妥善离线备份。**切勿提交私钥、把私钥上传到公开 OSS 或写入客户端。**
-
-```powershell
-cd web
-npx tauri signer generate -w ../.desktop-signing/desktop.key
-cd ..
-$env:TAURI_SIGNING_PRIVATE_KEY = (Resolve-Path .desktop-signing/desktop.key).Path
-# 如生成时设置了密码，另用进程环境变量 TAURI_SIGNING_PRIVATE_KEY_PASSWORD 传入。
-powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 -Action build `
-  -UpdateUrl https://plan.zijun701.cn/client-updates/windows/latest.json `
-  -PublicKeyPath .desktop-signing/desktop.key.pub
-```
-
-发布前同时提升 `web/package.json`、其锁文件、`web/src-tauri/tauri.conf.json` 和 `web/src-tauri/Cargo.toml` 的版本，更新 Cargo.lock。使用同一私钥生成 EXE 和 `.sig`，再生成清单：
+正式长期身份已保存在 Git 忽略的 `.release-signing`，密码按当前 Windows 用户 DPAPI 保护。旧 `.desktop-signing` 是测试身份，不能用于正式发布，也不要重新生成密钥来绕过身份不一致。**切勿提交私钥、把私钥上传到公开 OSS 或写入客户端。**
 
 ```powershell
-node scripts/desktop-release.mjs "desktop-artifacts/Plan Cabin_0.1.1_x64-setup.exe" `
-  "https://plan.zijun701.cn/client-updates/windows/releases/0.1.1/Plan%20Cabin_0.1.1_x64-setup.exe" "版本说明"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-signing.ps1 -Action check
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-formal-clients.ps1
 ```
+
+构建脚本以原长期身份生成双端候选包并验证，不自动安装、上传或开放下载。发布前同时提升后端、Web、Tauri 和 Android 版本，更新对应锁文件并递增 Android 构建号；已公开的版本不得原地替换文件。正式清单生成及验收条件以 [正式客户端发布](formal-client-release.md) 与 [客户端更新](client-updates.md) 为准。
 
 先上传 EXE 与 `.sig`，最后更新 HTTPS `latest.json`；安装包不可改名或更改内容后继续使用旧签名。公钥内嵌客户端，更新地址内嵌构建配置；用户修改业务服务器不会修改可信更新源。没有签名或签名错误的更新应拒绝安装。
 
@@ -72,4 +69,4 @@ node scripts/desktop-release.mjs "desktop-artifacts/Plan Cabin_0.1.1_x64-setup.e
 
 阅读顺序：`src/desktop.ts` → `src/api/desktopAdapter.ts` → `src-tauri/src/lib.rs` → `src-tauri/src/transport.rs`。理解浏览器 Cookie 和原生 Cookie Jar 的差异、服务端幂等协议复用、凭据管理器与普通配置文件的边界、签名更新与 HTTPS 的不同作用。
 
-后续推荐 Web、EXE、APK 跨端验收，再进行 Spring Boot 公网上线及旧版迁移；不要在客户端尚未验收时替换旧版生产服务。
+正式 HTTPS 三端联测已通过，详见 [云端账号原生联测](cloud-native-acceptance.md)。独立回归包的结果不替代正式管理员客户端的登录与重开确认；旧服务、原应用和备份仍保留，公众下载尚未开放。
