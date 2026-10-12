@@ -21,7 +21,7 @@ Web、Spring Boot、Tauri Windows 与 Android 版本统一为 `0.1.4`，Android 
 | Rust 单元测试 | 9 项通过；依赖托管 HTTPS 更新实验环境的 1 项未运行 |
 | 原生回归工具自身测试 | 6 项通过 |
 | Android Java 单元测试 | 11 项通过；独立测试 APK 构建及签名检查通过 |
-| Android 0.1.4 真机 | 待用户连接 USB 后验收，未计入通过项 |
+| Android 0.1.4 真机 | iQOO V2426A / Android 15，独立 APK 构建 8 的 12 项业务回归通过；手机原生 HTTPS 云端连接检查另行通过 |
 | MySQL 8.4 | V1 至 V13 全部成功；实际核心 CRUD、用户隔离、409 和幂等验收通过 |
 | MySQL 恢复演练 | 生产空库及含合成业务数据的验收库均恢复至独立新库，逐表校验内容一致 |
 | 新云端官网 | 经 SSH 本机转发，电脑和手机视口、三模式预览、登录连接、备案链接及下载禁用检查通过 |
@@ -120,7 +120,7 @@ sh scripts/mysql-oss-upload.sh backups/实际文件.sql.gz
 
 旧 Node 数据卷的本轮文件计数为 0，已另存快照于部署根目录的 `backups/old-node-pre-cutover-20261012.tar.gz`。这不证明用户旧客户端数据为空或已迁移：纯前端数据可能仍在浏览器或手机本地。需要用户导出真实旧 JSON，然后按现有 [旧版迁移流程](legacy-migration.md) 预检、快照、导入与核对；不要用测试账号替代正式账号，也不要直接复用 Node tar 作为 MySQL 备份。
 
-## 客户端正式发布和早晨手机验收
+## 客户端正式发布和手机验收
 
 当前只有测试更新密钥及 Android debug keystore；没有发现正式长期签名身份。本轮不能签出可信正式升级包、启用公开下载或强制更新。HTTPS 证书、Tauri 更新签名、Windows 发布者签名和 Android 应用签名各自独立；换 Android 签名不能同应用直接覆盖升级，须先明确正式身份和已有测试数据的迁移方式。
 
@@ -132,6 +132,6 @@ powershell -ExecutionPolicy Bypass -File scripts/native-regression.ps1 -Action b
 powershell -ExecutionPolicy Bypass -File scripts/native-regression.ps1 -Action run -Platform android
 ```
 
-独立 APK 为 `.desktop-tools/native-regression/PlanCabin-0.1.4-debug.apk`，包名 `cn.zijun701.plan.mobile.regression`，不覆盖正式计划舱。需要用户解锁并允许测试包安装。PC 本轮报告在 `acceptance-results/native/latest.html`；手机缺席不能记为测试通过。
+独立 APK 为 `.desktop-tools/native-regression/PlanCabin-0.1.4-debug.apk`，包名 `cn.zijun701.plan.mobile.regression`，不覆盖正式计划舱。需要用户解锁并允许测试包安装。2026-10-12 Android 真机 12 项通过，当前 `acceptance-results/native/latest.html` 是 Android 单平台报告，不是新一轮双端报告。正式应用仍为 0.1.3 / 构建 7；实际记录、原生 HTTPS 连接检查及清理结果见 [真机验收](native-regression.md#android-新版真机验收)。
 
 待签名身份确定、正式两端包验收且云端 HTTPS 切换完成后，再按 [更新发布流程](client-updates.md) 发布 `/client-updates/` 与 `/downloads/manifest.json`。保留可选更新、必更策略和默认关闭的自动下载；不能靠改错误提示、关闭签名或 TLS 校验解决连接问题。
