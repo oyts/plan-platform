@@ -20,7 +20,7 @@ Android APK 已在后续阶段增加，见 [Android 客户端说明](android-cli
 
 已安装的 0.1.4 客户端在“服务器连接与客户端更新”中填写 `https://plan.zijun701.cn`，测试连接后保存，再登录云端账号。不要附加 `/api` 或登录路径。旧的 `http://127.0.0.1:43132` 是本机测试环境，停止测试服务器后不能连接；保存旧地址不代表云端故障。
 
-换服务器会重新登录，本机测试计划和离线队列按原服务器保留，不会自动合并或发送到云端。正式候选包已在原目录以 `/UPDATE` 覆盖安装，首次启动前 350 个原数据文件哈希未改变。正式用户会话与重开验收、独立签名备份副本及公开发布条件见 [正式客户端发布](formal-client-release.md)。
+换服务器会重新登录，本机测试计划和离线队列按原服务器保留，不会自动合并或发送到云端。正式候选包已在原目录以 `/UPDATE` 覆盖安装，首次启动前 350 个原数据文件哈希未改变；用户自行登录后，实际正式应用三模式加载、原生连接检测、正常关闭重开及会话保持已验收。详情、独立签名备份副本及公开发布条件见 [正式客户端发布](formal-client-release.md)。
 
 ## 本机开发测试
 
@@ -69,4 +69,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-formal-clien
 
 阅读顺序：`src/desktop.ts` → `src/api/desktopAdapter.ts` → `src-tauri/src/lib.rs` → `src-tauri/src/transport.rs`。理解浏览器 Cookie 和原生 Cookie Jar 的差异、服务端幂等协议复用、凭据管理器与普通配置文件的边界、签名更新与 HTTPS 的不同作用。
 
-正式 HTTPS 三端联测已通过，详见 [云端账号原生联测](cloud-native-acceptance.md)。独立回归包的结果不替代正式管理员客户端的登录与重开确认；旧服务、原应用和备份仍保留，公众下载尚未开放。
+正式 HTTPS 三端联测已通过，详见 [云端账号原生联测](cloud-native-acceptance.md)。正式 Windows 界面与重开会话另行完成只读验收；旧服务、原应用和备份仍保留，公众下载尚未开放。正式更新清单当前返回 HTTP 404，客户端更新栏的清单获取失败不等于业务 API 故障，也不证明正式身份的跨版本升级已经通过。
