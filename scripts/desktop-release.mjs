@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {verifyUpdaterSignature} from './formal-release-support.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const [installerArg, downloadUrl, ...notes] = process.argv.slice(2);
@@ -11,6 +12,10 @@ const installer = resolve(installerArg);
 if (!installer.endsWith('-setup.exe')) throw new Error('Expected a Windows NSIS -setup.exe installer.');
 const signature = readFileSync(installer + '.sig', 'utf8').trim();
 if (!signature || !/^[A-Za-z0-9+/=]+$/.test(signature)) throw new Error('Missing or invalid updater signature. Build with the release signing key first.');
+const publicKeyPath = process.env.PLAN_RELEASE_FOR_TESTING === '1'
+  ? resolve(root,'.desktop-tools/test-signing/desktop-test.key.pub')
+  : resolve(root,'.release-signing/windows-updater.key.pub');
+verifyUpdaterSignature(readFileSync(installer),readFileSync(publicKeyPath,'utf8'),signature);
 const config = JSON.parse(readFileSync(resolve(root, 'web/src-tauri/tauri.conf.json'), 'utf8'));
 if (!basename(installer).includes(`_${config.version}_`)) throw new Error('Installer version differs from tauri.conf.json.');
 const minimum = process.env.PLAN_DESKTOP_MINIMUM_VERSION || '0.0.0';

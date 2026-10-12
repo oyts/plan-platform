@@ -2,8 +2,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, statSync, mkdtempSync, copyFileSync, unlinkSync, rmdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import {certificateDetails,validateApkEvidence,LEGACY_ANDROID_PACKAGE} from './formal-release-support.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const [apkArg, downloadUrl, ...notes] = process.argv.slice(2);
 if (!apkArg || !downloadUrl) throw new Error('Usage: node scripts/android-release.mjs <verified-signed.apk> <https-download-url> [notes]');
@@ -18,18 +19,22 @@ const tools = resolve(sdk, 'build-tools/36.0.0');
 // aapt on Windows cannot read a Unicode APK path. Inspect a byte-identical private temporary copy.
 const inspectionDir = mkdtempSync(resolve(tmpdir(), 'plan-apk-inspection-'));
 const inspectionApk = resolve(inspectionDir, 'client.apk');
-let badging;
+let badging,signatureOutput;
 try {
   copyFileSync(apk, inspectionApk);
   badging = execFileSync(resolve(tools,'aapt.exe'), ['dump','badging',inspectionApk], { encoding:'utf8' });
+  const java = process.env.JAVA_HOME ? resolve(process.env.JAVA_HOME,'bin/java.exe') : 'java';
+  signatureOutput = execFileSync(java, ['-jar',resolve(tools,'lib/apksigner.jar'),'verify','--verbose','--print-certs',inspectionApk], { encoding:'utf8' });
 } finally {
   if (statSync(inspectionDir).isDirectory()) { try { unlinkSync(inspectionApk); } catch (error) { if (error.code !== 'ENOENT') throw error; } rmdirSync(inspectionDir); }
 }
 const metadata = badging.match(/^package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'/m);
-if (!metadata || metadata[1] !== 'cn.zijun701.plan.mobile' || Number(metadata[2]) !== versionCode || metadata[3] !== version) throw new Error('APK package/version differs from current source. Rebuild before preparing release files.');
-const java = process.env.JAVA_HOME ? resolve(process.env.JAVA_HOME,'bin/java.exe') : 'java';
-const signatureCheck = spawnSync(java, ['-jar',resolve(tools,'lib/apksigner.jar'),'verify',apk], { encoding:'utf8' });
-if (signatureCheck.status !== 0) throw new Error(`APK signature verification failed: ${signatureCheck.error?.message || signatureCheck.stderr || 'unknown error'}`);
+if (process.env.PLAN_RELEASE_FOR_TESTING === '1') {
+  if (!metadata || metadata[1] !== LEGACY_ANDROID_PACKAGE || Number(metadata[2]) !== versionCode || metadata[3] !== version) throw new Error('Test APK package/version differs from current source.');
+} else {
+  const certificate=certificateDetails(readFileSync(resolve(root,'.release-signing/android-release.der')));
+  validateApkEvidence(badging,signatureOutput,version,versionCode,certificate.certificateSHA256);
+}
 const minimum = Number(process.env.PLAN_ANDROID_MINIMUM_VERSION_CODE || '1');
 if (!version || !Number.isSafeInteger(versionCode) || versionCode < 1 || !Number.isSafeInteger(minimum) || minimum < 1 || minimum > versionCode) throw new Error('Invalid Android version/minimum policy.');
 const size = statSync(apk).size;

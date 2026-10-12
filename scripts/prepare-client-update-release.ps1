@@ -11,7 +11,7 @@ $portableNode = Join-Path $projectRoot '.desktop-tools/node22/node-v22.23.3-win-
 if (Test-Path -LiteralPath "$portableNode/node.exe") { $env:PATH = "$portableNode;$env:PATH" }
 if (-not $env:JAVA_HOME -and (Test-Path 'E:/biancheng/JDK21')) { $env:JAVA_HOME = 'E:/biancheng/JDK21' }
 if ($env:JAVA_HOME) { $env:PATH = "$env:JAVA_HOME/bin;$env:PATH" }
-$version = (Get-Content web/package.json -Raw | ConvertFrom-Json).version
+$version = (Get-Content web/package.json -Raw -Encoding UTF8 | ConvertFrom-Json).version
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Expected x.y.z version.' }
 $installerName = "Plan Cabin_${version}_x64-setup.exe"
 $variant = if ($ForTesting) { 'debug' } else { 'release' }
@@ -24,7 +24,9 @@ foreach ($file in @($installer, "$installer.sig", $apk)) {
 $base = 'https://plan.zijun701.cn/client-updates'
 $oldWindowsMinimum = $env:PLAN_DESKTOP_MINIMUM_VERSION
 $oldAndroidMinimum = $env:PLAN_ANDROID_MINIMUM_VERSION_CODE
+$oldTesting = $env:PLAN_RELEASE_FOR_TESTING
 try {
+    $env:PLAN_RELEASE_FOR_TESTING = if ($ForTesting) { '1' } else { $null }
     $env:PLAN_DESKTOP_MINIMUM_VERSION = $MinimumWindowsVersion
     $env:PLAN_ANDROID_MINIMUM_VERSION_CODE = [string]$MinimumAndroidVersionCode
     & node scripts/desktop-release.mjs $installer "$base/windows/releases/$version/$([uri]::EscapeDataString($installerName))" $Notes
@@ -34,6 +36,7 @@ try {
 } finally {
     $env:PLAN_DESKTOP_MINIMUM_VERSION = $oldWindowsMinimum
     $env:PLAN_ANDROID_MINIMUM_VERSION_CODE = $oldAndroidMinimum
+    $env:PLAN_RELEASE_FOR_TESTING = $oldTesting
 }
 $outputRoot = Join-Path $projectRoot "client-update-artifacts/$variant"
 foreach ($platform in @('windows','android')) {

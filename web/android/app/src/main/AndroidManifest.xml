@@ -17,7 +17,7 @@
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
-            android:name=".MainActivity"
+            android:name="cn.zijun701.plan.mobile.MainActivity"
             android:label="${planAppLabel}"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"

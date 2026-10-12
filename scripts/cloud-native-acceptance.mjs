@@ -162,7 +162,7 @@ async function run() {
   if(processes) throw new Error('Close the regression EXE first; existing process not stopped.');
   mainBefore=await mainVersion(); reverseBefore=await adb('reverse','--list');
   report.environment.android={model:await adb('shell','getprop','ro.product.model'),release:await adb('shell','getprop','ro.build.version.release'),mainVersionBefore:mainBefore};
-  await scenario('正式 HTTPS 0.1.4、邀请注册关闭与两个普通云端账号权限',async()=>{
+  await scenario('正式 HTTPS 0.1.4、公开注册关闭与两个普通云端账号权限',async()=>{
     const config=await api('/auth/config'); expect(config.serverVersion).toBe('0.1.4'); expect(config.registrationEnabled).toBe(false);
     expect((await api('/health')).service).toBe('plan-platform-api');
     authA=await apiLogin(emails[0]); authB=await apiLogin(emails[1]);

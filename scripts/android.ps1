@@ -1,4 +1,4 @@
-param([ValidateSet('check','build','test','release')][string]$Action = 'build', [string]$ArtifactDirectory = '')
+param([ValidateSet('check','build','test','release')][string]$Action = 'build', [string]$ArtifactDirectory = '', [switch]$DirectMavenCentral)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
@@ -48,17 +48,25 @@ if ($env:HTTPS_PROXY) {
     if ($proxyUri.Scheme -eq 'http' -and -not $proxyUri.UserInfo) {
         $env:JAVA_TOOL_OPTIONS = "$env:JAVA_TOOL_OPTIONS -Dhttps.proxyHost=$($proxyUri.Host) -Dhttps.proxyPort=$($proxyUri.Port) -Dhttp.proxyHost=$($proxyUri.Host) -Dhttp.proxyPort=$($proxyUri.Port)".Trim()
         $bypassHosts = ($env:NO_PROXY -split ',' | ForEach-Object { $_.Trim() -replace '^\.', '*.' } | Where-Object { $_ -and $_ -notmatch '/' }) -join '|'
+        # Opt-in only: keep Google dependencies on the existing proxy while using
+        # the official Maven Central host directly. TLS verification stays enabled.
+        if ($DirectMavenCentral) { $bypassHosts = (@($bypassHosts,'repo.maven.apache.org') | Where-Object { $_ }) -join '|' }
         if ($bypassHosts) { $env:JAVA_TOOL_OPTIONS += " -Dhttp.nonProxyHosts=$bypassHosts" }
     }
 }
 Write-Host "Node and Java are ready. Android SDK: $env:ANDROID_HOME"
 if ($Action -eq 'check') { exit 0 }
 if ($Action -eq 'release') {
+    if ($env:PLAN_NATIVE_REGRESSION -or $env:PLAN_ANDROID_TEST_UPDATE_CERT -or $env:PLAN_ANDROID_TEST_VERSION -or $env:PLAN_ANDROID_TEST_VERSION_CODE) { throw 'Formal release refuses regression, lab TLS or test version overrides.' }
+    $env:PLAN_PUBLIC_RELEASE = '1'
     foreach ($name in @('PLAN_ANDROID_KEYSTORE','PLAN_ANDROID_STORE_PASSWORD','PLAN_ANDROID_KEY_ALIAS','PLAN_ANDROID_KEY_PASSWORD')) {
         if (-not [Environment]::GetEnvironmentVariable($name)) { throw "Set $name before building a signed release APK. Never commit signing passwords." }
     }
     if (-not (Test-Path -LiteralPath $env:PLAN_ANDROID_KEYSTORE)) { throw 'Release signing keystore was not found.' }
     $env:PLAN_ANDROID_KEYSTORE = (Resolve-Path -LiteralPath $env:PLAN_ANDROID_KEYSTORE).Path
+    if ($env:PLAN_ANDROID_KEYSTORE -eq (Join-Path $projectRoot '.android-signing/debug.keystore')) { throw 'Debug keystore is not a formal release identity.' }
+} elseif ($env:PLAN_PUBLIC_RELEASE) {
+    throw 'PLAN_PUBLIC_RELEASE is reserved for the signed release action.'
 }
 $debugDir = Join-Path $projectRoot '.android-signing'
 New-Item -ItemType Directory -Force -Path $debugDir | Out-Null
@@ -68,7 +76,7 @@ if (-not (Test-Path $debugKey)) {
     if ($LASTEXITCODE -ne 0) { throw 'Debug signing key generation failed.' }
 }
 Set-Location (Join-Path $projectRoot 'web')
-$version = (Get-Content 'package.json' -Raw | ConvertFrom-Json).version
+$version = (Get-Content 'package.json' -Raw -Encoding UTF8 | ConvertFrom-Json).version
 $androidGradle = Get-Content 'android/app/build.gradle' -Raw
 if ($androidGradle -notmatch ('versionName[^\r\n]*"' + [regex]::Escape($version) + '"')) { throw 'Android versionName differs from web/package.json. Align the release versions first.' }
 if ($env:PLAN_ANDROID_TEST_VERSION) { $version = $env:PLAN_ANDROID_TEST_VERSION }

@@ -1,0 +1,76 @@
+# 正式客户端签名与 APP 备案准备
+
+0.1.4 的 Windows 与 Android 正式签名候选包已在本机构建并核验，但尚未公开发布。Android 构建号为 8，使用新包名 `cn.zijun701.plan.app`；原来调试签名的 `cn.zijun701.plan.mobile` 保留，不能使用新签名直接覆盖。正式新包首次安装需重新登录相同云端账号，只能读取已经同步到云端的数据，旧包的本地离线队列不会自动迁移。
+
+## 本轮结果与发布条件
+
+2026 年 10 月 12 日前端 129 项、Android Java 11 项、签名与备份 6 项、更新场景 7 项测试通过。Windows 安装包的 Minisign 载荷签名和可信注释签名通过真实密码学验证；Android APK 通过 apksigner 验证，包名、版本和签名证书与长期身份一致，关闭调试与明文 HTTP。这些结果不替代正式安装包的实机登录、重开和三模式操作验收。
+
+本轮候选包位于 `production-artifacts/client-release/0.1.4/20261012/`，其中 `metadata/candidate.json` 保存大小、SHA256 和签名核验结果。`readyForPublicDownload` 保持 `false`；`downloads-manifest.json` 中两个平台均为 `null`。`downloads-manifest.pending.json` 只是将来发布的草案，不能直接上线。
+
+随后成员页手机适配修复生成了新候选目录 `production-artifacts/client-release/0.1.4/20261012T104035Z-73ec9759/`，两端签名与 APK 身份重新核验通过，旧候选文件没有覆盖。两个目录都是未公开发布的候选构建，不是同一版本公开发布后替换文件；正式版本一旦发布，升级必须递增版本与 Android 构建号。
+
+经用户允许，正式 Android 新包已在 iQOO V2426A 上安装并启动，版本为 0.1.4 / 构建 8；原 `cn.zijun701.plan.mobile` 仍为 0.1.3 / 构建 7。安装成功不等于云端业务与重开验收通过，这两项仍由用户确认；Windows 候选安装包尚未安装。
+
+公开发布前仍需完成长期密钥的独立离线备份、正式安装验收及维护者确认。Android 公众下载另按用户决定等待 APP ICP 备案；公开注册继续关闭。没有自动购买服务、提交备案或上传安装包。
+
+## 长期签名身份
+
+长期文件放在 Git 忽略的 `.release-signing/`，目录仅允许 Windows OYTS 用户与 SYSTEM 访问。Windows 使用新 Tauri 更新签名私钥；Android 使用 RSA 3072 位、约 30 年有效的 PKCS12 密钥，别名为 `plan-cabin-release`。密钥密码随机生成，以 Windows 当前用户 DPAPI 加密保存，没有写入源码或聊天。
+
+DPAPI 依赖 Windows 用户与机器。只复制 `credentials.dpapi` 到另一台电脑不能恢复密码；完整可迁移备份必须同时包含密钥和解密后的密码，并用独立备份口令重新加密。
+
+Windows 更新签名不是 Authenticode 发布者证书。本阶段未配置受信任的 Windows 发布者代码签名，系统可能显示未知发布者或 SmartScreen 提示。不要将这些提示描述为更新签名失败，也不要让用户关闭系统安全防护。
+
+## 维护者检查与离线备份
+
+以下命令在本机 Windows PowerShell 执行，不是在 ECS 的 SSH 终端执行：
+
+```powershell
+cd E:\Ai\假期计划\plan-platform
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-signing.ps1 -Action check
+```
+
+备份前准备自己的离线存储盘，将下方 `X:` 改为实际盘符。脚本交互式要求输入至少 16 字符的独立备份口令，不显示口令，不将口令作为命令参数。口令应保存在与备份文件不同的位置，不要发到聊天。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-signing.ps1 `
+  -Action backup -BackupPath 'X:\PlanCabin-20261012.plan-signing-backup'
+```
+
+备份使用 scrypt 派生密钥与 AES 256 GCM 认证加密，并在写入前解密核对内容；拒绝覆盖已有文件。只放在本机硬盘的另一份文件不算独立备份。现有备份加解密模块为 `scripts/signing-backup-support.mjs`，跨机器恢复尚需维护者操作，不应删除原签名环境来演练。备份包含私钥及密码，即使加密也不要加入 Git、公开 OSS 或官网下载目录。
+
+## 可复现构建与核验
+
+签名身份仅初始化一次，已有身份会检查而不会重新生成；部分密钥目录会令初始化停止。不要为了解决构建错误删除或换掉密钥。
+
+```powershell
+# 仅在尚未创建长期身份的维护环境执行一次
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-signing.ps1 -Action init
+# 每次创建独立候选目录，构建与核验，不安装或上传
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-formal-clients.ps1
+```
+
+可双击 `prepare-formal-clients.bat`。如果官方 Maven Central 经已有代理返回 403、但直连正常，可增加 `-DirectMavenCentral`。它只让当前构建 JVM 直连 `repo.maven.apache.org`，其他依赖继续使用已有代理，不改系统网络设置、不关闭 TLS、不使用未知镜像。
+
+Windows PowerShell 5 的 JSON 读取显式指定 UTF8，避免中文窗口标题造成解析失败。正式构建拒绝回归包、测试 TLS 和测试版本覆盖。更新清单生成器默认校验长期证书与真实 Windows 签名；只有显式 `-ForTesting` 才使用旧测试身份，测试产物不可公开发布。
+
+## APP 备案技术材料
+
+`metadata/filing/android-app-features.json` 导出以下公开信息：
+
+- APP 名称：计划舱。
+- Android 包名：`cn.zijun701.plan.app`。
+- 版本：0.1.4，构建号 8。
+- 后端域名：`plan.zijun701.cn`。
+- `publicKeyModulusHex`：RSA 公钥模数的十六进制值。
+- `certificateMD5`：签名证书 MD5 的十六进制值。
+- `certificateSHA256`：内部核验指纹，不要误填到要求 MD5 的备案字段。
+
+同时导出公开公钥 PEM 与证书 DER，不包含 keystore、私钥或密码。阿里云 [APP 特征信息说明](https://help.aliyun.com/zh/icp-filing/basic-icp-service/user-guide/fill-in-app-feature-information) 要求安卓包名、公钥模数和证书 MD5，也支持上传 APK 智能提取。维护者可用这份真实 APK 与材料核对填写；个人身份资料仍由本人提供，APP 备案号未取得前不生成虚假号码。
+
+## 正式安装验收
+
+Android 新包与旧包并存安装，先确认旧包待同步队列已妥善保留，再在新包登录同一云端账号，检查周期计划、目标路线、今日待办及关闭重开。不要用卸载旧包来绕过签名不一致。
+
+Windows 候选包使用新的更新公钥，旧测试公钥不会自动信任它。首次改用长期身份应由用户保存编辑并关闭客户端后手动安装，再验收原数据与配置保留；不通过旧测试源推送新身份，也不强杀正在编辑的客户端。本轮未证明新正式身份的跨版本应用内升级，需有更高版本同签名包再单独验收。

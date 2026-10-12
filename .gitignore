@@ -37,6 +37,8 @@ web/android/capacitor-cordova-android-plugins/
 web/src-tauri/target/
 .desktop-tools/
 .desktop-signing/
+.release-signing/
+*.plan-signing-backup
 desktop-artifacts/
 client-update-artifacts/
 production-artifacts/

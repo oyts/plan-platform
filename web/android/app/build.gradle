@@ -1,9 +1,14 @@
 apply plugin: 'com.android.application'
 
 def nativeRegression = System.getenv('PLAN_NATIVE_REGRESSION') == '1'
+def publicRelease = System.getenv('PLAN_PUBLIC_RELEASE') == '1'
+if (nativeRegression && publicRelease) throw new GradleException('Regression and public release identities cannot be combined.')
+if (publicRelease && ['PLAN_ANDROID_TEST_UPDATE_CERT','PLAN_ANDROID_TEST_VERSION','PLAN_ANDROID_TEST_VERSION_CODE'].any { System.getenv(it) }) throw new GradleException('Formal release cannot include lab trust or test version overrides.')
 if (nativeRegression && gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) throw new GradleException('Regression packages are debug-only.')
 gradle.taskGraph.whenReady { graph ->
     if (nativeRegression && graph.allTasks.any { it.name.toLowerCase().contains('release') }) throw new GradleException('Regression packages cannot run release tasks, including aggregate builds.')
+    if (graph.allTasks.any { it.name.toLowerCase().contains('release') } && (!publicRelease || !System.getenv('PLAN_ANDROID_KEYSTORE'))) throw new GradleException('Release tasks require PLAN_PUBLIC_RELEASE=1 and the formal keystore.')
+    if (publicRelease && graph.allTasks.any { it.name == 'assembleDebug' }) throw new GradleException('Formal identity cannot produce a debug APK.')
 }
 
 android {
@@ -11,7 +16,7 @@ android {
     namespace = "cn.zijun701.plan.mobile"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId nativeRegression ? "cn.zijun701.plan.mobile.regression" : "cn.zijun701.plan.mobile"
+        applicationId publicRelease ? "cn.zijun701.plan.app" : (nativeRegression ? "cn.zijun701.plan.mobile.regression" : "cn.zijun701.plan.mobile")
         manifestPlaceholders = [planAppLabel: nativeRegression ? '计划舱回归测试' : '@string/app_name']
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion

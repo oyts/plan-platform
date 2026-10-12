@@ -132,7 +132,7 @@ $tauriArguments += @('--', '--locked')
 if ($LASTEXITCODE -ne 0) { throw 'Desktop installer build failed.' }
 $artifactDirectory = if ($ArtifactDirectory) { [IO.Path]::GetFullPath($ArtifactDirectory) } else { Join-Path $projectRoot 'desktop-artifacts' }
 New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
-$builtVersion = if ($TestVersion) { $TestVersion } else { (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version }
+$builtVersion = if ($TestVersion) { $TestVersion } else { (Get-Content src-tauri/tauri.conf.json -Raw -Encoding UTF8 | ConvertFrom-Json).version }
 $installers = Get-ChildItem -LiteralPath 'src-tauri/target/release/bundle/nsis' -Filter "Plan Cabin_${builtVersion}_x64-setup.exe"
 if (-not $installers) { throw 'Build succeeded but no Windows installer was found.' }
 foreach ($installer in $installers) {

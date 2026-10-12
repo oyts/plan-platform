@@ -21,13 +21,13 @@
 
 Windows 通过 Tauri 验证下载包的更新签名；Android 校验大小、SHA256、包名、版本与安装应用的签名，并在交给系统安装前再校验。失败不进入可安装状态，保留现有应用与业务数据。APK 最大 256 MiB，Android 暂不支持签名轮换。更新下载使用独立后台执行队列，不占用业务 API 的执行队列。HTTPS 证书、APK 签名、Tauri 更新签名和 Windows 发布者代码签名是不同的东西。实现依据 [Tauri 更新文档](https://v2.tauri.app/plugin/updater/) 和 [Android 安装权限说明](https://developer.android.com/reference/android/content/pm/PackageManager#canRequestPackageInstalls())。
 
-当前 EXE 使用本地测试更新密钥，APK 使用调试签名，不能直接面向公众发布。正式发布需单独管理并备份长期签名身份；私钥、keystore 和密码不得加入 Git 或公开下载目录。更换签名身份可能要求用户再次手动安装，务必在公众发布前确定。
+此前验收的 EXE 使用本地测试更新密钥，APK 使用调试签名，不能直接面向公众发布。0.1.4 长期签名候选包已另行构建，Android 使用新包名，与旧包并存；首次 Windows 长期更新身份需要用户确认后手动安装。当前尚未启用公开下载，操作与待办见 [正式客户端签名与 APP 备案准备](formal-client-release.md)。私钥、keystore 和密码不得加入 Git 或公开下载目录。
 
 ## 准备发布目录
 
 先构建两个客户端，再双击根目录 `prepare-client-update-release.bat`。它只准备本地测试目录 `client-update-artifacts/debug`，不上传、不安装。Android 清单生成器核对实际 APK 的包名、版本及签名，避免把旧包写成新版本。
 
-正式构建后运行以下命令，脚本会要求 `android-artifacts/PlanCabin-0.1.1-release.apk`，而不是调试包：
+正式候选包优先使用 `scripts/prepare-formal-clients.ps1` 的隔离构建与核验流程。以下旧目录清单工具要求当前版本的 release APK 与长期签名 EXE，不接受调试 APK 或仅格式合法但签名错误的 EXE：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-client-update-release.ps1
@@ -40,7 +40,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-client-updat
   -MinimumWindowsVersion 0.1.1 -MinimumAndroidVersionCode 5
 ```
 
-这将要求 Windows 低于 0.1.1、Android 构建号低于 5 的已有更新客户端升级；不会强迫同版本安装。Android 的构建号每次发布必须递增。正式发布命令本身不证明 Windows 使用了正式私钥，维护者仍需确认签名配置。
+这将要求使用该更新源的 Windows 低于 0.1.1、Android 构建号低于 5 的客户端升级；不会强迫同版本安装，也不会让旧包名或旧签名自动变成新身份。Android 的构建号每次发布必须递增。清单准备会核验真实长期签名，但不替代安装验收、离线备份与发布许可。
 
 生成目录内，两个平台各有 `latest.json` 与 `releases/版本号/` 安装包。未来服务器只静态托管这些文件，与业务 API 分开；先上传安装包与 `.sig`，核对 HTTPS 可访问，最后更新清单。清单应禁用缓存，版本目录不可修改；保留旧包用于诊断，不能用降级覆盖替代业务回滚。本轮没有创建这些线上文件。
 
