@@ -1,6 +1,6 @@
 # Windows 正式更新源准备
 
-Windows 0.1.4 的正式下载和更新文件已在本机准备并验收，尚未上传或启用。使用之前已安装验收的长期签名 EXE，不重新构建、重签或替换原候选包；Android 下载继续等待 APP 备案，公开注册保持关闭。
+Windows 0.1.4 的正式官网下载和更新源已于 2026 年 10 月 13 日经维护者批准启用。使用之前已安装验收的长期签名 EXE，不重新构建、重签或替换原候选包；Android 官网下载和公网更新源继续关闭，公开注册保持关闭。Android 正式 APK 仅供维护者向受邀测试成员私下提供，见 [受邀客户端测试](invited-client-testing.md)。
 
 ## 发布范围
 
@@ -53,8 +53,28 @@ $env:PLAYWRIGHT_BROWSERS_PATH = '.desktop-tools/playwright'
 
 ## 正式启用前与回滚要求
 
-正式上传与启用仍需维护者明确确认，范围只限 Windows 静态文件及官网下载状态，不发布 APK、不开放注册、不部署后端或迁移数据。先核对实际 Nginx 配置与静态目录、保留原配置及下载清单，再上传不可变安装包，最后启用两个清单。
+每次新的公开发布都需维护者明确确认。Windows 静态发布范围只限安装文件及官网下载状态，不发布 APK、不开放注册，不包含后端构建或数据迁移。先核对实际 Nginx 配置与静态目录、保留原配置及下载清单，再上传不可变安装包，最后启用两个清单。
 
 正式启用后，必须通过外网 HTTPS 核对安装包哈希和真实签名、清单缓存头、官网下载、Android 下载关闭、API 健康与注册关闭，再在已安装的正式 Windows 应用执行更新检查。任一步失败，恢复上一份静态入口配置与清单；保留已上传版本文件用于排查，不删除业务数据或用旧 EXE 强制降级。
 
-本阶段没有修改阿里云服务。公网两个更新清单仍未启用，原先的 404 提示要等正式启用并复验后才能记为解决。
+## 正式发布结果
+
+官网下载：[计划舱官网](https://plan.zijun701.cn/)。Windows 更新源为 `https://plan.zijun701.cn/client-updates/windows/latest.json`，发布版本 0.1.4，可选更新。Android 更新清单和 APK 地址仍返回 404，官网不展示 APK 下载二维码。
+
+真实公网 HTTPS 验收 5 项通过：后端健康与注册关闭、更新和下载清单 `no-store`、两条 EXE 地址的大小与 SHA256 及真实签名、不可变版本文件缓存、桌面和手机网页视口的真实下载与登录入口。发布后完整网页业务回归 27 项通过，包含三模式、离线编辑重放、409 冲突和用户隔离。凌晨回归发现服务器容器的 UTC 日期与客户端默认日期不一致；除了让脚本明确选择合成记录日期，还在数据库备份后修正后端运行时区为 Asia/Shanghai，加入与客户端北京时间一致的断言。
+
+已安装的正式 Windows 0.1.4 客户端实际点击更新检查后显示“当前已是最新版本”，原生连接测试显示已识别 Spring Boot 多用户服务；自动下载未勾选，账号仍保持登录。这是正式更新源检查，不是跨版本安装验收。本轮没有连接 Android USB 设备；APK 重新通过 apksigner、包名、版本和 SHA256 核验，三端交叉读写沿用此前同一 0.1.4 业务版本的 9 项真实云端联测证据。
+
+Windows 静态发布仅重新创建网页容器以挂载只读目录。首次静态启用因目录缺少 Nginx 工作用户遍历权限返回 404，已自动回滚，再修正公开目录权限并复验成功。部署元数据维持 600 权限，公开文件为 644，公开目录为 755。
+
+随后修正后端运行时区，先通过现有脚本生成并验证 MySQL 备份，再只重建后端容器，不构建新镜像或执行数据库迁移；MySQL 与旧部署保留。`/home/oyts/plan-platform/production-timezone.yml` 保存无凭据的运行覆盖，生产 Compose 源码也加入相同 TZ 与 JVM 参数。后端健康后重新加载容器 Nginx，保持 HTTPS 及注册策略不变。
+
+持久化静态目录为 `/home/oyts/plan-platform/client-public`，当前指针为 `releases/windows-014-yJuIcE`。`compose.yml` 只添加网页服务的两个只读挂载，不含密码。未来运行 `scripts/deploy-cloud-release.ps1` 会保留该覆盖文件；手工重建网页时也必须增加 `-f /home/oyts/plan-platform/client-public/compose.yml`。若改变后端代理规则，须同步审核静态覆盖 Nginx 配置，不应复用不兼容配置。
+
+本次回滚命令在 ECS 的 SSH 终端执行：
+
+```sh
+sh /home/oyts/plan-platform/client-public/releases/windows-014-yJuIcE/publish.sh rollback windows-014-yJuIcE
+```
+
+回滚只恢复网页挂载与下载入口，保留已上传版本和业务数据库，不强制降级客户端。报告位于 Git 忽略的 `acceptance-results/windows-public-cloud/` 和 `acceptance-results/public-web/`；本地候选元数据保留发布前状态，不能用它代替实际公网验收。

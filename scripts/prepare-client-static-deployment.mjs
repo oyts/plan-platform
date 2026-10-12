@@ -1,0 +1,42 @@
+import {readFileSync,writeFileSync,mkdirSync,mkdtempSync,readdirSync,statSync,realpathSync} from 'node:fs';
+import {resolve,join,relative,isAbsolute} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {clientStaticConfig} from './client-static-config.mjs';
+import {verifyUpdaterSignature} from './formal-release-support.mjs';
+import {sha256} from './windows-public-release.mjs';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const production=realpathSync(join(root,'production-artifacts'));
+const stage=realpathSync(resolve(process.argv[2]||''));
+const part=relative(production,stage);
+assert.ok(part&&!part.startsWith('..')&&!isAbsolute(part),'Expected a prepared local publication');
+const plan=JSON.parse(readFileSync(join(stage,'metadata/release-plan.json'),'utf8'));
+assert.equal(plan.status,'PREPARED_NOT_PUBLISHED');assert.equal(plan.version,'0.1.4');assert.equal(plan.androidPublished,false);
+const file=plan.windows.file;
+assert.equal(file,'Plan Cabin_0.1.4_x64-setup.exe');
+const downloads=JSON.parse(readFileSync(join(stage,'public/downloads/manifest.json'),'utf8'));
+const update=JSON.parse(readFileSync(join(stage,'public/client-updates/windows/latest.json'),'utf8'));
+assert.equal(downloads.android,null);assert.equal(update.minimumSupportedVersion,'0.0.0');
+const artifact=readFileSync(join(stage,'public/downloads/0.1.4',file));
+assert.equal(sha256(artifact),plan.windows.sha256);assert.equal(artifact.length,plan.windows.bytes);
+verifyUpdaterSignature(artifact,readFileSync(join(root,'.release-signing/windows-updater.key.pub'),'utf8'),update.platforms['windows-x86_64'].signature);
+const outputRoot=join(production,'client-static-deployment');mkdirSync(outputRoot,{recursive:true});
+const output=mkdtempSync(join(outputRoot,'windows-014-'));
+const files=[];
+const publicRoot=realpathSync(join(stage,'public'));
+for(const path of readdirSync(publicRoot,{recursive:true})) {
+  const full=join(publicRoot,path);if(!statSync(full).isFile())continue;
+  const actual=realpathSync(full),rel=relative(publicRoot,actual).replaceAll('\\','/');
+  assert.ok(!rel.startsWith('..')&&!isAbsolute(rel));
+  assert.ok(/^((downloads\/(manifest\.json|0\.1\.4\/Plan Cabin_0\.1\.4_x64-setup\.exe))|(client-updates\/windows\/(latest\.json|releases\/0\.1\.4\/Plan Cabin_0\.1\.4_x64-setup\.exe(?:\.sig)?)))$/.test(rel));
+  files.push(['public/'+rel,readFileSync(actual)]);
+}
+assert.equal(files.length,5);
+files.push(['nginx.conf',Buffer.from(clientStaticConfig(readFileSync(join(root,'web/nginx.production.conf'),'utf8')))]);
+files.push(['compose.yml',Buffer.from('services:\n  web:\n    volumes:\n      - /home/oyts/plan-platform/client-public:/srv/plan-clients:ro\n      - /home/oyts/plan-platform/client-public/nginx.conf:/etc/nginx/conf.d/default.conf:ro\n')]);
+files.push(['publish.sh',readFileSync(join(root,'scripts/publish-windows-static.sh'))]);
+for(const [path,bytes] of files) {const full=join(output,path);mkdirSync(resolve(full,'..'),{recursive:true});writeFileSync(full,bytes,{flag:'wx'});}
+writeFileSync(join(output,'upload.sha256'),files.map(([path,bytes])=>sha256(bytes)+'  '+path).join('\n')+'\n',{flag:'wx'});
+execFileSync('tar',['-czf',join(output,'upload.tar.gz'),'-C',output,'public','nginx.conf','compose.yml','publish.sh','upload.sha256']);
+console.log(JSON.stringify({directory:output,run:output.split(/[\\/]/).at(-1),archiveSha256:sha256(readFileSync(join(output,'upload.tar.gz'))),installerSha256:plan.windows.sha256,scope:'Windows static files only; no APK, keys or database'},null,2));

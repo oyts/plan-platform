@@ -2,7 +2,7 @@
 
 本工具通过 Python 与 Playwright 在真实 HTTPS 网站 `https://plan.zijun701.cn` 操作周期计划、目标路线和今日待办。浏览器使用独立临时环境，不读取现有浏览器资料，也不使用管理员密码。桌面宽度 1280 与手机网页宽度 390 分别执行相同业务检查；手机网页视口不代表 Android APK 真机通过。
 
-2026 年 10 月 12 日，正式 HTTPS 环境的完整运行结果为 **27 项通过、0 失败**。包括两种视口的三模式业务、缓存离线编辑、队列重放与真实 HTTP 409 冲突拒绝。此前日程下拉框名称和异步加载导致的脚本定位失败已修正；未据此修改线上业务服务。测试使用独立账号，不影响管理员计划。
+2026 年 10 月 13 日 Windows 下载启用后，正式 HTTPS 环境完整重跑 **27 项通过、0 失败**。包括两种视口的三模式业务、缓存离线编辑、队列重放与真实 HTTP 409 冲突拒绝。脚本支持 Windows 独立发布、Android 下载仍关闭；页面重载后明确选择合成记录日期。凌晨回归发现后端容器运行在 UTC，经数据库备份后修正为北京时间，脚本增加服务端与客户端日期一致的检查。测试使用独立账号，不影响管理员计划。
 
 ## 数据与权限边界
 
@@ -20,7 +20,7 @@
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/public-web-acceptance.ps1
 ```
 
-仅检查官网、HTTPS、登录入口和下载禁用状态，不注册账号或写业务数据：
+仅检查官网、HTTPS、登录入口、Windows 发布状态与 Android 下载关闭，不注册账号或写业务数据：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/public-web-acceptance.ps1 -PublicOnly

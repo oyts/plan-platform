@@ -27,7 +27,16 @@ sed -i 's/^PLAN_VERSION=.*/PLAN_VERSION=__VERSION__/' .env
 sh scripts/mysql-backup.sh
 docker build --pull=false -t plan-platform-api:__VERSION__ backend
 docker build --pull=false -t plan-platform-web:__VERSION__ web
-docker compose -p plan-platform -f docker-compose.production.yml up -d
+# Retain the separately approved client static source across business releases.
+if [ -f '__ROOT__/client-public/compose.yml' ]; then
+  if [ -f '__ROOT__/production-timezone.yml' ]; then
+    docker compose -p plan-platform -f docker-compose.production.yml -f '__ROOT__/client-public/compose.yml' -f '__ROOT__/production-timezone.yml' up -d
+  else
+    docker compose -p plan-platform -f docker-compose.production.yml -f '__ROOT__/client-public/compose.yml' up -d
+  fi
+else
+  docker compose -p plan-platform -f docker-compose.production.yml up -d
+fi
 for attempt in $(seq 1 30); do
   if curl --max-time 5 -fsS http://127.0.0.1:43140/actuator/health | grep -q '"status":"UP"'; then break; fi
   sleep 2

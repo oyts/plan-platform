@@ -1,0 +1,5 @@
+services:
+  backend:
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms96m -Xmx320m -XX:MaxMetaspaceSize=160m -XX:+ExitOnOutOfMemoryError -Duser.timezone=Asia/Shanghai
+      TZ: Asia/Shanghai

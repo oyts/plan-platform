@@ -87,7 +87,18 @@ def public_checks(browser, run, profiles=PROFILES):
                     tab.click()
                     expect(tab).to_have_attribute('aria-selected', 'true')
                 expect(page.get_by_role('link', name='鄂ICP备2026050813号-1')).to_have_attribute('href', 'https://beian.miit.gov.cn/')
-                expect(page.get_by_role('button', name='正式安装包尚未发布', exact=True)).to_be_disabled()
+                downloads_response = context.request.get(ORIGIN + '/downloads/manifest.json')
+                assert downloads_response.ok
+                downloads = downloads_response.json()
+                assert downloads['schemaVersion'] == 1 and downloads.get('android') is None
+                windows = downloads.get('windows')
+                if windows is None:
+                    expect(page.get_by_role('button', name='正式安装包尚未发布', exact=True)).to_be_disabled()
+                else:
+                    assert windows['version'] == '0.1.4'
+                    assert re.fullmatch(r'[a-f0-9]{64}', windows['sha256'])
+                    assert windows['bytes'] > 0 and windows['url'].startswith('/downloads/') and windows['url'].endswith('.exe')
+                    expect(page.get_by_role('link', name='下载 Windows 安装包', exact=True)).to_have_attribute('href', ORIGIN + windows['url'])
                 page.get_by_role('button', name='查看 Android 发布状态').click()
                 expect(page.get_by_role('dialog')).to_contain_text('正式签名包尚未发布')
                 page.get_by_role('button', name='关闭面板').click()
@@ -100,7 +111,7 @@ def public_checks(browser, run, profiles=PROFILES):
                 assert not errors, 'Uncaught public page error'
             finally:
                 context.close()
-        run.check(f'{name}: 官网、三模式预览、备案、下载禁用和 HTTPS 登录连接', check)
+        run.check(f'{name}: 官网、三模式预览、备案、Windows 发布状态、Android 禁用和 HTTPS 登录连接', check)
 
 
 def accounts(browser, run):
@@ -266,12 +277,14 @@ def business_checks(browser, run, users, profile, viewport):
             raise AssertionError('Requested test date is not visible in the date rail.')
 
         def initial_session():
+            browser_date = page.evaluate("new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())")
+            assert today.isoformat() == browser_date, 'Server today differs from Asia/Shanghai client date.'
             cookies = [cookie for cookie in context.cookies() if cookie['name'].startswith('plan_refresh')]
             assert cookies and all(cookie['secure'] and cookie['httpOnly'] for cookie in cookies), 'Refresh cookie security flags missing.'
             page.reload()
             expect(page.locator('.site-header')).to_be_visible()
             api(context, token, 'GET', '/admin/invitations', status=403)
-        run.check(f'{profile}: 普通账号登录、Secure HttpOnly Cookie、刷新保持登录及权限', initial_session)
+        run.check(f'{profile}: 普通账号登录、北京时间、Secure HttpOnly Cookie、刷新保持登录及权限', initial_session)
 
         def create_plan():
             page.get_by_label('工作模式').select_option('plan')
@@ -452,6 +465,9 @@ def business_checks(browser, run, users, profile, viewport):
             for i in range(12):
                 api(context, token, 'POST', '/todos', {'title':prefix+f'-待办分页-{i:02d}', 'dueDate':today.isoformat()}, status=201)
             page.reload()
+            # Explicitly reselect the synthetic records' date after remount.
+            # Server date and browser-local today can differ near midnight.
+            page.get_by_label('查看日期', exact=True).fill(today.isoformat())
             page.get_by_role('combobox', name=re.compile(r'^状态')).select_option('OPEN')
             page.get_by_label('搜索', exact=True).fill(prefix+'-待办分页')
             expect(page.locator('.todo-row')).to_have_count(10)
@@ -466,6 +482,7 @@ def business_checks(browser, run, users, profile, viewport):
             page.get_by_role('button', name='记一件事', exact=True).click()
             expect(page.locator('.todo-row')).to_contain_text('待同步')
             page.reload()
+            page.get_by_label('查看日期', exact=True).fill(today.isoformat())
             page.get_by_label('搜索', exact=True).fill(prefix+'-离线待办')
             expect(page.locator('.todo-row')).to_contain_text(prefix+'-离线待办')
             page.unroute('**/api/**')
@@ -521,6 +538,7 @@ def business_checks(browser, run, users, profile, viewport):
 
         def stale_todo_conflict():
             page.goto(ORIGIN+'/todos', wait_until='networkidle')
+            page.get_by_label('查看日期', exact=True).fill(today.isoformat())
             title = state['todo']['title']
             page.get_by_label('搜索', exact=True).fill(title)
             row = page.locator('.todo-row').filter(has_text=title)

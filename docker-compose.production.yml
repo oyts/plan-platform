@@ -19,7 +19,8 @@ services:
     restart: unless-stopped
     mem_limit: 640m
     environment:
-      JAVA_TOOL_OPTIONS: -Xms96m -Xmx320m -XX:MaxMetaspaceSize=160m -XX:+ExitOnOutOfMemoryError
+      JAVA_TOOL_OPTIONS: -Xms96m -Xmx320m -XX:MaxMetaspaceSize=160m -XX:+ExitOnOutOfMemoryError -Duser.timezone=Asia/Shanghai
+      TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: mysql
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 8
       DB_URL: jdbc:mysql://mysql:3306/plan_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
