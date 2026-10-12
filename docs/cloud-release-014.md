@@ -56,23 +56,28 @@ MySQL 原迁移 V7/V9 使用了其不支持的 `ADD COLUMN IF NOT EXISTS`。已�
 
    浏览器访问 `http://127.0.0.1:43141/welcome`；这是 SSH 保护的预览，不是公网发布。
 
-2. 在 FinalShell 查看受限的初始链接，勿复制进聊天或提交到 Git：
+   本机预览只用于查看页面，不在这里注册。生产 CORS 只允许正式域名，HTTP 预览注册会返回 403；Secure Cookie 也需要正式 HTTPS。
 
-   ```sh
-   cd /home/oyts/plan-platform/release-0.1.4
-   cat admin-registration.url
-   ```
-
-   链接只能用于指定邮箱，用户自选密码。可在 SSH 预览地址将域名部分替换为 `http://127.0.0.1:43141` 先验证注册；生产 Refresh Cookie 为 Secure，完整持久登录须在正式 HTTPS 入口验证。初始文件仍放在首次候选目录，不会在升级时公开复制。
-
-3. 确认新版和管理员注册后，在服务器执行入口切换：
+2. 确认新版预览正常后，在 **FinalShell 的服务器终端**执行入口切换，不在 Windows PowerShell 中执行 Linux 路径命令：
 
    ```sh
    cd /home/oyts/plan-platform/current
    sudo sh scripts/switch-public-entry.sh
    ```
 
-   脚本要求旧代理确实为 43127，先保存旧配置，验证健康、关闭注册，再切换至 43140。Nginx 校验或公网健康失败时恢复旧入口；不删除新数据库。通过后在 `https://plan.zijun701.cn` 验证登录、三模式、刷新保持登录、同步和导出。管理员会话确认后，在当前版本受限 `.env` 及部署根目录用于后续升级的 `.env` 中清空 `BOOTSTRAP_ADMIN_EMAIL`、`BOOTSTRAP_ADMIN_TOKEN_HASH`、`BOOTSTRAP_ADMIN_EXPIRES_AT`，并执行 `docker compose -p plan-platform -f docker-compose.production.yml up -d backend`。
+   脚本要求旧代理确实为 43127，先保存旧配置，验证健康、关闭注册，再切换至 43140。若前一次已自动回滚，只在已有备份与当前旧配置完全相同时复用，不删除备份。reload 后最多 15 轮校验本机 HTTPS，再最多 5 轮校验真正公网域名；TLS 校验始终启用。检查失败时打印具体条件并恢复旧入口，不删除新数据库。
+
+   **只有看到 `HTTPS entry now points to Spring Boot` 才算切换成功。** `Previous entry restored` 表示失败后恢复旧入口，此时不要注册、不要删备份。原脚本在 reload 后立刻验收，可能在新 worker 就绪前误触发回滚；已补上重试。Nginx 的新旧 worker 切换机制见 [官方配置重载说明](https://nginx.org/en/docs/control.html#reconfiguration)。本轮 5 项隔离脚本测试覆盖延迟就绪、相同备份重用、不同备份保护、持续失败回滚及公网不一致回滚；真实 root 切换仍需用户执行。
+
+3. 切换成功后，在 **FinalShell** 查看受限的初始链接，勿复制进聊天或提交到 Git：
+
+   ```sh
+   cat /home/oyts/plan-platform/release-0.1.4/admin-registration.url
+   ```
+
+   在浏览器打开原始完整 `https://plan.zijun701.cn/register?...` 链接，不替换为本机地址。链接只能用于指定邮箱，用户自选密码。初始文件仍放在首次候选目录，不会在升级时公开复制。
+
+   注册后在正式 HTTPS 入口验证登录、三模式、刷新保持登录、同步和导出。管理员会话确认后，在当前版本受限 `.env` 及部署根目录用于后续升级的 `.env` 中清空 `BOOTSTRAP_ADMIN_EMAIL`、`BOOTSTRAP_ADMIN_TOKEN_HASH`、`BOOTSTRAP_ADMIN_EXPIRES_AT`，并在 `current` 目录执行 `docker compose -p plan-platform -f docker-compose.production.yml up -d backend`。
 
 4. 如需恢复旧入口：
 
