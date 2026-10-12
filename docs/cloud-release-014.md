@@ -19,17 +19,20 @@ Web、Spring Boot、Tauri Windows 与 Android 版本统一为 `0.1.4`，Android 
 | 完整浏览器验收 | 62 项通过，6 项按原设计跳过 |
 | Windows 独立原生 EXE | 12 项通过，含今日待办、休息日、路线阶段、离线编辑重开、同步冲突及账号隔离 |
 | Rust 单元测试 | 9 项通过；依赖托管 HTTPS 更新实验环境的 1 项未运行 |
-| 原生回归工具自身测试 | 6 项通过 |
+| 原生回归工具自身测试 | 7 项通过，含正式云端报告范围与 HTML 转义 |
 | Android Java 单元测试 | 11 项通过；独立测试 APK 构建及签名检查通过 |
 | Android 0.1.4 真机 | iQOO V2426A / Android 15，独立 APK 构建 8 的 12 项业务回归通过；手机原生 HTTPS 云端连接检查另行通过 |
 | MySQL 8.4 | V1 至 V13 全部成功；实际核心 CRUD、用户隔离、409 和幂等验收通过 |
 | MySQL 恢复演练 | 生产空库及含合成业务数据的验收库均恢复至独立新库，逐表校验内容一致 |
 | 新云端官网 | 经 SSH 本机转发，电脑和手机视口、三模式预览、登录连接、备案链接及下载禁用检查通过 |
 | 正式 HTTPS 三模式网页 | Python + Playwright 27 项通过、0 失败；真实邀请注册、桌面与手机网页视口、缓存离线编辑、队列同步、真实 409 及跨用户隔离 |
+| 正式云端原生登录与三端互通 | 9 项通过、0 失败；真实 Windows Rust、Android Java 与网页登录同一云端，三模式交叉修改、会话重开、冲突拒绝及退出后账号隔离 |
 
 本地证据位于被 Git 忽略的 `acceptance-results/`：`native/latest.html`、`browser-release-014.log`、`desktop-unit-014.log`、`cloud/desktop-home.png` 与 `cloud/mobile-home.png`。原生测试使用独立应用身份，没有安装、卸载或清理正式客户端。本轮没有重新实测正式安装包应用内升级，因此不把此前 0.1.3 的人工升级证据当作 0.1.4 的正式发布验收。
 
 正式 HTTPS 网页验收证据另存于 `acceptance-results/public-web/latest.html` 及该目录的完整运行记录与截图。使用两个普通合成账号，不使用管理员密码；复跑入口与限制见 [正式网站自动验收](public-web-acceptance.md)。
+
+正式云端原生三端联测报告为 `acceptance-results/cloud-native/latest.html`，复跑入口是 `verify-cloud-native.bat`。本轮不启动本地 API、不创建 USB 业务转发、不修改线上部署；只读写两个受邀请普通验收账号的合成记录，结束后退出测试会话并恢复独立客户端原服务器配置。详见 [云端账号联测](cloud-native-acceptance.md)。
 
 GitHub 远程 [CI](https://github.com/oyts/plan-platform/actions/runs/38179331806)、[Windows 构建](https://github.com/oyts/plan-platform/actions/runs/38178989137) 和修复后的 [Android 构建](https://github.com/oyts/plan-platform/actions/runs/38179182006) 均已成功。流水线生成的 unsigned/debug 安装包仍不等于正式签名发布。
 

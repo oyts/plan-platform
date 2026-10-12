@@ -44,3 +44,10 @@ test('HTML and JUnit escape error strings and count preflight as a failure', () 
   assert.ok(junitXml({ ...report, cases: [] }).includes('tests="1" failures="1"'));
   assert.ok(junitXml({ ...report, cleanupError: 'cleanup' }).includes('tests="2" failures="2"'));
 });
+
+test('production report states its actual scope and escapes custom text', () => {
+  const html = reportHtml({ title: 'Cloud <native>', scope: 'Real HTTPS & invited users', startedAt: 'now', platform: 'three', status: 'PASS', environment: {}, cases: [] });
+  assert.ok(html.includes('Cloud &lt;native&gt;'));
+  assert.ok(html.includes('Real HTTPS &amp; invited users'));
+  assert.ok(!html.includes('内存数据库'));
+});

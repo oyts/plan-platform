@@ -4,6 +4,8 @@
 
 测试使用独立客户端、随机合成账号和临时 H2 内存数据库。现有计划舱客户端、账号、计划、离线队列及阿里云服务不在测试修改范围。
 
+真实云端账号、PC 原生、Android 真机与网页互通使用单独的 [云端原生联测](cloud-native-acceptance.md)，不能把本地 H2 结果当作生产联测通过。该项 2026-10-12 已完成 9 项通过、0 失败。
+
 ## 一键运行
 
 首次使用或代码变化后双击根目录 `prepare-native-regression.bat`，构建独立的调试客户端。构建需要 Java 21、Node.js 22、Android SDK 36、Rust MSVC 和已安装的前端依赖；后端 JAR 需先在 `backend` 执行 `mvn -Dplan.build.directory=target-acceptance package` 生成。验收启动使用独立 JAR 快照，不覆盖原服务使用的默认 `target` 文件。

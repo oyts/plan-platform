@@ -91,6 +91,8 @@ cd ../web && npm run build
 
 正式 HTTPS 网页可双击 `verify-public-web.bat`，使用 Python + Playwright 和两个受邀请的普通验收账号自动操作三种模式。2026-10-12 桌面与手机网页视口全量 27 项通过、0 失败；包含缓存离线编辑、顺序同步、真实 409 冲突及用户隔离。准备步骤、安全边界和复跑命令见 [正式网站自动验收](docs/public-web-acceptance.md)。不把手机视口结果当作 APK 真机验收。
 
+正式云端的 Windows、Android 真机与网页联测可双击 `verify-cloud-native.bat`。2026-10-12 全量 9 项通过、0 失败，包含原生 HTTPS 登录、三模式数据互通、真实客户端重开、冲突拒绝及账号隔离；不使用本地 API，不覆盖正式应用。准备步骤见 [云端账号原生联测](docs/cloud-native-acceptance.md)。
+
 手机布局使用底部导航、独立任务编辑面板和日程详情面板，任务列表支持搜索、筛选及每页 10 项展示。设计边界、横竖屏检查和本轮验收记录见 [手机布局优化](docs/mobile-layout.md)。
 
 顶栏可以切换“周期计划”“目标路线”和“今日待办”，各自记忆浏览位置。目标路线不要求按日历推进，新建默认自由推进，也可配置前置步骤；阶段支持折叠及每组 10 项展示。工作区设计见 [工作区模式](docs/workspace-modes.md)，路线规则见 [路线阶段](docs/route-stages.md)，官网与待办见 [官网与待办](docs/product-website-and-todos.md)。
