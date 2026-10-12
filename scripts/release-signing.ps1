@@ -1,7 +1,9 @@
 param(
-    [ValidateSet('init','check','backup','build-windows','build-android')][string]$Action = 'check',
+    [ValidateSet('init','check','backup','verify-backup','restore','build-windows','build-android')][string]$Action = 'check',
     [string]$ArtifactDirectory = '',
     [string]$BackupPath = '',
+    [string]$BackupPassphraseFile = '',
+    [switch]$Rehearsal,
     [switch]$DirectMavenCentral
 )
 $ErrorActionPreference = 'Stop'
@@ -52,6 +54,21 @@ function Read-Credentials {
     try { return ([Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json) }
     finally { [Array]::Clear($bytes,0,$bytes.Length) }
 }
+function Write-NewPrivateFile([string]$Path,[byte[]]$Bytes) {
+    $stream=[IO.File]::Open($Path,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+    try{$stream.Write($Bytes,0,$Bytes.Length)}finally{$stream.Dispose()}
+}
+function Read-BackupPassphrase([string]$Prompt) {
+    if(-not $BackupPassphraseFile){return (Read-Host $Prompt -AsSecureString)}
+    $path=[IO.Path]::GetFullPath($BackupPassphraseFile)
+    $allowed=[IO.Path]::GetFullPath((Join-Path $projectRoot '.desktop-tools/signing-backups/private'))+[IO.Path]::DirectorySeparatorChar
+    if(-not $path.StartsWith($allowed,[StringComparison]::OrdinalIgnoreCase) -or -not (Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Item -LiteralPath $path).Length -gt 4KB){throw 'Expected an owner-protected local backup passphrase file.'}
+    $passEntropy=[Text.Encoding]::UTF8.GetBytes('PlanCabin.BackupPassphrase.v1')
+    $bytes=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($path),$passEntropy,[Security.Cryptography.DataProtectionScope]::CurrentUser)
+    $secure=New-Object Security.SecureString
+    try{foreach($character in [Text.Encoding]::UTF8.GetString($bytes).ToCharArray()){$secure.AppendChar($character)};$secure.MakeReadOnly();return $secure}
+    finally{[Array]::Clear($bytes,0,$bytes.Length)}
+}
 function Check-Identity {
     if (-not (Test-Path -LiteralPath $metadataFile)) { throw 'Formal signing identity is absent. Initialize it first; do not use debug keys.' }
     $metadata = Get-Content -LiteralPath $metadataFile -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -64,6 +81,81 @@ function Check-Identity {
     }
     $null = Read-Credentials
     Write-Host 'Formal identity verified: original keys, owner-bound password protection, Android new package.'
+}
+function Invoke-BackupCodec($Request,[string]$Mode='') {
+    $start=New-Object Diagnostics.ProcessStartInfo
+    $start.FileName=$node;$start.Arguments="scripts/signing-backup.mjs $Mode";$start.WorkingDirectory=$projectRoot
+    $start.UseShellExecute=$false;$start.CreateNoWindow=$true
+    $start.RedirectStandardInput=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
+    $codec=New-Object Diagnostics.Process;$codec.StartInfo=$start
+    try {
+        if(-not $codec.Start()) {throw 'Signing backup process could not start.'}
+        $stdout=$codec.StandardOutput.ReadToEndAsync();$stderr=$codec.StandardError.ReadToEndAsync()
+        $codec.StandardInput.Write(($Request | ConvertTo-Json -Depth 8 -Compress));$codec.StandardInput.Close()
+        $codec.WaitForExit();$null=$stderr.Result
+        if($codec.ExitCode -ne 0) {throw 'Signing backup validation/decryption failed. Private output withheld.'}
+        return $stdout.Result
+    } finally {$codec.Dispose()}
+}
+function Test-IdentityProof {
+    $credentials=Read-Credentials
+    $names=@('PLAN_RELEASE_KEYTOOL_PASSWORD','TAURI_SIGNING_PRIVATE_KEY','TAURI_SIGNING_PRIVATE_KEY_PATH','TAURI_SIGNING_PRIVATE_KEY_PASSWORD')
+    $saved=@{};foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process');[Environment]::SetEnvironmentVariable($name,$null,'Process')}
+    $probe=Join-Path $signingRoot ('restore-proof-'+[Guid]::NewGuid().ToString('N'))
+    try {
+        $env:PLAN_RELEASE_KEYTOOL_PASSWORD=$credentials.android
+        Invoke-PrivateTool $keytool @('-exportcert','-keystore',$keystore,'-storepass:env','PLAN_RELEASE_KEYTOOL_PASSWORD','-alias','plan-cabin-release','-file',"$probe.der")
+        if((Get-FileHash -LiteralPath "$probe.der").Hash -ne (Get-FileHash -LiteralPath $certificate).Hash){throw 'Restored Android keystore does not contain the preserved certificate.'}
+        Invoke-PrivateTool $keytool @('-certreq','-keystore',$keystore,'-storepass:env','PLAN_RELEASE_KEYTOOL_PASSWORD','-keypass:env','PLAN_RELEASE_KEYTOOL_PASSWORD','-alias','plan-cabin-release','-file',"$probe.csr")
+        [IO.File]::WriteAllText($probe,'PlanCabin isolated signing recovery proof',[Text.UTF8Encoding]::new($false))
+        $env:TAURI_SIGNING_PRIVATE_KEY_PATH=$privateKey;$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$credentials.windows
+        Invoke-PrivateTool $node @('web/node_modules/@tauri-apps/cli/tauri.js','signer','sign','--app-version','0.1.4',$probe)
+        $proof="import {readFileSync} from 'node:fs';import {verifyUpdaterSignature} from './scripts/formal-release-support.mjs';verifyUpdaterSignature(readFileSync(process.argv[1]),readFileSync(process.argv[2],'utf8'),readFileSync(process.argv[1]+'.sig','utf8'));"
+        Invoke-PrivateTool $node @('--input-type=module','-e',$proof,$probe,$publicKey)
+        Write-Host 'Recovery cryptographic proof passed: Android original certificate and Windows original updater public key.'
+    } finally {
+        $credentials=$null;foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name],'Process')}
+        foreach($path in @($probe,"$probe.der","$probe.sig","$probe.csr")){if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path}}
+    }
+}
+if($Rehearsal -and $Action -ne 'restore'){throw 'Rehearsal is only for isolated restore tests.'}
+if($Action -in @('verify-backup','restore')) {
+    if(-not $BackupPath -or -not (Test-Path -LiteralPath $BackupPath -PathType Leaf)){throw 'Supply an existing encrypted signing backup.'}
+    if((Get-Item -LiteralPath $BackupPath).Length -gt 2MB){throw 'Signing backup exceeds the format size limit.'}
+    if($Action -eq 'restore' -and -not $Rehearsal -and (Test-Path -LiteralPath $signingRoot) -and (Get-ChildItem -LiteralPath $signingRoot -Force)){throw 'Existing signing identity is never overwritten. Use Rehearsal or restore on an empty maintenance environment.'}
+    $secret=Read-BackupPassphrase 'Offline backup passphrase (not a signing key password)'
+    $pointer=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
+    try {
+        $password=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
+        $archive=Get-Content -LiteralPath $BackupPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $payload=(Invoke-BackupCodec @{archive=$archive;password=$password} 'open') | ConvertFrom-Json
+        $password=$null
+        if($Action -eq 'verify-backup'){Write-Host 'Encrypted backup decrypted and all four signing file hashes verified. No keys were restored or replaced.';exit 0}
+        if($Rehearsal){$signingRoot=Join-Path $projectRoot ('.desktop-tools/signing-restore/private/'+[Guid]::NewGuid().ToString('N'))}
+        if((Test-Path -LiteralPath $signingRoot) -and ((Get-Item -LiteralPath $signingRoot).Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'Restore directory cannot be a link.'}
+        New-Item -ItemType Directory -Path $signingRoot -Force | Out-Null
+        $restoreAcl=New-Object Security.AccessControl.DirectorySecurity
+        $restoreAcl.SetOwner($identity.User);$restoreAcl.SetAccessRuleProtection($true,$false)
+        foreach($sid in @($identity.User,[Security.Principal.SecurityIdentifier]'S-1-5-18')){$restoreAcl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($sid,'FullControl','ContainerInherit,ObjectInherit','None','Allow')))}
+        Set-Acl -LiteralPath $signingRoot -AclObject $restoreAcl
+        foreach($entry in $payload.files.PSObject.Properties){
+            $stream=[IO.File]::Open((Join-Path $signingRoot $entry.Name),[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+            try{$bytes=[Convert]::FromBase64String($entry.Value);$stream.Write($bytes,0,$bytes.Length)}finally{$stream.Dispose();if($bytes){[Array]::Clear($bytes,0,$bytes.Length)}}
+        }
+        $credentialsFile=Join-Path $signingRoot 'credentials.dpapi';$metadataFile=Join-Path $signingRoot 'identity.json'
+        $privateKey=Join-Path $signingRoot 'windows-updater.key';$publicKey="$privateKey.pub";$keystore=Join-Path $signingRoot 'android-release.p12';$certificate=Join-Path $signingRoot 'android-release.der'
+        $plain=[Text.Encoding]::UTF8.GetBytes(($payload.credentials | ConvertTo-Json -Compress))
+        try{Write-NewPrivateFile $credentialsFile ([Security.Cryptography.ProtectedData]::Protect($plain,$entropy,[Security.Cryptography.DataProtectionScope]::CurrentUser))}finally{[Array]::Clear($plain,0,$plain.Length)}
+        $payload.metadata.ownerSid=$identity.User.Value;$payload.metadata.portableBackupComplete=$false
+        $payload.metadata | Add-Member -NotePropertyName restoredFromBackupUtc -NotePropertyValue ([DateTime]::UtcNow.ToString('o')) -Force
+        Write-NewPrivateFile $metadataFile ([Text.Encoding]::UTF8.GetBytes(($payload.metadata | ConvertTo-Json -Depth 5)))
+        Check-Identity;Test-IdentityProof
+        Write-Host "Verified restored identity: $signingRoot"
+        if($Rehearsal){Write-Host 'Original signing directory was not modified. Rehearsal keys remain owner-restricted and ignored by Git.'}
+    } finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer);$secret.Dispose();$payload=$null;$archive=$null;$password=$null
+    }
+    exit 0
 }
 if ($Action -eq 'init') {
     if (Test-Path -LiteralPath $metadataFile) { Check-Identity; exit 0 }
@@ -106,8 +198,8 @@ if ($Action -eq 'backup') {
     if (-not $BackupPath) { throw 'Supply BackupPath on your own offline storage. Never upload signing backups to Git or public OSS.' }
     $destination = [IO.Path]::GetFullPath($BackupPath)
     if (Test-Path -LiteralPath $destination) { throw 'Backup destination already exists; it will not be overwritten.' }
-    $first = Read-Host 'New offline backup passphrase (at least 16 characters; keep separately)' -AsSecureString
-    $second = Read-Host 'Repeat offline backup passphrase' -AsSecureString
+    $first = Read-BackupPassphrase 'New offline backup passphrase (at least 16 characters; keep separately)'
+    $second = Read-BackupPassphrase 'Repeat offline backup passphrase'
     $firstPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($first)
     $secondPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($second)
     try {
@@ -116,17 +208,7 @@ if ($Action -eq 'backup') {
         $files = @{}
         foreach ($path in @($privateKey,$publicKey,$keystore,$certificate)) { $files[[IO.Path]::GetFileName($path)] = [Convert]::ToBase64String([IO.File]::ReadAllBytes($path)) }
         $payload = @{ schema=1; metadata=(Get-Content $metadataFile -Raw -Encoding UTF8 | ConvertFrom-Json); credentials=(Read-Credentials); files=$files }
-        $start = New-Object Diagnostics.ProcessStartInfo
-        $start.FileName=$node; $start.Arguments='scripts/signing-backup.mjs'; $start.WorkingDirectory=$projectRoot
-        $start.UseShellExecute=$false; $start.CreateNoWindow=$true
-        $start.RedirectStandardInput=$true; $start.RedirectStandardOutput=$true; $start.RedirectStandardError=$true
-        $process = New-Object Diagnostics.Process; $process.StartInfo=$start
-        if (-not $process.Start()) { throw 'Backup process could not start.' }
-        $stdout=$process.StandardOutput.ReadToEndAsync(); $stderr=$process.StandardError.ReadToEndAsync()
-        $process.StandardInput.Write((@{password=$password;payload=$payload} | ConvertTo-Json -Depth 8 -Compress))
-        $process.StandardInput.Close(); $process.WaitForExit(); $null=$stderr.Result
-        if ($process.ExitCode -ne 0) { throw 'Encrypted backup failed. Private output withheld.' }
-        $encrypted=[Text.Encoding]::UTF8.GetBytes($stdout.Result)
+        $encrypted=[Text.Encoding]::UTF8.GetBytes((Invoke-BackupCodec @{password=$password;payload=$payload}))
         $stream=[IO.File]::Open($destination,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
         try { $stream.Write($encrypted,0,$encrypted.Length) } finally { $stream.Dispose() }
         Write-Host 'Encrypted portable backup written and round-trip verified. Keep it offline; keep the passphrase separately.'
@@ -134,7 +216,6 @@ if ($Action -eq 'backup') {
     } finally {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($firstPtr); [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($secondPtr)
         $password=$null; $payload=$null; $files=$null; $first.Dispose(); $second.Dispose()
-        if ($process) { $process.Dispose() }
     }
     exit 0
 }
