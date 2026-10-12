@@ -25,8 +25,11 @@ Web、Spring Boot、Tauri Windows 与 Android 版本统一为 `0.1.4`，Android 
 | MySQL 8.4 | V1 至 V13 全部成功；实际核心 CRUD、用户隔离、409 和幂等验收通过 |
 | MySQL 恢复演练 | 生产空库及含合成业务数据的验收库均恢复至独立新库，逐表校验内容一致 |
 | 新云端官网 | 经 SSH 本机转发，电脑和手机视口、三模式预览、登录连接、备案链接及下载禁用检查通过 |
+| 正式 HTTPS 三模式网页 | Python + Playwright 27 项通过、0 失败；真实邀请注册、桌面与手机网页视口、缓存离线编辑、队列同步、真实 409 及跨用户隔离 |
 
 本地证据位于被 Git 忽略的 `acceptance-results/`：`native/latest.html`、`browser-release-014.log`、`desktop-unit-014.log`、`cloud/desktop-home.png` 与 `cloud/mobile-home.png`。原生测试使用独立应用身份，没有安装、卸载或清理正式客户端。本轮没有重新实测正式安装包应用内升级，因此不把此前 0.1.3 的人工升级证据当作 0.1.4 的正式发布验收。
+
+正式 HTTPS 网页验收证据另存于 `acceptance-results/public-web/latest.html` 及该目录的完整运行记录与截图。使用两个普通合成账号，不使用管理员密码；复跑入口与限制见 [正式网站自动验收](public-web-acceptance.md)。
 
 GitHub 远程 [CI](https://github.com/oyts/plan-platform/actions/runs/38179331806)、[Windows 构建](https://github.com/oyts/plan-platform/actions/runs/38178989137) 和修复后的 [Android 构建](https://github.com/oyts/plan-platform/actions/runs/38179182006) 均已成功。流水线生成的 unsigned/debug 安装包仍不等于正式签名发布。
 

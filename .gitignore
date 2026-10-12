@@ -42,6 +42,8 @@ client-update-artifacts/
 production-artifacts/
 admin-registration.url
 acceptance.env
+__pycache__/
+*.py[cod]
 web/src-tauri/gen/
 web/src-tauri/icons/*
 !web/src-tauri/icons/icon.ico
