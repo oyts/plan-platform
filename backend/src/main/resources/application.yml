@@ -30,7 +30,7 @@ management:
         enabled: true
 
 app:
-  version: 0.1.6
+  version: 0.1.7
   android-updates:
     enabled: ${ANDROID_UPDATE_ENABLED:false}
     directory: ${ANDROID_UPDATE_DIRECTORY:}
