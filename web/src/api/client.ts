@@ -6,7 +6,7 @@ import { projectPending } from '@/offlineProjection';
 import { connectionState, markConnected, markDisconnected, requiresConnection } from '@/connectionState';
 import { isNativeClient as isDesktop, desktopScope } from '@/desktop';
 import { desktopAdapter } from './desktopAdapter';
-import { requiredClientUpdate } from '@/clientUpdates';
+import { requiredClientUpdate, bindClientUpdateOwner } from '@/clientUpdates';
 
 type OfflineRequestConfig = AxiosRequestConfig & { retried?: boolean; offlineReplay?: boolean; idempotencyKey?: string };
 type InternalOfflineRequestConfig = InternalAxiosRequestConfig & { retried?: boolean; offlineReplay?: boolean; idempotencyKey?: string; cacheOwner?: string | null; cacheScope?: string; sessionEpoch?: number };
@@ -104,9 +104,20 @@ export function saveTokens(tokens: TokenResponse): void {
   accessToken = tokens.accessToken;
   queueOwnerId = tokens.user.id;
   authenticatedScope = serverScope(); connectionState.offlineSession = false; markConnected();
+  bindClientUpdateOwner(currentQueueOwner());
 }
-export function restoreOfflineIdentity(user: { id: string }): void { epoch++; accessToken = null; queueOwnerId = user.id; authenticatedScope = serverScope(); connectionState.offlineSession = true; markDisconnected(); }
-export function clearTokens(): void { epoch++; accessToken = null; queueOwnerId = null; connectionState.offlineSession = false; connectionState.cacheReadAt = 0; }
+export function restoreOfflineIdentity(user: { id: string }): void { epoch++; accessToken = null; queueOwnerId = user.id; authenticatedScope = serverScope(); connectionState.offlineSession = true; markDisconnected(); bindClientUpdateOwner(currentQueueOwner()); }
+export function clearTokens(): void { epoch++; accessToken = null; queueOwnerId = null; connectionState.offlineSession = false; connectionState.cacheReadAt = 0; bindClientUpdateOwner(null); }
+export async function nativeUpdateAuthorization(): Promise<Record<string, unknown>> {
+  if (!hasToken() || !queueOwnerId) throw new Error('请先联网登录受邀账号，再检查或安装更新。');
+  const owner = queueOwnerId, scope = serverScope(), sessionEpoch = epoch;
+  // Uses the existing single-flight token refresh. Refresh credentials are not
+  // copied to the updater, and no token is persisted in an update manifest.
+  await api.get('/auth/me');
+  if (!accessToken || owner !== queueOwnerId || scope !== serverScope() || sessionEpoch !== epoch)
+    throw new Error('账号或服务器已变化，请重新检查更新。');
+  return { accessToken, ownerId: owner, serverUrl: desktopScope() };
+}
 export function hasToken(): boolean { return Boolean(accessToken && currentQueueOwner()); }
 export function hasSession(): boolean { return Boolean(currentQueueOwner()); }
 export function currentQueueOwner(): string | null { return queueOwnerId && authenticatedScope === serverScope() ? (isDesktop() ? `${authenticatedScope}|${queueOwnerId}` : queueOwnerId) : null; }

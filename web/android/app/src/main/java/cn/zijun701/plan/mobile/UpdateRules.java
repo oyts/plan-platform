@@ -25,4 +25,28 @@ public final class UpdateRules {
     public static void artifact(String sha256, long size) {
         if (sha256 == null || !sha256.matches("[a-fA-F0-9]{64}") || size < 1 || size > MAX_APK_BYTES) throw new IllegalArgumentException("安装包校验值或大小无效。");
     }
+    public static boolean authenticated(String manifestUrl) {
+        return manifestUrl != null && !manifestUrl.isEmpty()
+            && "/api/client-updates/android/latest".equals(URI.create(manifestUrl).getPath());
+    }
+    private static int port(URI uri) { return uri.getPort() == -1 ? ("https".equals(uri.getScheme()) ? 443 : 80) : uri.getPort(); }
+    public static boolean sameOrigin(URI first, URI second) {
+        return first.getScheme().equals(second.getScheme()) && first.getHost().equalsIgnoreCase(second.getHost()) && port(first) == port(second);
+    }
+    public static void credentials(URI manifest, String server, String reportedServer, String owner, String token, boolean debug) {
+        URI business = url(server, debug), reported = url(reportedServer, debug);
+        if (!sameOrigin(manifest, business) || !sameOrigin(business, reported) || !server.equals(reportedServer)
+            || !(business.getPath().isEmpty() || business.getPath().equals("/")) || business.getQuery() != null
+            || manifest.getQuery() != null || owner == null || !owner.matches("[A-Za-z0-9_-]{1,100}")
+            || token == null || token.length() > 8192 || !token.matches("[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+")) {
+            throw new IllegalStateException("请使用更新源对应的云端账号登录，再重新检查更新。");
+        }
+    }
+    public static URI authenticatedArtifact(URI manifest, String value, long versionCode, boolean debug) {
+        URI target = url(value, debug);
+        if (!sameOrigin(manifest, target) || target.getQuery() != null
+            || !target.getPath().equals("/api/client-updates/android/releases/" + versionCode + "/apk"))
+            throw new IllegalArgumentException("受邀更新包必须来自同域受保护接口，已拒绝下载。");
+        return target;
+    }
 }

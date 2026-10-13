@@ -15,9 +15,9 @@
 已采用现有域名，清单地址为：
 
 - Windows：`https://plan.zijun701.cn/client-updates/windows/latest.json`
-- Android：`https://plan.zijun701.cn/client-updates/android/latest.json`
+- Android 受邀新版：`https://plan.zijun701.cn/api/client-updates/android/latest`，须登录，流程见 [受限更新](invited-android-updates.md)。
 
-业务服务器地址可以修改，更新源在构建时固定，更新请求不携带业务账号凭据。正式更新源与安装包都必须使用 HTTPS。Android 调试包仅额外允许本机测试 HTTP，不允许校园网任意明文地址。
+业务服务器地址可以修改，更新源在构建时固定。Windows 更新请求不携带业务账号凭据；受邀 Android 新版只向固定同域受保护接口发送短期 access token，不传 refresh cookie。正式更新源与安装包都必须使用 HTTPS。Android 调试包仅额外允许本机测试 HTTP，不允许校园网任意明文地址。旧静态 Android 清单继续 404，不作为公开下载入口。
 
 Windows 通过 Tauri 验证下载包的更新签名；Android 校验大小、SHA256、包名、版本与安装应用的签名，并在交给系统安装前再校验。失败不进入可安装状态，保留现有应用与业务数据。APK 最大 256 MiB，Android 暂不支持签名轮换。更新下载使用独立后台执行队列，不占用业务 API 的执行队列。HTTPS 证书、APK 签名、Tauri 更新签名和 Windows 发布者代码签名是不同的东西。实现依据 [Tauri 更新文档](https://v2.tauri.app/plugin/updater/) 和 [Android 安装权限说明](https://developer.android.com/reference/android/content/pm/PackageManager#canRequestPackageInstalls())。
 

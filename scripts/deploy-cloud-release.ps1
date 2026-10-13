@@ -36,15 +36,7 @@ docker build --pull=false -t plan-platform-web:__VERSION__ web
 compose_from() {
   directory=$1
   shift
-  if [ -f '__ROOT__/client-public/compose.yml' ]; then
-  if [ -f '__ROOT__/production-timezone.yml' ]; then
-      docker compose --project-directory "$directory" -p plan-platform -f "$directory/docker-compose.production.yml" -f '__ROOT__/client-public/compose.yml' -f '__ROOT__/production-timezone.yml' "$@"
-  else
-      docker compose --project-directory "$directory" -p plan-platform -f "$directory/docker-compose.production.yml" -f '__ROOT__/client-public/compose.yml' "$@"
-  fi
-  else
-    docker compose --project-directory "$directory" -p plan-platform -f "$directory/docker-compose.production.yml" "$@"
-  fi
+  sh '__REMOTE__/scripts/production-compose.sh' "$directory" "$@"
 }
 rollback_on_error() {
   code=$?

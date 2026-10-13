@@ -34,10 +34,11 @@ Copy-Item -LiteralPath backend/target-acceptance/plan-platform-api.jar -Destinat
 Copy-Item -LiteralPath backend/Dockerfile.prebuilt -Destination "$output/backend/Dockerfile" -Force
 Copy-Item -LiteralPath web/Dockerfile.prebuilt -Destination "$output/web/Dockerfile" -Force
 Copy-Item -LiteralPath web/nginx.production.conf -Destination "$output/web/nginx.conf" -Force
+Copy-Item -LiteralPath web/package.json -Destination "$output/web/package.json" -Force
 # Copy an enumerated build tree instead of archiving the repo, .env or credentials.
 Copy-Item -LiteralPath web/dist -Destination "$output/web" -Recurse -Force
 Copy-Item -LiteralPath docker-compose.production.yml -Destination $output -Force
-foreach ($name in @('initialize-production.sh','mysql-backup.sh','mysql-restore-drill.sh','mysql-oss-upload.sh','daily-mysql-backup.sh','switch-public-entry.sh','rollback-public-entry.sh')) {
+foreach ($name in @('initialize-production.sh','mysql-backup.sh','mysql-restore-drill.sh','mysql-oss-upload.sh','daily-mysql-backup.sh','switch-public-entry.sh','rollback-public-entry.sh','production-compose.sh')) {
     Copy-Item -LiteralPath "scripts/$name" -Destination "$output/scripts/$name" -Force
 }
 $archive = Join-Path $projectRoot "production-artifacts/plan-platform-$version.tar.gz"

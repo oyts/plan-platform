@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const native = vi.hoisted(() => ({ check: vi.fn(), download: vi.fn(), install: vi.fn(), info: vi.fn(), invoke: vi.fn() }));
 vi.mock('@/desktop', () => ({ isNativeClient: () => true, getDesktopInfo: native.info, checkDesktopUpdate: native.check, downloadDesktopUpdate: native.download, installDesktopUpdate: native.install, nativeInvoke: native.invoke }));
-import { clientUpdates as state, initializeClientUpdates, checkClientUpdate, setAutomaticDownload, downloadClientUpdate, installClientUpdate, dismissClientUpdate, requiredClientUpdate, updateRouteAllowed } from './clientUpdates';
+import { clientUpdates as state, initializeClientUpdates, checkClientUpdate, setAutomaticDownload, downloadClientUpdate, installClientUpdate, dismissClientUpdate, requiredClientUpdate, updateRouteAllowed, bindClientUpdateOwner } from './clientUpdates';
 const info = { version: '0.1.1', versionCode: 5, updatesEnabled: true, updateChannel: 'https://plan.example.cn/client-updates/android/latest.json', serverUrl: 'https://plan.example.cn' };
 const optional = { version: '0.1.2', versionCode: 6, notes: '测试更新', mandatory: false };
 const storage = new Map<string, string>();
@@ -9,10 +9,27 @@ beforeEach(() => {
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key), clear: () => storage.clear() });
   vi.stubGlobal('window', { confirm: vi.fn() });
   localStorage.clear(); vi.clearAllMocks();
-  Object.assign(state, { info: null, update: null, checking: false, downloading: false, installing: false, ready: false, autoDownload: false, dismissedVersion: '', error: '', message: '' });
+  Object.assign(state, { info: null, update: null, checking: false, downloading: false, installing: false, ready: false, autoDownload: false, dismissedVersion: '', error: '', message: '', ownerKey: '' });
   native.info.mockResolvedValue(info); native.check.mockResolvedValue(optional); native.download.mockResolvedValue(undefined); native.install.mockResolvedValue(undefined);
 });
 describe('client update consent and lifecycle', () => {
+  it('invited download consent and mandatory policy do not transfer to another account', async () => {
+    native.info.mockResolvedValue({ ...info, updateRequiresLogin: true });
+    await initializeClientUpdates(); setAutomaticDownload(true); expect(state.autoDownload).toBe(false);
+    bindClientUpdateOwner('server|user-a'); setAutomaticDownload(true);
+    native.check.mockResolvedValue({ ...optional, mandatory: true }); await checkClientUpdate();
+    expect(requiredClientUpdate()).toBe(true); expect(state.ready).toBe(true);
+    bindClientUpdateOwner('server|user-b'); expect(state.autoDownload).toBe(false); expect(state.ready).toBe(false); expect(state.update).toBeNull();
+    bindClientUpdateOwner('server|user-a'); expect(state.autoDownload).toBe(true); expect(requiredClientUpdate()).toBe(true); expect(state.ready).toBe(false);
+    bindClientUpdateOwner(null); expect(state.autoDownload).toBe(false); expect(requiredClientUpdate()).toBe(false);
+  });
+  it('logout while an invited download is pending never restores its ready state', async () => {
+    native.info.mockResolvedValue({ ...info, updateRequiresLogin: true });
+    await initializeClientUpdates(); bindClientUpdateOwner('server|user-a'); await checkClientUpdate();
+    let finish!: () => void; native.download.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+    const downloading = downloadClientUpdate(); bindClientUpdateOwner(null); finish(); await downloading;
+    expect(state.ready).toBe(false); expect(state.update).toBeNull(); expect(state.message).toBe('');
+  });
   it('checks on demand without automatic download or install by default', async () => {
     await initializeClientUpdates(); await checkClientUpdate();
     expect(state.autoDownload).toBe(false); expect(state.update).toEqual(optional); expect(native.download).not.toHaveBeenCalled(); expect(native.install).not.toHaveBeenCalled();

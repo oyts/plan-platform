@@ -26,7 +26,7 @@
 
 发布时只切换当前清单；旧版本 EXE 和签名必须逐字节保留，拒绝同版本不同内容。`verify-public-windows-release.mjs` 核对真实 HTTPS 下载、签名、缓存策略、官网及 Android 404。更新维持可选，自动下载默认关闭；必更策略须单独决策，不因小修复自动强制。
 
-Android 在完成所需备案和公开发布授权前仅私下提供正式 APK：官网下载清单 `android=null`，公开 Android 更新清单与 APK URL 保持 404。
+Android 在完成所需备案和公开发布授权前仅受邀分发正式 APK：官网下载清单 `android=null`，公开 Android 更新清单与 APK URL 保持 404。新受邀客户端通过登录后的 API 获取更新，APK 只挂载到后端；发布、鉴权验证与回滚见 [受限 Android 更新](invited-android-updates.md)。
 
 Android CI 可以构建、测签名和运行单元测试，但本阶段不上传可下载的 APK 附件。朋友私测只提供已验收的正式同证书 APK，不使用 CI 调试包替代。
 

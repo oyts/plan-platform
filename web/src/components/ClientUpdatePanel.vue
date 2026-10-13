@@ -8,6 +8,7 @@ import { isAndroid } from '@/desktop';
     <dl class="desktop-facts"><div><dt>安装版本</dt><dd>{{ state.info?.version ?? '正在读取' }}{{ state.info?.versionCode ? ` / 构建 ${state.info.versionCode}` : '' }}</dd></div><div><dt>更新状态</dt><dd>{{ state.info?.updatesEnabled ? '已绑定可信更新源' : '尚未配置发布源' }}</dd></div></dl>
     <label class="update-consent"><input type="checkbox" :checked="state.autoDownload" :disabled="!state.info?.updatesEnabled" @change="setAutomaticDownload(($event.target as HTMLInputElement).checked)" />自动下载更新（安装前仍需确认）</label>
     <p class="helper-text">默认关闭，只有你主动勾选才启用。下载会使用网络流量；不会自动关闭应用或静默安装。</p>
+    <p v-if="state.info?.updateRequiresLogin" class="helper-text">Android 受邀更新需要联网登录当前云端账号。更新包不公开下载；切换账号或服务器后需重新检查，自动下载偏好按账号分别保存。</p>
     <button class="btn" type="button" :disabled="!state.info?.updatesEnabled || state.checking || state.downloading || state.installing || state.ready" @click="checkClientUpdate">{{ state.checking ? '正在检查…' : '检查新版本' }}</button>
     <p v-if="!state.info?.updatesEnabled" class="helper-text">当前测试包没有绑定发布源，仍需同签名覆盖安装。维护者配置可信 HTTPS 更新源后，可在应用内检测、下载与安装更新。</p>
     <p v-if="state.error" class="error-text" role="alert">{{ state.error }}</p><p v-if="state.message" class="helper-text" role="status">{{ state.message }}</p>

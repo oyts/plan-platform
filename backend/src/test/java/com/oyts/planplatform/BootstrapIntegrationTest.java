@@ -26,7 +26,7 @@ class BootstrapIntegrationTest {
     }
     @Test void bootstrapIsEmailBoundSingleUseAndDoesNotOpenRegistration() throws Exception {
         mvc.perform(get("/api/auth/config")).andExpect(jsonPath("$.registrationEnabled").value(false))
-            .andExpect(jsonPath("$.apiVersion").value(1)).andExpect(jsonPath("$.serverVersion").value("0.1.5"));
+            .andExpect(jsonPath("$.apiVersion").value(1)).andExpect(jsonPath("$.serverVersion").value("0.1.6"));
         mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(request("other@example.test", "bootstrap-test-token")))
             .andExpect(status().isForbidden());
         mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(request("bootstrap@example.test", "wrong-token")))

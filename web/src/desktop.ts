@@ -3,8 +3,8 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 interface AndroidBridge { execute(options: { command: string; args: Record<string, unknown> }): Promise<{ value: unknown }> }
 const androidBridge = registerPlugin<AndroidBridge>('PlanNative');
 
-export interface DesktopInfo { version: string; serverUrl: string; updatesEnabled: boolean; debug?: boolean; versionCode?: number; updateChannel?: string }
-export interface DesktopUpdate { version: string; notes: string | null; mandatory: boolean; minimumVersion?: string; versionCode?: number }
+export interface DesktopInfo { version: string; serverUrl: string; updatesEnabled: boolean; debug?: boolean; versionCode?: number; updateChannel?: string; updateRequiresLogin?: boolean }
+export interface DesktopUpdate { version: string; notes: string | null; mandatory: boolean; minimumVersion?: string; versionCode?: number; accountId?: string }
 let info: DesktopInfo | null = null;
 export function isDesktop(): boolean { return isTauri(); }
 export function isAndroid(): boolean { return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'; }
@@ -29,6 +29,11 @@ export async function getDesktopInfo(): Promise<DesktopInfo> { return info ?? aw
 export async function saveDesktopServer(serverUrl: string): Promise<void> { await nativeInvoke('desktop_save_server', { serverUrl }); }
 export async function probeDesktopServer(serverUrl: string): Promise<string> { return nativeInvoke<string>('desktop_probe', { serverUrl }); }
 export async function clearNativeSession(): Promise<void> { if (isNativeClient()) await nativeInvoke('clear_native_session'); }
-export async function checkDesktopUpdate(): Promise<DesktopUpdate | null> { return nativeInvoke<DesktopUpdate | null>('desktop_check_update'); }
-export async function downloadDesktopUpdate(): Promise<void> { await nativeInvoke('desktop_download_update'); }
-export async function installDesktopUpdate(): Promise<void> { await nativeInvoke('desktop_install_update'); }
+async function updateAuthorization(): Promise<Record<string, unknown>> {
+  if (!isAndroid() || !info?.updateRequiresLogin) return {};
+  // Resolve after client initialization to avoid an auth/client/update module cycle.
+  return (await import('./api/client')).nativeUpdateAuthorization();
+}
+export async function checkDesktopUpdate(): Promise<DesktopUpdate | null> { return nativeInvoke<DesktopUpdate | null>('desktop_check_update', await updateAuthorization()); }
+export async function downloadDesktopUpdate(): Promise<void> { await nativeInvoke('desktop_download_update', await updateAuthorization()); }
+export async function installDesktopUpdate(): Promise<void> { await nativeInvoke('desktop_install_update', await updateAuthorization()); }

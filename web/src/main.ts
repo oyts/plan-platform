@@ -22,7 +22,7 @@ async function bootstrap(): Promise<void> {
   app.use(router);
   await router.isReady();
   app.mount('#app');
-  if (isDesktop()) void checkClientUpdate();
+  if (isDesktop() && !isAndroid()) void checkClientUpdate();
   if (isAndroid()) {
     const { App: androidApp } = await import('@capacitor/app');
     await androidApp.addListener('backButton', ({ canGoBack }) => {
@@ -38,6 +38,7 @@ async function bootstrap(): Promise<void> {
   if (isDesktop()) {
     await auth.bootstrap();
     if (auth.user && router.currentRoute.value.path === '/login') await router.replace(await workspaceEntry());
+    if (isAndroid() && auth.user) void checkClientUpdate();
   }
 }
 void bootstrap().catch(() => {

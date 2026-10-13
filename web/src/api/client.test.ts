@@ -3,15 +3,34 @@ import type { TokenResponse } from '@/types';
 import type { OfflineOperation } from '@/offlineQueue';
 const platform = vi.hoisted(() => ({ desktop: true, server: 'https://one.example.cn' }));
 const updatePolicy = vi.hoisted(() => ({ required: false }));
-vi.mock('@/clientUpdates', () => ({ requiredClientUpdate: () => updatePolicy.required }));
+vi.mock('@/clientUpdates', () => ({ requiredClientUpdate: () => updatePolicy.required, bindClientUpdateOwner: vi.fn() }));
 vi.mock('@/desktop', () => ({ isNativeClient: () => platform.desktop, desktopScope: () => platform.server, nativeInvoke: vi.fn() }));
 vi.mock('@/offlineQueue', () => ({ enqueueOperation: vi.fn(), listOperations: vi.fn().mockResolvedValue([]) }));
 vi.stubGlobal('localStorage', { removeItem: vi.fn() });
-const { api, clearTokens, currentQueueOwner, replayOfflineOperation, saveTokens } = await import('./client');
+const { api, clearTokens, currentQueueOwner, replayOfflineOperation, saveTokens, restoreOfflineIdentity, nativeUpdateAuthorization } = await import('./client');
 const session = { accessToken: 'test-only', user: { id: 'user-one' } } as TokenResponse;
 beforeEach(() => { clearTokens(); platform.desktop = true; platform.server = 'https://one.example.cn'; updatePolicy.required = false; });
 
 describe('offline identity partitioning', () => {
+  it('requires a live access token; cached offline identity cannot authorize updates', async () => {
+    await expect(nativeUpdateAuthorization()).rejects.toThrow('联网登录');
+    restoreOfflineIdentity({ id: 'user-one' });
+    await expect(nativeUpdateAuthorization()).rejects.toThrow('联网登录');
+  });
+  it('only returns current owner/server credentials after an authenticated identity check', async () => {
+    saveTokens(session);
+    const original=api.defaults.adapter;
+    api.defaults.adapter=async config=>({data:session.user,status:200,statusText:'OK',headers:{},config});
+    try { expect(await nativeUpdateAuthorization()).toEqual({accessToken:'test-only',ownerId:'user-one',serverUrl:platform.server}); }
+    finally {api.defaults.adapter=original;}
+  });
+  it('rejects a login change while identity validation is pending', async () => {
+    saveTokens(session);
+    const original=api.defaults.adapter;
+    api.defaults.adapter=async config=>{saveTokens({...session,user:{...session.user,id:'user-two'}});return {data:session.user,status:200,statusText:'OK',headers:{},config};};
+    try { await expect(nativeUpdateAuthorization()).rejects.toThrow('账号或服务器已变化'); }
+    finally {api.defaults.adapter=original;}
+  });
   it('blocks required-version business writes and replay before sending or enqueueing', async () => {
     saveTokens(session); updatePolicy.required = true;
     const adapter = vi.fn();

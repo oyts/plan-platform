@@ -10,6 +10,7 @@ import WorkspaceSwitcher from '@/components/WorkspaceSwitcher.vue';
 import { workspace, bindWorkspaceContext, resetWorkspaceContext } from '@/workspace';
 import { planNavigation, routeNavigation, todoNavigation, workspaceHome } from '@/workspaceModel';
 import { checkClientUpdate, requiredClientUpdate, updateRouteAllowed } from '@/clientUpdates';
+import { isAndroid } from '@/desktop';
 const auth = useAuthStore(); const router = useRouter();
 const productPage = computed(() => router.currentRoute.value.meta.landing || (router.currentRoute.value.path === '/' && !auth.user));
 const navigation = computed(() => [
@@ -30,6 +31,7 @@ async function logout() {
   finally { await router.replace('/login'); }
 }
 watch(() => auth.user, (user, previous) => { if (previous && !user && !router.currentRoute.value.meta.public) void router.replace('/login'); });
+watch(() => auth.user?.id, id => { if (id && isAndroid()) void checkClientUpdate(); });
 function showQueueNotice(): void {
   queueNotice.value = '操作已安全保存到当前设备。联网后可在同步中心继续。';
   window.clearTimeout(noticeTimer);

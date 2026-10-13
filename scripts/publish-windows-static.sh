@@ -13,7 +13,7 @@ test "$(docker inspect plan-platform-web-1 --format '{{index .Config.Labels "com
 test -f "$release/nginx.conf"
 test -f "$release/public/downloads/manifest.json"
 test ! -e "$managed/current" || test -L "$managed/current"
-compose() { docker compose -p plan-platform -f docker-compose.production.yml "$@"; }
+compose() { sh "$root/current/scripts/production-compose.sh" "$root/current" "$@"; }
 rollback() {
   if [ -f "$release/previous-current" ]; then
     previous=$(cat "$release/previous-current")
@@ -26,9 +26,9 @@ rollback() {
     cp -p "$release/previous-nginx.conf" "$managed/nginx.conf"
     compose -f "$managed/compose.yml" up -d --no-deps web
   else
-    compose up -d --no-deps web
     if [ -f "$managed/compose.yml" ]; then mv "$managed/compose.yml" "$release/disabled-compose.yml"; fi
     if [ -f "$managed/nginx.conf" ]; then mv "$managed/nginx.conf" "$release/disabled-nginx.conf"; fi
+    compose up -d --no-deps web
   fi
   echo 'Previous web entry restored; uploaded version retained; database unchanged.'
 }

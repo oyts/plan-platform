@@ -30,7 +30,11 @@ management:
         enabled: true
 
 app:
-  version: 0.1.5
+  version: 0.1.6
+  android-updates:
+    enabled: ${ANDROID_UPDATE_ENABLED:false}
+    directory: ${ANDROID_UPDATE_DIRECTORY:}
+    package-name: ${ANDROID_UPDATE_PACKAGE:cn.zijun701.plan.app}
   bootstrap:
     token-hash: ${BOOTSTRAP_ADMIN_TOKEN_HASH:}
     expires-at: ${BOOTSTRAP_ADMIN_EXPIRES_AT:}

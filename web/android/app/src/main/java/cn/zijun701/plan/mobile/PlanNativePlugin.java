@@ -30,7 +30,7 @@ public class PlanNativePlugin extends Plugin {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     // Large update downloads must not block login, API requests or offline replay.
     private final ExecutorService updateWorker = Executors.newSingleThreadExecutor();
-    private String server;
+    private volatile String server;
     private SessionVault vault;
     private ClientUpdater updater;
     @Override public void load() {
@@ -49,20 +49,20 @@ public class PlanNativePlugin extends Plugin {
                 Object result;
                 switch (command) {
                     case "desktop_info":
-                        result = new JSObject().put("version", BuildConfig.VERSION_NAME).put("versionCode", BuildConfig.VERSION_CODE).put("serverUrl", server).put("updatesEnabled", updater.enabled()).put("updateChannel", BuildConfig.PLAN_UPDATE_URL).put("debug", BuildConfig.DEBUG); break;
-                    case "desktop_check_update": result = updater.check(); break;
-                    case "desktop_download_update": updater.download(); result = true; break;
-                    case "desktop_install_update": updater.install(); result = true; break;
+                        result = new JSObject().put("version", BuildConfig.VERSION_NAME).put("versionCode", BuildConfig.VERSION_CODE).put("serverUrl", server).put("updatesEnabled", updater.enabled()).put("updateChannel", BuildConfig.PLAN_UPDATE_URL).put("updateRequiresLogin", updater.requiresLogin()).put("debug", BuildConfig.DEBUG); break;
+                    case "desktop_check_update": result = updater.check(server, args); break;
+                    case "desktop_download_update": updater.download(server, args); result = true; break;
+                    case "desktop_install_update": updater.install(server, args); result = true; break;
                     case "desktop_allow_update_install": updater.allowInstall(); result = true; break;
                     case "desktop_probe": result = probe(args.getString("serverUrl")); break;
                     case "desktop_save_server":
                         String next = TransportRules.server(args.getString("serverUrl"), BuildConfig.DEBUG);
                         if (!getContext().getSharedPreferences("plan-native-settings", 0).edit().putString("server", next).commit()) throw new IllegalStateException("配置保存失败。");
-                        server = next; result = true; break;
+                        server = next; updater.invalidate(); result = true; break;
                     case "desktop_request":
                         if (server.isEmpty()) throw new IllegalStateException("请先进入客户端设置，配置新版 Spring Boot 服务器地址。");
                         result = request(server, args.getJSObject("request"), true); break;
-                    case "clear_native_session": if (!server.isEmpty()) vault.write(server, null); result = true; break;
+                    case "clear_native_session": updater.invalidate(); if (!server.isEmpty()) vault.write(server, null); result = true; break;
                     case "desktop_open_url": openUrl(args.getString("url")); result = true; break;
                     case "share_file": shareFile(args); result = true; break;
                     default: throw new IllegalArgumentException("客户端操作不支持。");
