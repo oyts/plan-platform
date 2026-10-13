@@ -1,5 +1,7 @@
 param([string]$Serial='', [string]$ScreenshotName='')
 $ErrorActionPreference='Stop'
+$OutputEncoding=[Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding=$OutputEncoding
 $projectRoot=Split-Path $PSScriptRoot -Parent
 $adb=Join-Path $projectRoot '.desktop-tools/android-sdk/platform-tools/adb.exe'
 $package='cn.zijun701.plan.app'
