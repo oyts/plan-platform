@@ -2,7 +2,7 @@
 
 一个支持周期计划、目标路线、今日待办和任务计时的开源多用户平台。项目由原本的纯前端“计划控制台”重构而来，面向 Java 学习、个人部署和跨设备任务管理。
 
-云端 Web/API、Windows 正式客户端、官网下载及可选更新源已升级为 `0.1.7`。Android 受邀更新接入包为 `0.1.6` / 构建 `11`，目标 `0.1.7` / 构建 `12` 的应用内升级仍待真机验收，不能视作三端最终发布完成。公开注册及官网 APK 继续关闭。进展和验收边界见 [0.1.7 发布记录](docs/release-017.md)、[接入记录](docs/release-016.md) 与 [发布流程](docs/release-process.md)。
+当前 Web/API、Windows 与 Android 已统一为 `0.1.7`，Android 构建号 `12`。Android 0.1.6 → 0.1.7 的真实应用内下载、系统安装、会话与非空离线队列保留及同步已通过自动验收；Windows 官网下载与可选更新源已上线。公开注册及官网 APK 继续关闭，Android 更新需要登录自己的受邀账号。实际证据和边界见 [0.1.7 发布记录](docs/release-017.md)、[接入记录](docs/release-016.md) 与 [发布流程](docs/release-process.md)。
 
 0.1.4 已完成 HTTPS 新版部署、MySQL 备份恢复、加密签名备份、Windows 官网下载及更新源发布，见 [Windows 发布记录](docs/windows-public-release.md)。Android 继续只提供受邀测试 APK，官网下载等待 APP 备案，公开注册保持关闭，见 [受邀客户端测试](docs/invited-client-testing.md)。成员页手机卡片与底部编辑面板已进入共享源码，桌面保留表格，详见 [成员邀请手机验收](docs/mobile-members.md)。
 

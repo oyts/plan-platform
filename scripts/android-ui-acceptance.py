@@ -42,6 +42,7 @@ class Device:
             self.adb('shell','uiautomator','dump',path)
             raw=self.adb('shell','cat',path)
             nodes=list(ET.fromstring(raw).iter('node'))
+            self.foreground()
         finally: self.adb('shell','rm','-f',path)
         if any(n.get('password')=='true' or n.get('text') in {'登录计划平台','注册计划平台'} for n in nodes):
             raise RuntimeError('Authentication UI visible; no input/capture performed.')

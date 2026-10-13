@@ -17,14 +17,15 @@ function Invoke-Adb([string[]]$Arguments){
     return $result
 }
 function Assert-Foreground {
-    $state=(Invoke-Adb @('shell','dumpsys','activity','activities') | Select-String 'topResumedActivity=') -join ''
-    if($state -notmatch 'cn\.zijun701\.plan\.app/'){throw 'Formal Plan Cabin is not foreground. No UI captured.'}
+    $state=(Invoke-Adb @('shell','dumpsys','window') | Select-String 'mCurrentFocus=') -join ''
+    if($state -notmatch 'cn\.zijun701\.plan\.app/'){throw 'Formal Plan Cabin is not focused. Capture withheld.'}
 }
 Assert-Foreground
 $temporary='/data/local/tmp/plan-cabin-formal-inspect-'+[Guid]::NewGuid().ToString('N')
 try {
     $null=Invoke-Adb @('shell','uiautomator','dump',"$temporary.xml")
     [xml]$ui=(Invoke-Adb @('shell','cat',"$temporary.xml")) -join "`n"
+    Assert-Foreground
     $nodes=@($ui.SelectNodes('//node'))
     $authVisible=@($nodes | Where-Object {$_.password -eq 'true' -or $_.text -in $labelConfig.authentication}).Count -gt 0
     if($authVisible){Write-Output 'Authentication page visible. User must log in; no screenshot or input values captured.';return}
@@ -56,6 +57,7 @@ try {
         $screenshot=Join-Path $directory ($ScreenshotName+'-'+[Guid]::NewGuid().ToString('N')+'.png')
         Assert-Foreground
         $null=Invoke-Adb @('shell','screencap','-p',"$temporary.png")
+        Assert-Foreground
         $null=Invoke-Adb @('pull',"$temporary.png",$screenshot)
     }
     [pscustomobject]@{package=$package;authenticationPage=$false;controls=$controls;screenshot=$screenshot} | ConvertTo-Json -Depth 4
