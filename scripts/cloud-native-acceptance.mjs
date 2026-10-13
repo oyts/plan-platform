@@ -9,6 +9,8 @@ import { randomUUID } from 'node:crypto';
 import { chromium, expect as baseExpect } from '../web/node_modules/@playwright/test/index.mjs';
 import { PORTS, ANDROID_PACKAGE, selectDevice, validateManifest, verifyHash, sourceFingerprint, assertPortsFree, reportHtml } from './native-regression-support.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
+const releaseVersion=JSON.parse(await readFile(join(root,'web/package.json'),'utf8')).version;
+const releaseCode=Number((await readFile(join(root,'web/android/app/build.gradle'),'utf8')).match(/versionCode[^\n]*'([0-9]+)'/)?.[1]);
 const origin = 'https://plan.zijun701.cn';
 const emails = ['web-acceptance-a-20261012@example.test', 'web-acceptance-b-20261012@example.test'];
 const artifacts = join(root, '.desktop-tools/native-regression');
@@ -69,8 +71,8 @@ async function attach(client) {
   client.page.setDefaultTimeout(25000);
   await expect(client.page.locator('html')).toHaveClass(new RegExp(client.kind==='android'?'android-client':'desktop-client'));
   const info=await native(client,'desktop_info');
-  expect(info.version).toBe('0.1.4');
-  if(client.kind==='android') { expect(info.versionCode).toBe(8); expect(info.debug).toBe(true); }
+  expect(info.version).toBe(releaseVersion);
+  if(client.kind==='android') { expect(info.versionCode).toBe(releaseCode); expect(info.debug).toBe(true); }
 }
 async function launch(client) {
   if(client.kind==='android') { await adb('shell','am','start','-W','-n',`${ANDROID_PACKAGE}/cn.zijun701.plan.mobile.MainActivity`); androidLaunched=true; }
@@ -162,8 +164,8 @@ async function run() {
   if(processes) throw new Error('Close the regression EXE first; existing process not stopped.');
   mainBefore=await mainVersion(); reverseBefore=await adb('reverse','--list');
   report.environment.android={model:await adb('shell','getprop','ro.product.model'),release:await adb('shell','getprop','ro.build.version.release'),mainVersionBefore:mainBefore};
-  await scenario('正式 HTTPS 0.1.4、公开注册关闭与两个普通云端账号权限',async()=>{
-    const config=await api('/auth/config'); expect(config.serverVersion).toBe('0.1.4'); expect(config.registrationEnabled).toBe(false);
+  await scenario(`正式 HTTPS ${releaseVersion}、公开注册关闭与两个普通云端账号权限`,async()=>{
+    const config=await api('/auth/config'); expect(config.serverVersion).toBe(releaseVersion); expect(config.registrationEnabled).toBe(false);
     expect((await api('/health')).service).toBe('plan-platform-api');
     authA=await apiLogin(emails[0]); authB=await apiLogin(emails[1]);
     await api('/admin/invitations',undefined,authA.accessToken,'GET',403);

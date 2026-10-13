@@ -2,12 +2,16 @@
 // Never install/clear the main app, log in, save a server or relax TLS checks.
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, writeFile, open, unlink } from 'node:fs/promises';
+import { mkdir, writeFile, open, unlink, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, expect } from '../web/node_modules/@playwright/test/index.mjs';
 import { ANDROID_PACKAGE, PORTS, assertPortsFree, selectDevice } from './native-regression-support.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
+const version = JSON.parse(await readFile(join(root, 'web/package.json'), 'utf8')).version;
+const gradle = await readFile(join(root, 'web/android/app/build.gradle'), 'utf8');
+const versionCode = Number(gradle.match(/versionCode[^\n]*\?: '(\d+)'/)?.[1]);
+if (!Number.isInteger(versionCode) || versionCode < 1) throw new Error('Android versionCode missing.');
 const exec = promisify(execFile);
 const adbPath = join(root, '.desktop-tools/android-sdk/platform-tools/adb.exe');
 const base = join(root, 'acceptance-results/android-public');
@@ -49,7 +53,7 @@ try {
   if (!await page.evaluate(() => window.Capacitor?.isNativePlatform())) throw new Error('Native bridge missing.');
   const nativeInfo = () => page.evaluate(async () => (await window.Capacitor.Plugins.PlanNative.execute({ command: 'desktop_info', args: {} })).value);
   const before = await nativeInfo();
-  if (before.version !== '0.1.4' || before.versionCode !== 8 || !before.debug) throw new Error('Expected the verified 0.1.4 build 8 regression APK.');
+  if (before.version !== version || before.versionCode !== versionCode || !before.debug) throw new Error(`Expected the verified ${version} build ${versionCode} regression APK.`);
   await page.evaluate(() => { location.hash = '/desktop'; });
   await expect(page.getByRole('heading', { name: '手机客户端', exact: true })).toBeVisible();
   const input = page.getByLabel('服务器根地址');

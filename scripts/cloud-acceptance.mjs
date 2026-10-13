@@ -1,6 +1,8 @@
 // Run only against an isolated MySQL acceptance API with synthetic accounts.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+const version = JSON.parse(readFileSync(new URL('../web/package.json', import.meta.url), 'utf8')).version;
 const origin = process.argv[2];
 if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(origin || '')) throw new Error('SSH-forwarded loopback acceptance API required.');
 const password = 'CloudAcceptance123!';
@@ -12,7 +14,7 @@ async function api(path, token, data, method = data ? 'POST' : 'GET', status = 2
 async function account() {
   return api('/auth/register', null, { email:`cloud-${randomUUID()}@example.test`, password, displayName:'云端合成验收' }, 'POST', 201);
 }
-const config = await api('/auth/config'); assert.equal(config.serverVersion, '0.1.4'); assert.equal(config.todoEnabled, true);
+const config = await api('/auth/config'); assert.equal(config.serverVersion, version); assert.equal(config.todoEnabled, true);
 const owner = await account(), other = await account();
 const token = owner.accessToken, outsider = other.accessToken;
 const plan = await api('/plans', token, {name:'云端验收周期',description:'合成数据',startDate:'2026-10-01',endDate:'2026-10-31',restDays:[7]}, 'POST', 201);

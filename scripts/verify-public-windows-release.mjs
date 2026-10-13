@@ -9,7 +9,7 @@ import {sha256,releaseOrigin as origin} from './windows-public-release.mjs';
 import {verifyUpdaterSignature} from './formal-release-support.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const plan=JSON.parse(readFileSync(join(resolve(process.argv[2]),'metadata/release-plan.json'),'utf8'));
-assert.equal(plan.version,'0.1.4');assert.equal(plan.androidPublished,false);
+assert.match(plan.version,/^\d+\.\d+\.\d+$/);assert.equal(plan.androidPublished,false);
 const pub=readFileSync(join(root,'.release-signing/windows-updater.key.pub'),'utf8');
 const output=join(root,'acceptance-results/windows-public-cloud',new Date().toISOString().replace(/[:.]/g,'-')+'-'+randomUUID().slice(0,8));mkdirSync(output,{recursive:true});
 const report={origin,version:plan.version,scope:'Real public HTTPS, exact signed installer and isolated public browser. No native cross-version install.',cases:[],status:'RUNNING'};
@@ -35,7 +35,7 @@ try {
   });
   await check('Android update and APK are unavailable publicly',async()=>{
     assert.equal((await get('/client-updates/android/latest.json')).status,404);
-    assert.equal((await get('/downloads/0.1.4/PlanCabin-0.1.4-release.apk')).status,404);
+    assert.equal((await get(`/downloads/${plan.version}/PlanCabin-${plan.version}-release.apk`)).status,404);
   });
   browser=await chromium.launch({headless:true});
   for(const [name,viewport] of [['desktop',{width:1280,height:900}],['mobile-web',{width:390,height:844}]]) {

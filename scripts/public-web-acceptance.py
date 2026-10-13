@@ -21,6 +21,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 ROOT = Path(__file__).resolve().parents[1]
 PRIVATE = ROOT / '.desktop-tools/public-web/private'
 ORIGIN = 'https://plan.zijun701.cn'
+VERSION = json.loads((ROOT / 'web/package.json').read_text(encoding='utf-8'))['version']
 EMAILS = ['web-acceptance-a-20261012@example.test', 'web-acceptance-b-20261012@example.test']
 PROFILES = [('desktop', {'width': 1280, 'height': 900}), ('mobile-web', {'width': 390, 'height': 844})]
 
@@ -75,7 +76,7 @@ def public_checks(browser, run, profiles=PROFILES):
             try:
                 page = context.new_page()
                 config = context.request.get(ORIGIN + '/api/auth/config').json()
-                assert config['serverVersion'] == '0.1.4' and config['apiVersion'] == 1
+                assert config['serverVersion'] == VERSION and config['apiVersion'] == 1
                 assert config['registrationEnabled'] is False and config['todoEnabled'] is True and config['planRestDaysEnabled'] is True
                 assert context.request.get(ORIGIN + '/api/health').json()['service'] == 'plan-platform-api'
                 errors = []
@@ -95,7 +96,7 @@ def public_checks(browser, run, profiles=PROFILES):
                 if windows is None:
                     expect(page.get_by_role('button', name='正式安装包尚未发布', exact=True)).to_be_disabled()
                 else:
-                    assert windows['version'] == '0.1.4'
+                    assert windows['version'] == VERSION
                     assert re.fullmatch(r'[a-f0-9]{64}', windows['sha256'])
                     assert windows['bytes'] > 0 and windows['url'].startswith('/downloads/') and windows['url'].endswith('.exe')
                     expect(page.get_by_role('link', name='下载 Windows 安装包', exact=True)).to_have_attribute('href', ORIGIN + windows['url'])
@@ -158,6 +159,7 @@ def accounts(browser, run):
             page.get_by_label('显示名称', exact=True).fill(data['name'])
             expect(page.get_by_label('邮箱', exact=True)).to_have_value(email)
             page.get_by_label('密码', exact=True).fill(data['password'])
+            page.get_by_label('确认密码', exact=True).fill(data['password'])
             with page.expect_response(lambda response: response.url == ORIGIN+'/api/auth/register' and response.request.method == 'POST') as response:
                 page.get_by_role('button', name='创建账号', exact=True).click()
             if response.value.status == 409:

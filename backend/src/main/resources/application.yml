@@ -30,7 +30,7 @@ management:
         enabled: true
 
 app:
-  version: 0.1.4
+  version: 0.1.5
   bootstrap:
     token-hash: ${BOOTSTRAP_ADMIN_TOKEN_HASH:}
     expires-at: ${BOOTSTRAP_ADMIN_EXPIRES_AT:}

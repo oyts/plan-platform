@@ -8,7 +8,7 @@ $candidate=[IO.Path]::GetFullPath($CandidateDirectory)
 $production=[IO.Path]::GetFullPath((Join-Path $projectRoot 'production-artifacts'))+[IO.Path]::DirectorySeparatorChar
 if (-not $candidate.StartsWith($production,[StringComparison]::OrdinalIgnoreCase)) { throw 'Expected a local verified production candidate.' }
 $record=Get-Content (Join-Path $candidate 'metadata/candidate.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($record.status -ne 'LOCAL_SIGNED_CANDIDATE' -or $record.version -ne '0.1.4' -or -not $record.windows.updaterSignatureVerified) { throw 'Candidate metadata not verified for this acceptance stage.' }
+if ($record.status -ne 'LOCAL_SIGNED_CANDIDATE' -or $record.version -ne (Get-Content web/package.json -Raw -Encoding UTF8 | ConvertFrom-Json).version -or -not $record.windows.updaterSignatureVerified) { throw 'Candidate metadata not verified for the current source version.' }
 if ([IO.Path]::GetFileName($record.windows.file) -ne $record.windows.file) { throw 'Unsafe installer filename.' }
 $installer=Join-Path $candidate ('windows/'+$record.windows.file)
 if ((Get-FileHash -LiteralPath $installer).Hash.ToLowerInvariant() -ne $record.windows.sha256) { throw 'Installer differs from verified candidate.' }

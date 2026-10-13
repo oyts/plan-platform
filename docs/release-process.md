@@ -1,0 +1,33 @@
+# 版本发布流程
+
+发布是“源码校验 → 构建 → 实际安装验收 → 云端升级 → 下载发布 → GitHub 归档”，各步结果单独记录。不能把编译成功写成真机通过，也不能在尚未验收时勾选发布工具的确认开关。
+
+## 版本与测试
+
+1. 同步 Web package/lock、Tauri/Cargo、Android、后端 pom/application 的版本；Android 构建号必须递增。运行 `node scripts/verify-release.mjs`。
+2. 运行后端测试、前端单元测试、生产构建和完整 Playwright。测试 API 使用独立数据库，真实云端回归只用受邀合成账号，不写管理员真实计划。
+3. 使用 `scripts/prepare-formal-clients.ps1` 构建候选包，核对原 Windows 公钥、Android 包名与证书。签名私钥和口令不进入 Git、聊天、日志或发布目录。
+
+## 双端升级
+
+用户先保存并关闭正式 PC 客户端。`scripts/install-formal-windows.ps1` 在原目录备份应用数据，再以 `/UPDATE` 覆盖，启动前逐文件比对。Android 使用同包名、同证书的 `adb install -r`，不得卸载或清数据。
+
+检查登录、三模式、休息日、队列、重开与同步。覆盖安装证据与应用内下载更新证据分开记录；队列为空时不得声称已证明非空队列升级保留。正式账号需要重新登录时交由用户输入密码。
+
+## 云端升级和回滚
+
+先确认当前健康、版本及账号配置；使用 `deploy-cloud-release.bat` 升级已初始化的新平台。脚本要求干净 Git，备份 MySQL，保留旧镜像、卷与发布目录，并继承 `client-public/compose.yml` 和 `production-timezone.yml`。不能再次初始化账号或抢占旧服务 43127。
+
+外网检查 `/api/health`、`/api/auth/config`、官网与核心业务；失败时保留新数据，按该次部署的回滚记录恢复已验证入口。不要直接覆盖或降级数据库。
+
+## Windows 下载与更新源
+
+实际 Windows 验收及签名备份验证通过后，使用 `scripts/prepare-windows-public-release.ps1` 准备 Windows-only 文件，再由 `scripts/prepare-client-static-deployment.mjs` 打包。远端核对上传 SHA-256，使用打包后的 `publish.sh activate <run>` 切换。源文件含版本占位符，不能直接拿未渲染的脚本执行。
+
+发布时只切换当前清单；旧版本 EXE 和签名必须逐字节保留，拒绝同版本不同内容。`verify-public-windows-release.mjs` 核对真实 HTTPS 下载、签名、缓存策略、官网及 Android 404。更新维持可选，自动下载默认关闭；必更策略须单独决策，不因小修复自动强制。
+
+Android 在完成所需备案和公开发布授权前仅私下提供正式 APK：官网下载清单 `android=null`，公开 Android 更新清单与 APK URL 保持 404。
+
+## GitHub
+
+检查变更与秘密泄漏风险，按明确路径提交并推送 `main`。验收完毕再创建 `v<版本>` 标签和 GitHub Release，记录测试范围、兼容边界和回滚方式。公开附件限 Windows EXE、其签名及校验和；不上传私测 APK、账号、数据库、测试录屏、真实日志或任何签名私钥。每次版本的真实结果与未完成项写入对应发布记录。
