@@ -57,7 +57,16 @@ async function enterNewPlan(page: Page, name: string) {
   await page.getByRole('button', { name: '保存计划', exact: true }).click();
 }
 async function navigate(page: Page, name: string) {
-  if (name === '主线') { await page.getByLabel('工作模式').selectOption('route'); name = '路线'; }
+  if (name === '主线') {
+    await page.getByLabel('工作模式').selectOption('route');
+    // Mode changes read a remembered location asynchronously. Counting links
+    // immediately can see the previous mode and open More over the new route.
+    await expect(page.getByLabel('工作模式')).toHaveValue('route');
+    await expect(page).toHaveURL(/\/(routes|mainlines|route-progress|route-records)([?#].*)?$/);
+    await expect(page.getByRole('dialog', { name: '更多功能', exact: true })).not.toBeVisible();
+    name = '路线';
+    await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
+  }
   const link = page.getByRole('link', { name, exact: true });
   if (!(await link.count()) && await page.getByRole('button', { name: '更多', exact: true }).isVisible()) await page.getByRole('button', { name: '更多', exact: true }).click();
   await link.click();

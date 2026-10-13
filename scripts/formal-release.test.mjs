@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import {generateKeyPairSync,sign,createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {verifyUpdaterSignature,validateApkEvidence,PUBLIC_ANDROID_PACKAGE} from './formal-release-support.mjs';
+test('Android CI builds and tests without publishing private APK artifacts',()=>{
+  const workflow=readFileSync(new URL('../.github/workflows/android.yml',import.meta.url),'utf8');
+  assert.ok(workflow.includes('scripts/android.ps1 -Action build'));
+  assert.ok(!workflow.includes('actions/upload-artifact'));
+});
 function fixture(prehash=false) {
   const key=generateKeyPairSync('ed25519'), keyId=Buffer.alloc(8,7), content=Buffer.from('release artifact fixture');
   const rawPub=key.publicKey.export({type:'spki',format:'der'}).subarray(-32);

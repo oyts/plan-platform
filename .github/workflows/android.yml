@@ -1,4 +1,4 @@
-name: Android APK
+name: Android build verification
 on:
   workflow_dispatch:
   push:
@@ -22,5 +22,5 @@ jobs:
         working-directory: web
       - run: node --test scripts/formal-release.test.mjs scripts/signing-backup.test.mjs scripts/signing-identity.test.mjs
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android.ps1 -Action build
-      - uses: actions/upload-artifact@v4
-        with: { name: plan-cabin-android-debug, path: android-artifacts/*-debug.apk, if-no-files-found: error }
+      # Build and test only. APK distribution remains private invited testing;
+      # do not publish runnable debug APKs as public repository artifacts.
