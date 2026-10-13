@@ -55,4 +55,22 @@ class SyntheticInputSafetyTests(unittest.TestCase):
         self.assertNotIn('text',calls[0])
         self.assertNotIn('',calls[0])
 
+    def test_cannot_accept_unrelated_confirmation(self):
+        device,calls=self.device()
+        device.snapshot=lambda:[ET.Element('node',text='Unrelated warning'),ET.Element('node',text='OK')]
+        with self.assertRaises(RuntimeError):device.click('OK')
+        self.assertEqual(calls,[])
+
+    def test_accepts_only_exact_update_confirmation(self):
+        device,calls=self.device()
+        message='请先保存正在编辑的内容。安装会关闭客户端或打开系统安装确认；本地待同步操作会保留，不会自动提交。继续安装吗？'
+        device.snapshot=lambda:[ET.Element('node',text=message),ET.Element('node',text='OK',clickable='true',bounds='[0,0][10,10]')]
+        device.click('OK')
+        self.assertEqual(calls,[('shell','input','tap','5','5')])
+
+    def test_rejects_unknown_scroll_direction(self):
+        device,calls=self.device()
+        with self.assertRaises(RuntimeError):device.scroll('sideways')
+        self.assertEqual(calls,[])
+
 if __name__=='__main__':unittest.main()

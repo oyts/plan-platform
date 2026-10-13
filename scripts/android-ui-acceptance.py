@@ -19,6 +19,9 @@ PACKAGE='cn.zijun701.plan.app'
 ACTIVITY=PACKAGE+'/cn.zijun701.plan.mobile.MainActivity'
 LABELS={'计划舱','周期计划','目标路线','今日待办','待办','计划','路线','更多','设置','同步','同步中心','客户端','手机客户端','返回设置','返回登录','添加待办','待办标题','安排日期','备注','保存待办','取消','编辑','保存','检查新版本','下载更新','安装并重新打开','允许安装更新','当前已是最新版本。','客户端更新','服务器连接','本地操作','待处理冲突','队列为空','恢复连接','查看日期','搜索','未完成','全部','日期范围','自动下载更新（安装前仍需确认）','稍后处理','同步全部','开始同步'}
 LABELS.add('工作模式')
+LABELS.update({'确定','继续','正在下载并校验更新包，不会自动关闭应用。','更新包已校验，安装前请保存正在编辑的内容。','已请求安装，请完成系统提示；取消安装后可再次点击。','同步等待项','重试队首','等待同步','1 项操作已同步。'})
+LABELS.add('请先点击“允许安装更新”，在系统设置中授权，再返回点击安装。')
+LABELS.update({'OK','CANCEL'})
 
 class Device:
     def __init__(self,serial): self.serial=serial
@@ -62,7 +65,10 @@ class Device:
         return str((a+c)//2),str((b+d)//2)
     def click(self,text):
         if not self.allowed(text): raise RuntimeError('Only known controls or synthetic test records can be clicked.')
-        nodes=[n for n in self.snapshot() if text in (n.get('text'),n.get('content-desc'))]
+        snapshot=self.snapshot()
+        if text=='OK' and not any(n.get('text')=='请先保存正在编辑的内容。安装会关闭客户端或打开系统安装确认；本地待同步操作会保留，不会自动提交。继续安装吗？' for n in snapshot):
+            raise RuntimeError('Only the observed application update confirmation may be accepted.')
+        nodes=[n for n in snapshot if text in (n.get('text'),n.get('content-desc'))]
         clickable=[n for n in nodes if n.get('clickable')=='true']
         if clickable: nodes=clickable
         if len(nodes)!=1: raise RuntimeError(f'Expected one visible control: {text}; found {len(nodes)}.')
@@ -94,12 +100,14 @@ class Device:
         current=self.snapshot();labels=[i for i,n in enumerate(current) if n.get('text')==label]
         if len(labels)!=1 or labels[0]+1>=len(current) or current[labels[0]+1].get('text','')!=text:
             raise RuntimeError('Synthetic text entry mismatch; do not save this draft.')
-    def scroll(self):
+    def scroll(self,direction='down'):
+        if direction not in {'up','down'}:raise RuntimeError('Expected up/down scroll direction.')
         nodes=self.snapshot()
         views=[n for n in nodes if n.get('class')=='android.webkit.WebView' and n.get('text')=='计划舱']
         if len(views)!=1: raise RuntimeError('Expected one shipped application WebView.')
         a,b,c,d=map(int,re.fullmatch(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]',views[0].get('bounds')).groups())
-        self.adb('shell','input','swipe',str((a+c)//2),str(b+(d-b)*7//10),str((a+c)//2),str(b+(d-b)*3//10),'350')
+        start,end=(7,3) if direction=='down' else (3,7)
+        self.adb('shell','input','swipe',str((a+c)//2),str(b+(d-b)*start//10),str((a+c)//2),str(b+(d-b)*end//10),'350')
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--serial',required=True)
@@ -109,7 +117,7 @@ def main():
     elif args.action=='click': device.click(args.text or '')
     elif args.action=='type-title': device.type_title(args.text or '')
     elif args.action=='search': device.type_title(args.text or '',label='搜索')
-    elif args.action=='scroll': device.scroll()
+    elif args.action=='scroll': device.scroll(args.text or 'down')
     print(json.dumps(device.inspect(),ensure_ascii=False,indent=2))
 if __name__=='__main__':
     try: main()

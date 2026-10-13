@@ -31,30 +31,37 @@ sh /home/oyts/plan-platform/client-public/releases/windows-017-IbJvt6/publish.sh
 | 文件 | SHA-256 | 验收状态 |
 | --- | --- | --- |
 | Plan Cabin_0.1.7_x64-setup.exe | `15654afa13500dcdba69c4199ca733e0f37ba6ebba7f3a58aef654251146901d` | 正式 PC 覆盖安装及官网验证通过 |
-| PlanCabin-0.1.7-release.apk | `cb9dffd6db17aca002b2ba61ccb4c3f87f799b7ad8a6d3b6d973797aba281552` | 原签名、包名与受限更新 URL 已核验；尚未执行应用内安装 |
+| PlanCabin-0.1.7-release.apk | `cb9dffd6db17aca002b2ba61ccb4c3f87f799b7ad8a6d3b6d973797aba281552` | 原签名、包名与受限更新 URL 已核验；APP 下载校验通过，系统安装待确认 |
 
-Android 构建号 12 仅准备在私有 staging 中，当前受限清单仍指向已验收接入包 0.1.6 / 11；未将目标 APK 手动覆盖到手机。
+Android 构建号 12 已启用登录保护的受限更新清单。云端发布目录为 `android-private/staging/android-12-d24ddd45`，回滚命令：
+
+```sh
+sh /home/oyts/plan-platform/android-private/staging/android-12-d24ddd45/rollback.sh
+```
+
+0.1.7 的 4 项真实 HTTPS 鉴权与 APK 下载哈希验证通过，报告为 `acceptance-results/invited-android/2026-10-13T11-55-46-471Z-0f80588d/report.json`。公开静态 APK、二维码和注册仍关闭；未用 ADB 手动安装目标正式 APK。
 
 ## Android 剩余验收
 
-OEM 输入法会重排 ADB 键盘事件，已停止使用该输入方式保存草稿。一次输入探测产生的合成待办 `0261013－1420NU` 留在测试现场，真实待办未编辑。后续改用独立测试 APK 的原生无障碍精确文本输入，限制在正式应用前台的合成待办标题和搜索字段；不读取会话、不操作密码、不启用正式应用调试。
+OEM 输入法会重排 ADB 键盘事件，已停止使用该输入方式保存草稿。一次输入探测产生的合成待办 `0261013－1420NU` 留在测试现场，真实待办未编辑。独立测试辅助包现已成功安装，原生无障碍精确输入及空搜索已在正式 APP 验证；窗口服务启动等待修正后，待办弹窗输入也通过。输入仅限正式应用前台的合成待办标题和搜索字段；不读取会话、不操作密码、不启用正式应用调试。Python 输入保护 9 项测试通过。
 
-辅助包编译及 Python 输入保护的 6 项单元测试通过，但手机系统多次返回 `INSTALL_FAILED_ABORTED: User rejected permissions`，尚未安装成功。等待用户允许系统安装后，继续创建非空离线队列，再从应用内下载并安装 0.1.7，检查会话、数据、队列保留及同步。此阻碍不影响已上线的网页和 Windows 使用。
+正式 APP 自动化已创建合成待办 `nativeupgrade-20261013-1510`，基线为 0 项操作、0 项冲突；断网后改为 `nativeupgrade-20261013-1510-offline` 并保存、关闭重开。离线标题仍在，同步中心准确显示 1 项操作、0 项冲突。Wi-Fi 和移动数据开关均从原状态 1 暂时关闭，最终恢复为 1。该操作尚未提交，也未清除队列。
+
+恢复连接后，APP 检测到可选 0.1.7，自动下载保持关闭；点击“稍后处理”后仍可进入待办，离线标题保留。随后从 APP 主动下载，原生哈希、包名、版本及原签名检查通过，页面显示“更新包已校验”。首次请求安装提示需授权来源，用户亲自完成后，再由 APP 将文件交给系统安装器。
+
+目前系统安装器显示目标“计划舱 0.1.7”，但正式应用仍为 0.1.6 / 11。手机“超级守护”明确提示应用存在“未核准（备案）问题”，管控本次安装。未关闭安全保护或自动跳过此提示；等待用户自行决定。不能计作安装成功或跨版本队列保留通过。电脑当时被其他程序占用，已停止 PC 界面输入，尚未完成本次合成待办的跨端对照。
 
 Windows 发布后，受限 Android 接口再次通过 4 项真实 HTTPS 验证，两个普通验收账号下载的 0.1.6 / 11 APK 哈希匹配，未登录下载拒绝且公开 APK 不可访问。报告为 `acceptance-results/invited-android/2026-10-13T06-57-06-642Z-ad25fca4/report.json`。
 
 ## 续做命令
 
-先完成手机系统安装授权，不绕过拦截或关闭安全保护。辅助测试 APK 为 `%TEMP%/plan-cabin-android-build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk`；其目标包是独立回归包，不是正式应用。授权安装后，前台返回正式计划舱并清除输入探测的搜索条件：
+系统安装完成后先读取实际正式版本，再重新观察前台界面，不重复覆盖或重建离线队列：
 
 ```powershell
-& .desktop-tools/public-web/venv/Scripts/python.exe scripts/android-ui-acceptance.py --serial 10AF7328GX0052H search
+& .desktop-tools/android-sdk/platform-tools/adb.exe -s 10AF7328GX0052H shell dumpsys package cn.zijun701.plan.app
+& .desktop-tools/public-web/venv/Scripts/python.exe scripts/android-ui-acceptance.py --serial 10AF7328GX0052H inspect
 ```
 
-该驱动每次重新观察真实界面，仅允许已知导航和 `nativeupgrade-` 前缀合成内容，输入不精确或遇到锁屏、登录页就停止。创建并验证非空离线队列后，才启用已准备的目标更新清单：
+预期为 0.1.7 / 构建 12，原登录和三模式可用，合成离线标题及 1 项操作、0 项冲突保留。关闭重开后再验证一次，然后仅同步这一项合成操作；电脑可用时核对 PC 和网页云端内容。目标更新已发布，不重跑同一个 staging 的发布命令。若用户暂停安装，保留 0.1.6、下载缓存和本地操作，等待后续处理，不把系统管控当作网络或签名错误。
 
-```powershell
-powershell -File scripts/publish-invited-android.ps1 -StageDirectory production-artifacts/invited-android/0.1.7/candidate-QL143e
-```
-
-随后从手机应用内完成下载和安装，不用 `adb install` 推送目标正式 APK。真机验收通过后再制作最终标签和 GitHub Release；GitHub 仅上传 Windows EXE、签名与哈希，不上传 APK、私密测试数据或密钥。
+驱动每次重新观察真实界面，遇到锁屏、登录页或外部系统页面就停止。可重用的 `android-offline-upgrade-baseline.py` 只操作已打开的合成待办，自动恢复原网络开关；已成功运行的基线不要再次执行。真机验收通过后再制作最终标签和 GitHub Release；GitHub 仅上传 Windows EXE、签名与哈希，不上传 APK、私密测试数据或密钥。

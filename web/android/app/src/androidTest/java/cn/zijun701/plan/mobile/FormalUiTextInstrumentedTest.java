@@ -22,9 +22,20 @@ public class FormalUiTextInstrumentedTest {
     private UiAutomation automation;
     private List<AccessibilityNodeInfo> nodes() {
         List<AccessibilityNodeInfo> result = new ArrayList<>();
-        for (var window : automation.getWindows()) {
-            var root = window.getRoot();
-            if (window.isActive() && root != null && root.getPackageName()!=null && FORMAL.contentEquals(root.getPackageName())) flatten(root, result);
+        // Window retrieval starts asynchronously when the test service is
+        // attached. Wait for the actual active formal root; never use a stale
+        // background app or change focus to satisfy this guard.
+        for (int attempt=0; attempt<30 && result.isEmpty(); attempt++) {
+            var root=automation.getRootInActiveWindow();
+            if(root!=null && root.getPackageName()!=null && FORMAL.contentEquals(root.getPackageName())) {
+                flatten(root,result);
+            } else {
+                for (var window : automation.getWindows()) {
+                    var windowRoot = window.getRoot();
+                    if (window.isActive() && windowRoot != null && windowRoot.getPackageName()!=null && FORMAL.contentEquals(windowRoot.getPackageName())) flatten(windowRoot, result);
+                }
+            }
+            if(result.isEmpty())SystemClock.sleep(100);
         }
         assertFalse("Unlock and foreground the formal app before testing", result.isEmpty());
         for (var node : result) assertFalse("Authentication input is never automated", node.isPassword());
