@@ -36,13 +36,20 @@ try {
   }
   assert.equal((await request('https://api.github.com/user')).login.toLowerCase(),'oyts','Unexpected GitHub owner');
   const repo=await request(api);assert.equal(repo?.full_name?.toLowerCase(),repository);assert.equal(repo.private,false);assert.equal(repo.permissions?.push,true);
-  const existing=await request(`${api}/releases/tags/v${version}`);
+  // The tag endpoint does not reliably surface unpublished drafts. Find the
+  // exact authorized tag in the owner's release list, including drafts.
+  const releases=await request(`${api}/releases?per_page=100`);
+  const matching=releases.filter(release=>release.tag_name===`v${version}`);
+  assert.ok(matching.length<=1,'Multiple releases for this tag; review manually, never delete them automatically.');
+  const existing=matching[0];
   if(mode==='--check') {
     console.log(JSON.stringify({repository,authenticatedOwner:'oyts',writeAccess:true,version,releaseExists:!!existing,draft:existing?.draft??null}));
   } else {
     assert.equal(execFileSync('git',['status','--porcelain'],{cwd:root,encoding:'utf8'}).trim(),'','Commit verified source and acceptance first.');
-    const head=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
-    assert.equal(execFileSync('git',['rev-parse',`v${version}^{commit}`],{cwd:root,encoding:'utf8'}).trim(),head,'Release tag must point to verified HEAD.');
+    const head=execFileSync('git',['rev-parse',`v${version}^{commit}`],{cwd:root,encoding:'utf8'}).trim();
+    // A release-tool fix may follow an immutable tag, but business source and
+    // release metadata must still be identical to that verified tagged source.
+    execFileSync('git',['diff','--quiet',`v${version}`,'HEAD','--','backend','web','.env.example','docker-compose.production.yml'],{cwd:root,stdio:['ignore','pipe','pipe']});
     const production=realpathSync(join(root,'production-artifacts')),stage=realpathSync(resolve(stageArg||'')),rel=relative(production,stage);
     assert.ok(rel&&!rel.startsWith('..')&&!isAbsolute(rel));
     const plan=JSON.parse(readFileSync(join(stage,'metadata/release-plan.json'),'utf8'));
@@ -51,8 +58,11 @@ try {
     const exe=readFileSync(join(stage,'public/downloads',version,file));assert.equal(sha256(exe),plan.windows.sha256);assert.equal(exe.length,plan.windows.bytes);
     const sig=readFileSync(join(stage,'public/client-updates/windows/releases',version,file+'.sig'));
     verifyUpdaterSignature(exe,readFileSync(join(root,'.release-signing/windows-updater.key.pub'),'utf8'),sig.toString('utf8'));
-    const sums=Buffer.from(`${sha256(exe)}  ${file}\n${sha256(sig)}  ${file}.sig\n`);
-    const assets=[[file,exe,'application/octet-stream'],[file+'.sig',sig,'text/plain'],['SHA256SUMS.txt',sums,'text/plain']];
+    // GitHub normalizes spaces to periods. Use that explicit transport name;
+    // the candidate, official download name, bytes and signature stay unchanged.
+    const assetName=file.replaceAll(' ','.');
+    const sums=Buffer.from(`${sha256(exe)}  ${assetName}\n${sha256(sig)}  ${assetName}.sig\n`);
+    const assets=[[assetName,exe,'application/octet-stream'],[assetName+'.sig',sig,'text/plain'],['SHA256SUMS.txt',sums,'text/plain']];
     // Verify public release state before creating any GitHub asset. No GitHub
     // credential is attached to the product domain requests.
     const publicJson=async path=>{
