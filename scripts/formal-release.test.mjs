@@ -2,7 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,sign,createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import {verifyUpdaterSignature,validateApkEvidence,PUBLIC_ANDROID_PACKAGE} from './formal-release-support.mjs';
+import {verifyUpdaterSignature,validateApkEvidence,PUBLIC_ANDROID_PACKAGE,verifyEmbeddedAndroidUpdateSource,INVITED_ANDROID_UPDATE_URL} from './formal-release-support.mjs';
+test('actual APK bytecode must embed the private update URL, not the legacy source',()=>{
+  assert.equal(verifyEmbeddedAndroidUpdateSource([Buffer.from(INVITED_ANDROID_UPDATE_URL)]).updateRequiresLogin,true);
+  assert.throws(()=>verifyEmbeddedAndroidUpdateSource([Buffer.from('https://plan.zijun701.cn/client-updates/android/latest.json')]));
+  assert.throws(()=>verifyEmbeddedAndroidUpdateSource([Buffer.from('https://elsewhere.example/api/client-updates/android/latest')]));
+  assert.throws(()=>verifyEmbeddedAndroidUpdateSource([Buffer.from(INVITED_ANDROID_UPDATE_URL+' https://plan.zijun701.cn/client-updates/android/latest.json')]));
+});
+test('formal signing entry and Gradle override guard both require the private source',()=>{
+  const signing=readFileSync(new URL('./release-signing.ps1',import.meta.url),'utf8');
+  const gradle=readFileSync(new URL('../web/android/app/build.gradle',import.meta.url),'utf8');
+  assert.ok(signing.includes(`$env:PLAN_ANDROID_UPDATE_URL = '${INVITED_ANDROID_UPDATE_URL}'`));
+  assert.ok(gradle.includes('Formal invited Android builds require the protected update endpoint.'));
+});
 test('Android CI builds and tests without publishing private APK artifacts',()=>{
   const workflow=readFileSync(new URL('../.github/workflows/android.yml',import.meta.url),'utf8');
   assert.ok(workflow.includes('scripts/android.ps1 -Action build'));

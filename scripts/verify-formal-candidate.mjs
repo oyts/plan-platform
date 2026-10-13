@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {join,resolve,basename} from 'node:path';
 import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
-import {verifyUpdaterSignature,certificateDetails,validateApkEvidence} from './formal-release-support.mjs';
+import {verifyUpdaterSignature,certificateDetails,validateApkEvidence,verifyEmbeddedAndroidUpdateSource} from './formal-release-support.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const [androidArg,windowsArg,outArg]=process.argv.slice(2);
 if(!androidArg||!windowsArg||!outArg) throw new Error('Supply Android APK, Windows installer, and a new metadata directory.');
@@ -25,18 +25,23 @@ const jdk=process.env.JAVA_HOME||'E:/biancheng/JDK21';
 const tools=join(sdk,'build-tools/36.0.0');
 const temp=mkdtempSync(join(tmpdir(),'plan-formal-apk-'));
 let apkEvidence;
+let dexFiles=[];
 try {
   copyFileSync(android,join(temp,'client.apk'));
   const badging=execFileSync(join(tools,'aapt.exe'),['dump','badging','client.apk'],{cwd:temp,encoding:'utf8'});
   const signatures=execFileSync(join(jdk,'bin/java.exe'),['-jar',join(tools,'lib/apksigner.jar'),'verify','--verbose','--print-certs','client.apk'],{cwd:temp,encoding:'utf8'});
   apkEvidence=validateApkEvidence(badging,signatures,version,code,certificate.certificateSHA256);
+  dexFiles=execFileSync(join(jdk,'bin/jar.exe'),['tf','client.apk'],{cwd:temp,encoding:'utf8'}).split(/\r?\n/).filter(name=>/^classes\d*\.dex$/.test(name));
+  if(!dexFiles.length)throw new Error('Formal APK has no Android bytecode.');
+  execFileSync(join(jdk,'bin/jar.exe'),['xf','client.apk',...dexFiles],{cwd:temp});
+  Object.assign(apkEvidence,verifyEmbeddedAndroidUpdateSource(dexFiles.map(name=>readFileSync(join(temp,name)))));
   execFileSync(join(jdk,'bin/jar.exe'),['xf','client.apk','assets/capacitor.config.json'],{cwd:temp});
   const capacitor=JSON.parse(readFileSync(join(temp,'assets/capacitor.config.json'),'utf8'));
   if(capacitor.appId!==apkEvidence.packageName) throw new Error('Bundled Capacitor identity does not match the signed APK.');
   const manifest=execFileSync(join(tools,'aapt.exe'),['dump','xmltree','client.apk','AndroidManifest.xml'],{cwd:temp,encoding:'utf8'});
   if(/android:usesCleartextTraffic[^\n]*0xffffffff/.test(manifest)||/android:debuggable[^\n]*0xffffffff/.test(manifest)) throw new Error('Formal manifest enables cleartext or debugging.');
 } finally {
-  for(const path of ['assets/capacitor.config.json','client.apk']) if(existsSync(join(temp,path))) unlinkSync(join(temp,path));
+  for(const path of ['assets/capacitor.config.json','client.apk',...dexFiles]) if(existsSync(join(temp,path))) unlinkSync(join(temp,path));
   if(existsSync(join(temp,'assets'))) rmdirSync(join(temp,'assets'));
   rmdirSync(temp);
 }

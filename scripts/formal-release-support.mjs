@@ -1,6 +1,14 @@
 import { createHash, createPublicKey, verify, X509Certificate } from 'node:crypto';
 export const PUBLIC_ANDROID_PACKAGE = 'cn.zijun701.plan.app';
 export const LEGACY_ANDROID_PACKAGE = 'cn.zijun701.plan.mobile';
+export const INVITED_ANDROID_UPDATE_URL = 'https://plan.zijun701.cn/api/client-updates/android/latest';
+export function verifyEmbeddedAndroidUpdateSource(dexFiles) {
+  const contents=dexFiles.map(bytes=>Buffer.from(bytes).toString('latin1'));
+  if(!contents.some(text=>text.includes(INVITED_ANDROID_UPDATE_URL))
+      ||contents.some(text=>text.includes('https://plan.zijun701.cn/client-updates/android/latest.json')))
+    throw new Error('Formal APK does not embed the protected Android update source.');
+  return {updateSource:INVITED_ANDROID_UPDATE_URL,updateRequiresLogin:true};
+}
 const canonicalBase64 = value => {
   if (typeof value !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(value) || value.length>8192) throw new Error('Invalid signing packet encoding.');
   const bytes=Buffer.from(value,'base64'); if(bytes.toString('base64')!==value) throw new Error('Noncanonical signing packet encoding.'); return bytes;

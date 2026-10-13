@@ -4,6 +4,7 @@ def nativeRegression = System.getenv('PLAN_NATIVE_REGRESSION') == '1'
 def publicRelease = System.getenv('PLAN_PUBLIC_RELEASE') == '1'
 if (nativeRegression && publicRelease) throw new GradleException('Regression and public release identities cannot be combined.')
 if (publicRelease && ['PLAN_ANDROID_TEST_UPDATE_CERT','PLAN_ANDROID_TEST_VERSION','PLAN_ANDROID_TEST_VERSION_CODE'].any { System.getenv(it) }) throw new GradleException('Formal release cannot include lab trust or test version overrides.')
+if (publicRelease && System.getenv('PLAN_ANDROID_UPDATE_URL') && System.getenv('PLAN_ANDROID_UPDATE_URL') != 'https://plan.zijun701.cn/api/client-updates/android/latest') throw new GradleException('Formal invited Android builds require the protected update endpoint.')
 if (nativeRegression && gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) throw new GradleException('Regression packages are debug-only.')
 gradle.taskGraph.whenReady { graph ->
     if (nativeRegression && graph.allTasks.any { it.name.toLowerCase().contains('release') }) throw new GradleException('Regression packages cannot run release tasks, including aggregate builds.')
@@ -20,7 +21,7 @@ android {
         manifestPlaceholders = [planAppLabel: nativeRegression ? '计划舱回归测试' : '@string/app_name']
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode Integer.parseInt(System.getenv('PLAN_ANDROID_TEST_VERSION_CODE') ?: '10')
+        versionCode Integer.parseInt(System.getenv('PLAN_ANDROID_TEST_VERSION_CODE') ?: '11')
         versionName System.getenv('PLAN_ANDROID_TEST_VERSION') ?: "0.1.6"
         buildConfigField 'String', 'PLAN_UPDATE_URL', groovy.json.JsonOutput.toJson(nativeRegression ? '' : (System.getenv('PLAN_ANDROID_UPDATE_URL') ?: 'https://plan.zijun701.cn/api/client-updates/android/latest'))
         buildConfigField 'String', 'PLAN_TEST_UPDATE_CERT', groovy.json.JsonOutput.toJson(System.getenv('PLAN_ANDROID_TEST_UPDATE_CERT') ?: '')

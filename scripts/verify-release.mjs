@@ -16,5 +16,5 @@ const versions = [lock.version, lock.packages[''].version, tauri.version,
   application.match(/^  version: (\S+)/m)?.[1]];
 if (!/^\d+\.\d+\.\d+$/.test(pkg.version) || versions.some(v => v !== pkg.version)) throw new Error(`Web / API / native release versions differ: ${JSON.stringify(versions)}`);
 const code = Number(gradle.match(/versionCode[^\n]*'([0-9]+)'/)?.[1]);
-if (!Number.isInteger(code) || code < 10) throw new Error('Android release code must exceed the published/tested 0.1.5 code 9.');
+if (!Number.isInteger(code) || code < 11) throw new Error('Android release code must exceed the withdrawn bridge candidate code 10.');
 console.log(`Release ${pkg.version}: Web, API, Windows and Android metadata agree; Android versionCode ${code}.`);

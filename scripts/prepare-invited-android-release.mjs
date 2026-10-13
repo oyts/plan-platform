@@ -4,7 +4,7 @@ import {join,resolve,relative,sep,isAbsolute} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {privatePublication,CERTIFICATE} from './invited-android-release.mjs';
-import {validateApkEvidence} from './formal-release-support.mjs';
+import {validateApkEvidence,verifyEmbeddedAndroidUpdateSource} from './formal-release-support.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const [candidateArg,notesArg,minimumArg='1']=process.argv.slice(2);
 if(!candidateArg||!notesArg) throw new Error('Supply verified candidate directory and release notes text file.');
@@ -25,12 +25,18 @@ const java=join(process.env.JAVA_HOME||'E:/biancheng/JDK21','bin/java.exe');
 // aapt on Windows does not reliably accept Unicode APK paths. The immutable
 // candidate is copied to a fresh temporary directory for verification only.
 const temporary=mkdtempSync(join(tmpdir(),'plan-private-apk-'));
+let dexFiles=[];
 try {
   copyFileSync(apk,join(temporary,'client.apk'));
   const badging=execFileSync(join(sdk,'build-tools/36.0.0/aapt.exe'),['dump','badging','client.apk'],{cwd:temporary,encoding:'utf8'});
   const signatures=execFileSync(java,['-jar',join(sdk,'build-tools/36.0.0/lib/apksigner.jar'),'verify','--verbose','--print-certs','client.apk'],{cwd:temporary,encoding:'utf8'});
   validateApkEvidence(badging,signatures,version,manifest.versionCode,CERTIFICATE);
-} finally {unlinkSync(join(temporary,'client.apk'));rmdirSync(temporary);}
+  const jar=join(process.env.JAVA_HOME||'E:/biancheng/JDK21','bin/jar.exe');
+  dexFiles=execFileSync(jar,['tf','client.apk'],{cwd:temporary,encoding:'utf8'}).split(/\r?\n/).filter(name=>/^classes\d*\.dex$/.test(name));
+  if(!dexFiles.length)throw new Error('APK bytecode missing.');
+  execFileSync(jar,['xf','client.apk',...dexFiles],{cwd:temporary});
+  verifyEmbeddedAndroidUpdateSource(dexFiles.map(name=>readFileSync(join(temporary,name))));
+} finally {for(const name of ['client.apk',...dexFiles])unlinkSync(join(temporary,name));rmdirSync(temporary);}
 const stages=join(production,'invited-android',version);mkdirSync(stages,{recursive:true});
 const output=mkdtempSync(join(stages,'candidate-'));
 writeFileSync(join(output,`PlanCabin-${version}-release.apk`),bytes,{flag:'wx'});
