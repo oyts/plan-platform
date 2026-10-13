@@ -29,6 +29,7 @@ const router = createRouter({ history: isDesktop() ? createWebHashHistory() : cr
   { path: '/route-records', component: () => import('@/views/RecordsView.vue'), props: { routeOnly: true } },
   { path: '/sync', component: () => import('@/views/SyncView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },
+  { path: '/learn/:lesson?', component: () => import('@/views/LearningView.vue') },
 ] });
 router.beforeEach((to) => { if (requiredClientUpdate() && !updateRouteAllowed(to.path)) return '/desktop'; if ((isDesktop() && to.path === '/' || !to.meta.public) && !hasSession()) return '/login'; if (to.meta.public && hasSession() && !to.meta.allowAuthenticated) return requiredClientUpdate() ? '/desktop' : workspaceEntry(); });
 router.beforeResolve(async (to) => { if (hasSession() && (!to.meta.public || to.path === '/')) await observeWorkspacePath(to.fullPath); });

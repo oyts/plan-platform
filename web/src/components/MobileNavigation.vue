@@ -20,6 +20,7 @@ const secondary = computed(() => [
   { path: '/exports', label: '导出', description: '保存数据到文件' },
   ] : workspace.mode === 'route' ? [{ path: '/route-records', label: '记录', description: '已删除的路线与步骤' }] : []),
   { path: '/sync', label: '同步', description: '待同步操作与冲突' },
+  { path: '/learn', label: '使用教学', description: '分步练习与随时回顾' },
   { path: '/settings', label: '设置', description: '账号与安全' },
   ...(isNativeClient() ? [{ path: '/desktop', label: '客户端', description: '服务器连接与更新' }] : []),
   ...(auth.user?.role === 'ADMIN' ? [{ path: '/members', label: '成员', description: '邀请与账号管理' }] : []),

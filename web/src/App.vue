@@ -7,6 +7,8 @@ import ConnectionBar from '@/components/ConnectionBar.vue';
 import ClientUpdateNotice from '@/components/ClientUpdateNotice.vue';
 import MobileNavigation from '@/components/MobileNavigation.vue';
 import WorkspaceSwitcher from '@/components/WorkspaceSwitcher.vue';
+import LearningPrompt from '@/components/LearningPrompt.vue';
+import { resetLearning } from '@/learning';
 import { workspace, bindWorkspaceContext, resetWorkspaceContext } from '@/workspace';
 import { planNavigation, routeNavigation, todoNavigation, workspaceHome } from '@/workspaceModel';
 import { checkClientUpdate, requiredClientUpdate, updateRouteAllowed } from '@/clientUpdates';
@@ -16,9 +18,9 @@ const productPage = computed(() => router.currentRoute.value.meta.landing || (ro
 const navigation = computed(() => [
   ...(workspace.mode === 'plan' ? planNavigation : workspace.mode === 'route' ? routeNavigation : todoNavigation),
   ...(workspace.mode === 'plan' ? [{path:'/stats',label:'统计'},{path:'/reviews',label:'复盘'},{path:'/records',label:'记录'},{path:'/exports',label:'导出'}] : workspace.mode === 'route' ? [{path:'/route-records',label:'记录'}] : []),
-  {path:'/sync',label:'同步'}, ...(auth.user?.role === 'ADMIN' ? [{path:'/members',label:'成员'}] : []), {path:'/settings',label:'设置'},
+  {path:'/sync',label:'同步'}, ...(auth.user?.role === 'ADMIN' ? [{path:'/members',label:'成员'}] : []), {path:'/learn',label:'使用教学'}, {path:'/settings',label:'设置'},
 ]);
-watch(() => auth.user?.id, id => { if (id) bindWorkspaceContext(); else resetWorkspaceContext(); }, { immediate: true });
+watch(() => auth.user?.id, id => { if (id) bindWorkspaceContext(); else { resetWorkspaceContext(); resetLearning(); } }, { immediate: true });
 const queueNotice = ref('');
 const reconnecting = ref(false); const pageRevision = ref(0);
 async function reconnect() { reconnecting.value = true; try { await auth.bootstrap(); pageRevision.value++; } finally { reconnecting.value = false; } }
@@ -52,6 +54,7 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
     <div v-if="queueNotice" class="queue-toast" role="status"><strong>已加入离线队列</strong><span>{{ queueNotice }}</span><router-link to="/sync">查看队列</router-link></div>
     <ConnectionBar v-if="auth.user && !productPage" :key="auth.user.id" :busy="reconnecting" @reconnect="reconnect" />
     <ClientUpdateNotice v-if="!productPage" />
+    <LearningPrompt v-if="auth.user && !productPage"/>
     <main :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
     <MobileNavigation v-if="auth.user && !productPage" @logout="logout"/>
   </div>
