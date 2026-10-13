@@ -78,3 +78,9 @@ $testDeviceSerial = 'YOUR_DEVICE_SERIAL'
 本次合成队列已同步，不要直接重跑要求初始 1/0 队列的升级驱动，也不要为了重跑清除账号或制造真实任务冲突。下一轮应使用新的独立记录和明确的升级起止版本。目标更新已发布，不重跑同一个 staging 的发布命令。
 
 驱动每次重新观察真实界面，遇到锁屏、登录页或外部系统页面就停止。可重用的 `android-offline-upgrade-baseline.py` 只操作已打开的合成待办，自动恢复原网络开关；已成功运行的基线不要再次执行。GitHub 发布范围仅为 Windows EXE、签名与哈希，不上传 APK、私密测试数据或密钥。可选/必更、账号切换和签名失败分支由既有单元与更新实验室回归覆盖，本次未在正式全体受邀用户更新源上制造强制更新或损坏 APK。
+
+## GitHub 发布
+
+[v0.1.7 Release](https://github.com/oyts/plan-platform/releases/tag/v0.1.7) 已正式发布，标签对应提交 `eee6b6211ef83e7692f96bbaee4aa4da3d2283d3`。公开附件仅有 Windows EXE、对应 Minisign 签名和 `SHA256SUMS.txt`，没有 APK；不移动该标签或替换已发布安装包。
+
+可私下分享的本机 APK 位于 `production-artifacts/client-release/0.1.7/20261013T060526Z-fea09f5b/android/PlanCabin-0.1.7-release.apk`，另有相同哈希副本位于受限发布 staging。首次安装者仍需自己的受邀账号；不要与密码、邀请链接或签名资料打包分享。
