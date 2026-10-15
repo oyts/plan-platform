@@ -11,7 +11,7 @@
 
   <groupId>com.oyts</groupId>
   <artifactId>plan-platform-api</artifactId>
-  <version>0.1.9</version>
+  <version>0.1.10</version>
   <name>plan-platform-api</name>
   <description>Multi-user planning and time tracking platform</description>
 

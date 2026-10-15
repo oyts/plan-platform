@@ -51,11 +51,12 @@ Copy-Item -LiteralPath web/package.json -Destination "$output/web/package.json" 
 # Copy an enumerated build tree instead of archiving the repo, .env or credentials.
 Copy-Item -LiteralPath web/dist -Destination "$output/web" -Recurse -Force
 Copy-Item -LiteralPath docker-compose.production.yml -Destination $output -Force
-foreach ($name in @('initialize-production.sh','mysql-backup.sh','mysql-restore-drill.sh','mysql-oss-upload.sh','daily-mysql-backup.sh','switch-public-entry.sh','rollback-public-entry.sh','production-compose.sh')) {
+Copy-Item -LiteralPath docker-compose.ai-secrets.yml -Destination $output -Force
+foreach ($name in @('initialize-production.sh','mysql-backup.sh','mysql-restore-drill.sh','mysql-oss-upload.sh','daily-mysql-backup.sh','switch-public-entry.sh','rollback-public-entry.sh','production-compose.sh','configure-ai-secret.sh','ai-candidate.sh','ai-mysql-acceptance.py')) {
     Copy-Item -LiteralPath "scripts/$name" -Destination "$output/scripts/$name" -Force
 }
 $archive = Join-Path $projectRoot "production-artifacts/plan-platform-$version.tar.gz"
-& tar -czf $archive -C $output backend web scripts docker-compose.production.yml
+& tar -czf $archive -C $output backend web scripts docker-compose.production.yml docker-compose.ai-secrets.yml
 if ($LASTEXITCODE -ne 0) { throw 'Release archive failed.' }
 Get-FileHash -LiteralPath $archive -Algorithm SHA256 | Format-List
 Write-Host "Prepared: $archive. No upload, install or public cutover performed."

@@ -40,6 +40,10 @@ web/src-tauri/target/
 .desktop-signing/
 .release-signing/
 .ai-secrets/
+ai-candidates/
+ai-acceptance-private.json
+real-acceptance-started.json
+real-reply-*.json
 *.plan-signing-backup
 desktop-artifacts/
 client-update-artifacts/

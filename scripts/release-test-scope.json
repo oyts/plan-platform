@@ -1,6 +1,6 @@
 {
-  "version": "0.1.9",
-  "reason": "Unreleased AI conversations: bounded official transport, durable jobs, mode confirmation, editable drafts and atomic creation; quota copy and generic idempotency bypass directly affected. No changes to existing-plan AI adjustment or native bridges.",
+  "version": "0.1.10",
+  "reason": "Unreleased AI candidate: official transport and conversations plus isolated MySQL V14-V16 migration, large draft capacity, backup/restore, loopback-only deployment and private key setup. Production entry and native bridges unchanged; real calls need bounded acceptance. Harness unit tests and shell syntax checks also run in CI.",
   "frontendUnit": ["src/aiPlanning.test.ts", "src/aiTransport.test.ts"],
   "browser": ["e2e/ai-planning.spec.ts", "e2e/ai-foundation.spec.ts"],
   "backend": ["AiConversationIntegrationTest", "DeepSeekProviderTest", "AiQuotaIntegrationTest", "AiFoundationTest", "AuthPlanIntegrationTest#idempotencyKeysReplayCompletedWritesAndRejectDifferentPayloads"],
