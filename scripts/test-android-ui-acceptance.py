@@ -73,4 +73,23 @@ class SyntheticInputSafetyTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):device.scroll('sideways')
         self.assertEqual(calls,[])
 
+    def test_navigation_does_not_click_same_name_form_selector(self):
+        device,calls=self.device()
+        device.snapshot=lambda:[
+            ET.Element('node',text='计划',clickable='true',bounds='[0,100][500,200]'),
+            ET.Element('node',attrib={'content-desc':'计划','clickable':'true','class':'android.view.View','bounds':'[600,900][900,1000]'}),
+            ET.Element('node',text='更多',clickable='true',bounds='[900,900][1200,1000]'),
+        ]
+        device.click_navigation('计划')
+        self.assertEqual(calls,[('shell','input','tap','750','950')])
+
+    def test_navigation_requires_exact_bottom_dock_alignment(self):
+        device,calls=self.device()
+        device.snapshot=lambda:[
+            ET.Element('node',attrib={'content-desc':'计划','clickable':'true','class':'android.view.View','bounds':'[0,100][500,200]'}),
+            ET.Element('node',text='更多',clickable='true',bounds='[900,900][1200,1000]'),
+        ]
+        with self.assertRaises(RuntimeError):device.click_navigation('计划')
+        self.assertEqual(calls,[])
+
 if __name__=='__main__':unittest.main()

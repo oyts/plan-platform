@@ -48,7 +48,7 @@ class Device:
             raise RuntimeError('Authentication UI visible; no input/capture performed.')
         return nodes
     def allowed(self,text):
-        return text in LABELS or text.lower().startswith('nativeupgrade-') or bool(re.fullmatch(r'(0\.1\.[567]( / 构建 \d+)?|\d+|可更新至 0\.1\.7)',text))
+        return text in LABELS or text.lower().startswith('nativeupgrade-') or bool(re.fullmatch(r'(0\.1\.\d+( / 构建 \d+)?|\d+|可更新至 0\.1\.\d+)',text))
     def inspect(self):
         nodes=self.snapshot();output=[]
         for index,n in enumerate(nodes):
@@ -74,6 +74,17 @@ class Device:
         if clickable: nodes=clickable
         if len(nodes)!=1: raise RuntimeError(f'Expected one visible control: {text}; found {len(nodes)}.')
         self.foreground();self.adb('shell','input','tap',*self.point(nodes[0]))
+    def click_navigation(self,text):
+        if text not in {'待办','计划','路线'}:raise RuntimeError('Expected a known workspace navigation link.')
+        snapshot=self.snapshot()
+        links=[n for n in snapshot if n.get('content-desc')==text and n.get('clickable')=='true' and n.get('class')=='android.view.View']
+        dock=[n for n in snapshot if n.get('text')=='更多' and n.get('clickable')=='true']
+        if len(links)!=1 or len(dock)!=1:raise RuntimeError('Expected one workspace link and one navigation dock.')
+        link_bounds=re.fullmatch(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]',links[0].get('bounds',''))
+        dock_bounds=re.fullmatch(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]',dock[0].get('bounds',''))
+        if not link_bounds or not dock_bounds or link_bounds[2]!=dock_bounds[2] or link_bounds[4]!=dock_bounds[4]:
+            raise RuntimeError('Workspace link is not aligned with the observed bottom navigation dock.')
+        self.foreground();self.adb('shell','input','tap',*self.point(links[0]))
     def type_title(self,text,label='待办标题'):
         if not re.fullmatch(r'nativeupgrade-[a-z0-9-]{1,100}',text) and not (label=='搜索' and text==''):
             raise RuntimeError('Only a synthetic upgrade title or an empty search may be entered.')

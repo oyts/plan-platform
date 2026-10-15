@@ -16,12 +16,18 @@ test ! -e "$release" || { echo 'Immutable Android release already exists'; exit 
 test -f "$stage/release.json" && test -f "$stage/current.json" && test -f "$stage/PlanCabin-$version-release.apk"
 test -f "$root/current/scripts/production-compose.sh"
 compose() { sh "$root/current/scripts/production-compose.sh" "$root/current" "$@"; }
+reload_web_proxy() {
+  # Nginx resolves the Docker backend hostname at configuration load time.
+  # Backend-only recreation can change its IP while web remains running.
+  docker exec plan-platform-web-1 nginx -t && docker exec plan-platform-web-1 nginx -s reload
+}
 rollback() {
   if [ -f "$stage/previous-current.json" ]; then cp -p "$stage/previous-current.json" "$managed/current.rollback.json"; mv -f "$managed/current.rollback.json" "$managed/current.json";
   elif [ -f "$managed/current.json" ]; then mv "$managed/current.json" "$stage/disabled-current.json"; fi
   if [ -f "$stage/previous-compose.yml" ]; then cp -p "$stage/previous-compose.yml" "$managed/compose.yml";
   elif [ -f "$managed/compose.yml" ]; then mv "$managed/compose.yml" "$stage/disabled-compose.yml"; fi
   compose up -d --no-deps backend || echo 'Backend rollback failed; inspect retained configuration.'
+  reload_web_proxy || echo 'Proxy reload failed; inspect the retained web/backend state.'
   echo 'Previous private update config restored; APK and database retained.'
 }
 if [ -f "$managed/current.json" ]; then cp -p "$managed/current.json" "$stage/previous-current.json"; fi
@@ -44,7 +50,7 @@ install -m 644 "$stage/current.json" "$managed/current.next.json"
 mv -f "$managed/current.next.json" "$managed/current.json"
 install -m 600 "$stage/compose.next.yml" "$managed/compose.yml"
 trap 'rollback; exit 1' HUP INT TERM
-if ! compose config --quiet || ! compose up -d --no-deps backend; then rollback; exit 1; fi
+if ! compose config --quiet || ! compose up -d --no-deps backend || ! reload_web_proxy; then rollback; exit 1; fi
 ready=false
 for attempt in $(seq 1 30); do
   if curl --max-time 5 -fsS https://plan.zijun701.cn/api/health | grep -q '"service":"plan-platform-api"'; then ready=true; break; fi
@@ -61,3 +67,4 @@ else printf 'mv "%s/current.json" "%s/disabled-current.json"\n' "$managed" "$sta
 if [ -f "$stage/previous-compose.yml" ]; then printf 'cp -p "%s/previous-compose.yml" "%s/compose.yml"\n' "$stage" "$managed" >> "$stage/rollback.sh";
 else printf 'mv "%s/compose.yml" "%s/disabled-compose.yml"\n' "$managed" "$stage" >> "$stage/rollback.sh"; fi
 printf 'sh "%s/current/scripts/production-compose.sh" "%s/current" up -d --no-deps backend\n' "$root" "$root" >> "$stage/rollback.sh"
+printf 'docker exec plan-platform-web-1 nginx -t\ndocker exec plan-platform-web-1 nginx -s reload\n' >> "$stage/rollback.sh"
