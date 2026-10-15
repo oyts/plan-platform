@@ -63,6 +63,7 @@ async function toggle(row: Todo, event: Event) {
 async function remove(row: Todo) { if (confirm(`将“${row.title}”移入待办回收站？`)) await update(row, { deleted: true }); }
 </script>
 <template><div class="page todos-page">
+  <router-link class="btn" to="/ai?mode=TODO">使用 AI 构建今日待办</router-link>
   <header class="page-head"><div><h1>今日待办</h1><p>临时想到的事，记下来就可以开始。不需要创建计划或路线。</p></div><button class="btn primary" :disabled="busy || range === 'TRASH'" @click="openEditor()">添加待办</button></header>
   <section class="section">
     <div class="todo-controls"><label>查看日期<input v-model="date" type="date" required/></label><label>日期范围<select v-model="range" aria-label="日期范围"><option value="DAY">当天</option><option value="RECENT">截至此日的近 31 天</option><option value="TRASH">近 31 天回收站</option></select></label><label>状态<select v-model="filter" aria-label="状态"><option value="OPEN">未完成</option><option value="DONE">已完成</option><option value="ALL">全部</option></select></label><label>搜索<input v-model="query" type="search" placeholder="标题或备注"/></label></div>

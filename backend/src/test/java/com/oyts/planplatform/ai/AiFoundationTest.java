@@ -75,11 +75,11 @@ class AiFoundationTest {
         }
         try(var guard=new AiExecutionGuard(1,1)) { assertEquals(AiFailure.Code.INVALID_OUTPUT,assertThrows(AiFailure.class,()->guard.call(r->new AiProvider.Result("",0,0),new AiProvider.Request("fixture",128),Duration.ofSeconds(1))).code()); }
     }
-    @Test void enablingConfigAloneNeverMakesPaidCallsAvailable() {
-        var config=new AiProperties(true,"deepseek-flash","/nonexistent/fake-key",8000,2048,2,4,60);
-        var controller=new AiController(config,null);
+    @Test void enablingConfigWithoutKeyNeverMakesPaidCallsAvailable() {
+        var config=new AiProperties(true,"deepseek-flash","",8000,2048,2,4,60);
+        var controller=new AiController(config,null,null);
         var capabilities=(Map<?,?>)controller.capabilities().getBody();
-        assertEquals(false,capabilities.get("available")); assertEquals("INTEGRATION_PENDING",capabilities.get("status"));
+        assertEquals(false,capabilities.get("available")); assertEquals("NOT_CONFIGURED",capabilities.get("status"));
         assertEquals(503,controller.unavailable().getStatusCode().value());
         assertThrows(IllegalArgumentException.class,()->new AiProvider.Request("x".repeat(32001),128));
     }

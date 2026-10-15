@@ -107,6 +107,7 @@ onMounted(() => load().catch(showError));
   <p v-if="error && !sheet" class="error-text" role="alert">{{ error }}</p><p v-if="notice" class="helper-text" role="status">{{ notice }}</p>
   <div class="mainline-layout"><aside class="line-list" aria-label="路线列表">
     <button v-for="line in lines" :key="line.id" :class="{ active: selected?.id === line.id }" @click="selectLine(line.id)"><i :style="{ background: line.color }"/><strong>{{ line.name }}</strong><span>{{ line.completed }}/{{ line.total }}</span></button>
+    <router-link class="btn" to="/ai?mode=ROUTE">使用 AI 构建目标路线</router-link>
     <details class="route-create" :open="!lines.length"><summary>新建目标路线</summary>
     <form @submit.prevent="createLine"><label>路线名称<input v-model="lineDraft.name" maxlength="120" placeholder="新路线名称" required/></label><label>路线说明<textarea v-model="lineDraft.description" maxlength="1000" placeholder="希望达成什么目标"/></label><div class="route-field"><label for="new-route-mode">推进方式</label><select id="new-route-mode" v-model="lineDraft.executionMode"><option value="FLEXIBLE">自由推进</option><option value="SEQUENTIAL">顺序推进</option></select></div><div class="button-row"><input v-model="lineDraft.color" type="color" aria-label="路线颜色"/><button class="btn primary" :disabled="requiresConnection() || creatingLine">{{ creatingLine ? '创建中…' : '新建路线' }}</button></div><p class="helper-text">新建路线、阶段及依赖调整需联网；已缓存步骤可离线编辑内容。</p></form>
     </details>

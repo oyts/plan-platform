@@ -27,6 +27,7 @@ onMounted(()=>load().catch(e=>error.value=apiMessage(e)));
       </section>
       <form class="editor-card" @submit.prevent="create">
         <h2>新建计划</h2>
+        <router-link class="btn" to="/ai?mode=PLAN">使用 AI 构建周期计划</router-link>
         <label>计划名称<input v-model="draft.name" required maxlength="120" /></label><label>说明<textarea v-model="draft.description" rows="3"/></label>
         <div class="form-grid"><label>开始日期<input v-model="draft.startDate" type="date" required /></label><label>结束日期<input v-model="draft.endDate" type="date" required /></label></div>
         <RestDaysPicker v-model="draft.restDays" :disabled="busy || !supportsRestDays" />

@@ -18,7 +18,7 @@ const productPage = computed(() => router.currentRoute.value.meta.landing || (ro
 const navigation = computed(() => [
   ...(workspace.mode === 'plan' ? planNavigation : workspace.mode === 'route' ? routeNavigation : todoNavigation),
   ...(workspace.mode === 'plan' ? [{path:'/stats',label:'统计'},{path:'/reviews',label:'复盘'},{path:'/records',label:'记录'},{path:'/exports',label:'导出'}] : workspace.mode === 'route' ? [{path:'/route-records',label:'记录'}] : []),
-  {path:'/sync',label:'同步'}, ...(auth.user?.role === 'ADMIN' ? [{path:'/members',label:'成员'}] : []), {path:'/learn',label:'使用教学'}, {path:'/settings',label:'设置'},
+  {path:'/ai',label:'AI 规划'}, {path:'/sync',label:'同步'}, ...(auth.user?.role === 'ADMIN' ? [{path:'/members',label:'成员'}] : []), {path:'/learn',label:'使用教学'}, {path:'/settings',label:'设置'},
 ]);
 watch(() => auth.user?.id, id => { if (id) bindWorkspaceContext(); else { resetWorkspaceContext(); resetLearning(); } }, { immediate: true });
 const queueNotice = ref('');
@@ -55,7 +55,7 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
     <ConnectionBar v-if="auth.user && !productPage" :key="auth.user.id" :busy="reconnecting" @reconnect="reconnect" />
     <ClientUpdateNotice v-if="!productPage" />
     <LearningPrompt v-if="auth.user && !productPage"/>
-    <main tabindex="-1" :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
+    <main tabindex="-1" :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${router.currentRoute.value.path === '/ai' ? '/ai' : router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
     <MobileNavigation v-if="auth.user && !productPage" @logout="logout"/>
   </div>
 </template>

@@ -44,11 +44,13 @@ public final class AiDrafts {
         }
         Map<String,Item> items = new HashMap<>();
         for (Item item : draft.items) {
+            if (draft.mode != Mode.TODO && item.plannedMinutes < 1) invalid();
             if (items.put(item.localId,item) != null) invalid();
             if (draft.mode != Mode.ROUTE && (item.stageId != null || !item.prerequisites.isEmpty())) invalid();
             if (draft.mode == Mode.ROUTE && (item.dueDate != null || item.stageId != null && !stageIds.contains(item.stageId))) invalid();
             if (draft.mode == Mode.TODO && item.dueDate == null) invalid();
             if (draft.mode == Mode.PLAN && (item.dueDate == null || item.dueDate.isBefore(draft.startDate) || item.dueDate.isAfter(draft.endDate))) invalid();
+            if (draft.mode == Mode.PLAN && draft.restDays.contains(item.dueDate.getDayOfWeek().getValue())) invalid();
             if (new HashSet<>(item.prerequisites).size() != item.prerequisites.size()) invalid();
         }
         Set<String> visiting = new HashSet<>(), done = new HashSet<>();

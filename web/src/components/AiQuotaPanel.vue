@@ -37,7 +37,7 @@ onMounted(refresh);
 <template>
   <section class="section ai-quota" aria-labelledby="ai-quota-title">
     <header class="section-title"><div><h2 id="ai-quota-title">AI 对话额度</h2><p>按北京时间每日零点更新，修改额度不会清零当天用量。</p></div><button class="btn" :disabled="busy || loading" @click="refresh">刷新额度</button></header>
-    <div class="quota-intro"><p>当前仅开放额度管理，AI 对话尚未上线，不会产生模型调用费用。额度为 0 表示不允许新对话。</p><p>占用包括正在处理和结果待核实的请求；暂停仅影响 AI 新请求，不影响计划使用。</p></div>
+    <div class="quota-intro"><p>额度为 0 表示不允许新对话。次数不等同于金额预算；调用开关和密钥由服务器管理。</p><p>占用包括正在处理和结果待核实的请求；暂停仅影响 AI 新请求，不影响计划使用。</p></div>
     <p v-if="error && !selected" class="error-text quota-notice" role="alert">{{ error }}</p><p v-if="message" class="helper-text quota-notice" role="status">{{ message }}</p>
     <template v-if="loaded">
       <form class="quota-default" @submit.prevent="saveDefault"><label>默认每日对话次数<input v-model.number="dailyLimit" type="number" min="0" max="10000" step="1" required inputmode="numeric" :disabled="busy || loading" /></label><button class="btn primary" :disabled="busy || loading">保存默认额度</button><p>未设置个人额度的成员使用此值。每次成功回复计 1 次，内部重试不重复计次。</p></form>

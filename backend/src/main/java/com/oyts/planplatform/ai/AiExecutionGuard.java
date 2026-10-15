@@ -19,7 +19,7 @@ public final class AiExecutionGuard implements AutoCloseable {
     public AiProvider.Result call(AiProvider provider, AiProvider.Request request, Duration timeout) {
         if (timeout.isNegative() || timeout.isZero() || timeout.compareTo(Duration.ofSeconds(120)) > 0) throw new IllegalArgumentException("AI 超时范围无效。");
         long deadline = blockedUntil.get();
-        if (deadline != 0 && deadline - System.nanoTime() > 0) throw new AiFailure(AiFailure.Code.UPSTREAM_UNAVAILABLE);
+        if (deadline != 0 && deadline - System.nanoTime() > 0) throw new AiFailure(AiFailure.Code.UPSTREAM_UNAVAILABLE, false);
         Future<AiProvider.Result> future;
         try { future = executor.submit(() -> provider.generate(request)); }
         catch (RejectedExecutionException busy) { throw new AiFailure(AiFailure.Code.BUSY); }
@@ -31,7 +31,7 @@ public final class AiExecutionGuard implements AutoCloseable {
             failures.set(0); return result;
         } catch (TimeoutException failure) { future.cancel(true); failed(); throw new AiFailure(AiFailure.Code.TIMEOUT); }
         catch (InterruptedException failure) { future.cancel(true); Thread.currentThread().interrupt(); throw new AiFailure(AiFailure.Code.UPSTREAM_UNAVAILABLE); }
-        catch (ExecutionException failure) { failed(); throw new AiFailure(AiFailure.Code.UPSTREAM_UNAVAILABLE); }
+        catch (ExecutionException failure) { failed(); if (failure.getCause() instanceof AiFailure safe) throw safe; throw new AiFailure(AiFailure.Code.UPSTREAM_UNAVAILABLE); }
         finally { executor.purge(); }
     }
     private void failed() {

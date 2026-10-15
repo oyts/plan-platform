@@ -11,7 +11,7 @@ function Get-ReleaseTestScope {
         if ($file -notmatch '^(src|e2e)/[a-zA-Z0-9_./-]+\.(test|spec)\.ts$' -or $file.Contains('..') -or -not (Test-Path -LiteralPath (Join-Path $root "web/$file"))) { throw 'Invalid affected frontend test path.' }
     }
     foreach ($name in @($plan.backend) + @($plan.android)) {
-        if ($name -notmatch '^[a-zA-Z0-9_.$]+$') { throw 'Invalid affected native/backend test name.' }
+        if ($name -notmatch '^[a-zA-Z0-9_.$]+(#[a-zA-Z0-9_]+)?$') { throw 'Invalid affected native/backend test name.' }
     }
     return $plan
 }

@@ -1,8 +1,8 @@
 {
   "version": "0.1.9",
-  "reason": "Unreleased AI foundation: quota admission, schema/config/failure boundaries and administrator quota UI; invitation layout shares the members screen. No provider calls or native bridge changes.",
-  "frontendUnit": ["src/aiQuota.test.ts", "src/aiTransport.test.ts"],
-  "browser": ["e2e/ai-foundation.spec.ts", "e2e/members-layout.spec.ts"],
-  "backend": ["AiQuotaIntegrationTest", "AiFoundationTest"],
+  "reason": "Unreleased AI conversations: bounded official transport, durable jobs, mode confirmation, editable drafts and atomic creation; quota copy and generic idempotency bypass directly affected. No changes to existing-plan AI adjustment or native bridges.",
+  "frontendUnit": ["src/aiPlanning.test.ts", "src/aiTransport.test.ts"],
+  "browser": ["e2e/ai-planning.spec.ts", "e2e/ai-foundation.spec.ts"],
+  "backend": ["AiConversationIntegrationTest", "DeepSeekProviderTest", "AiQuotaIntegrationTest", "AiFoundationTest", "AuthPlanIntegrationTest#idempotencyKeysReplayCompletedWritesAndRejectDifferentPayloads"],
   "android": []
 }

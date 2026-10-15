@@ -36,7 +36,7 @@ async function fixture(page: Page) {
 test('quota settings, personal inheritance, pause and mobile layout', async ({ page, isMobile }, info) => {
   await fixture(page);
   const panel = page.locator('.ai-quota');
-  await expect(panel).toContainText('不会产生模型调用费用');
+  await expect(panel).toContainText('次数不等同于金额预算');
   await page.getByLabel('默认每日对话次数').fill('5'); await page.getByRole('button', { name: '保存默认额度' }).click();
   await expect(panel.getByRole('status')).toContainText('当天用量未重置');
   const list = panel.locator(isMobile ? '.quota-cards' : '.quota-table');
