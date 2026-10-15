@@ -17,6 +17,7 @@ class AiController {
     private final AiConversationService sessions;
     AiController(AiProperties config, AiQuotaService quotas,AiConversationService sessions) { this.config = config; this.quotas = quotas; this.sessions=sessions; }
     record Create(AiDrafts.Mode mode,@NotNull Boolean consent) {}
+    record Adjust(@NotNull AiDrafts.Mode mode,@NotBlank @Pattern(regexp="[a-f0-9-]{36}") String targetId,@NotNull Boolean consent) {}
     record Choose(@NotNull AiDrafts.Mode mode,@NotNull @Min(0) @JsonDeserialize(using=AiJsonIntegers.LongValue.class) Long version) {}
     record Draft(@NotBlank @Size(max=128000) String draftJson,@NotNull @Min(0) @JsonDeserialize(using=AiJsonIntegers.LongValue.class) Long version) {}
     record Apply(@NotNull Boolean confirmed,@NotNull @Min(0) @JsonDeserialize(using=AiJsonIntegers.LongValue.class) Long version) {}
@@ -28,7 +29,7 @@ class AiController {
         return AiQuotaController.privateReply(Map.of("schemaVersion", 1, "available", available, "provider", "deepseek",
             "model", config.model(), "status", available?"READY":config.enabled()?"NOT_CONFIGURED":"DISABLED",
             "message", available?"AI 按需调用；确认草稿后才生成真实内容。":"AI 暂未开放，可继续手动创建或导入草稿。", "transport", "ASYNC_POLLING", "timezone", "Asia/Shanghai",
-            "maxInputChars",Math.min(config.maxInputChars(),8000)));
+            "maxInputChars",Math.min(config.maxInputChars(),8000),"adjustmentEnabled",true));
     }
     @GetMapping("/quota") ResponseEntity<?> quota(@AuthenticationPrincipal Jwt user) { return AiQuotaController.privateReply(quotas.usage(user.getSubject())); }
     @PostMapping("/jobs") ResponseEntity<?> unavailable() {
@@ -37,6 +38,7 @@ class AiController {
     }
     @GetMapping("/sessions") ResponseEntity<?> list(@AuthenticationPrincipal Jwt user) { return AiQuotaController.privateReply(sessions.list(user.getSubject())); }
     @PostMapping("/sessions") ResponseEntity<?> create(@AuthenticationPrincipal Jwt user,@Valid @RequestBody Create request) { return AiQuotaController.privateReply(sessions.create(user.getSubject(),request.mode(),request.consent())); }
+    @PostMapping("/adjustments") ResponseEntity<?> adjust(@AuthenticationPrincipal Jwt user,@Valid @RequestBody Adjust request) { return AiQuotaController.privateReply(sessions.createAdjustment(user.getSubject(),request.mode(),request.targetId(),request.consent())); }
     @GetMapping("/sessions/{id}") ResponseEntity<?> read(@AuthenticationPrincipal Jwt user,@PathVariable String id) { return AiQuotaController.privateReply(sessions.read(user.getSubject(),id)); }
     @PutMapping("/sessions/{id}/mode") ResponseEntity<?> choose(@AuthenticationPrincipal Jwt user,@PathVariable String id,@Valid @RequestBody Choose request) { return AiQuotaController.privateReply(sessions.choose(user.getSubject(),id,request.version(),request.mode())); }
     @PutMapping("/sessions/{id}/draft") ResponseEntity<?> draft(@AuthenticationPrincipal Jwt user,@PathVariable String id,@Valid @RequestBody Draft request) { return AiQuotaController.privateReply(sessions.saveDraft(user.getSubject(),id,request.version(),request.draftJson())); }

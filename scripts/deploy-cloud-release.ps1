@@ -50,7 +50,7 @@ rollback_on_error() {
 trap rollback_on_error EXIT
 trap 'exit 1' HUP INT TERM
 compose_from '__REMOTE__' up -d
-for attempt in $(seq 1 30); do
+for attempt in $(seq 1 45); do
   if curl --max-time 5 -fsS http://127.0.0.1:43140/actuator/health | grep -q '"status":"UP"'; then break; fi
   sleep 2
 done

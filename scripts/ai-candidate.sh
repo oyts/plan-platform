@@ -41,6 +41,10 @@ start() {
     --log-opt max-size=5m --log-opt max-file=2 --env-file "$directory/app.env" \
     -p 127.0.0.1:43144:8080 -e "AI_ENABLED=$enabled"
   if [ "$enabled" = true ]; then
+    if [ -n "${AI_SECRET_DONOR:-}" ]; then
+      sh scripts/verify-ai-secret-mount.sh "$AI_SECRET_DONOR" "plan-platform-api:$PLAN_VERSION"
+      set -- "$@" -e AI_API_KEY_FILE=/run/secrets/deepseek-api-key --volumes-from "$AI_SECRET_DONOR:ro"
+    else
     [ "$(id -u)" = 0 ] || { echo 'Enable requires sudo to validate the restricted secret'; exit 1; }
     secret=/etc/plan-platform-ai/deepseek-api-key
     [ ! -L /etc/plan-platform-ai ] && [ ! -L "$secret" ] && [ -f "$secret" ] || { echo 'Restricted regular key file required'; exit 1; }
@@ -51,6 +55,7 @@ start() {
     [ "$uid" -gt 0 ] && [ "$(stat -c %u "$secret")" = "$uid" ] && [ "$(stat -c %g "$secret")" = "$gid" ] && [ "$(stat -c %a "$secret")" = 600 ] || { echo 'Key ownership/permissions mismatch'; exit 1; }
     set -- "$@" -e AI_API_KEY_FILE=/run/secrets/deepseek-api-key \
       --mount "type=bind,source=$secret,target=/run/secrets/deepseek-api-key,readonly"
+    fi
   fi
   if docker container inspect "$AI_CANDIDATE_NAME" >/dev/null 2>&1; then
     owned_container
@@ -118,7 +123,7 @@ values = {
     'BOOTSTRAP_ADMIN_EXPIRES_AT':(datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=24)).isoformat(),
     'JAVA_TOOL_OPTIONS':'-Xms64m -Xmx240m -XX:MaxMetaspaceSize=128m -XX:+ExitOnOutOfMemoryError -Duser.timezone=Asia/Shanghai',
     'SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE':'3', 'AI_MAX_CONCURRENT':'1', 'AI_QUEUE_CAPACITY':'1',
-    'AI_MODEL':'deepseek-flash', 'AI_MAX_OUTPUT_TOKENS':'2048', 'AI_TIMEOUT_SECONDS':'60',
+    'AI_MODEL':'deepseek-flash', 'AI_MAX_INPUT_CHARS':'16000', 'AI_MAX_OUTPUT_TOKENS':'4096', 'AI_TIMEOUT_SECONDS':'60',
 }
 with open('app.env', 'x') as f:
     for key, value in values.items(): f.write(key+'='+value+'\n')

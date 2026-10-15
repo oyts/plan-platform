@@ -111,6 +111,7 @@ onMounted(() => load().then(resetTask).catch(exception => error.value = apiMessa
 
 <template>
   <div class="page plan-detail-page">
+    <router-link v-if="plan && !plan.localState" class="btn" :to="{ path: '/ai', query: { mode: 'PLAN', target: planId } }">使用 AI 调整此周期计划</router-link>
     <section class="page-head"><div><p class="eyebrow">PLAN / DETAIL</p><h1>{{ plan?.name ?? (loading ? '读取计划中…' : '计划暂不可用') }}</h1><p v-if="plan" class="helper-text">{{ restDaySummary(plan.restDays) }}</p><LocalBadge :state="plan?.localState"/></div><div><p>{{ plan?.startDate }}—{{ plan?.endDate }} · {{ tasks.length }} 项任务</p><div class="button-row"><button class="btn" type="button" :disabled="!plan || !!plan.localState || loading || savingPlan" @click="editPlan">编辑计划设置</button><router-link class="btn" :to="`/plans/${planId}/studio`">阶段与模板</router-link><button class="btn danger" type="button" @click="removePlan">移入回收站</button></div></div></section>
     <p v-if="error" class="error-text">{{ error }}</p>
     <form v-if="editingPlan" class="editor-card" aria-label="编辑计划设置" @submit.prevent="savePlan">

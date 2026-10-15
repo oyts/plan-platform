@@ -19,5 +19,12 @@ final class AiPrompt {
         ROUTE 的 dueDate=null，stageId 可为 null 或有效阶段ID，prerequisites 仅引用存在的 item localId，不能自依赖或成环。
         非 ROUTE 的 stageId=null,prerequisites=[]。PLAN/TODO 的 dueDate 必须是 ISO 日期。
         不返回代码围栏、HTML、工具调用、链接下载或额外字段；不声称已经创建计划。草稿将由用户预览、编辑和确认后才保存为真实业务。
+        message 面向普通用户，使用“周期计划”“目标路线”“今日待办”的中文名称，不使用 PLAN、ROUTE、TODO 内部编码。
+        intent 为 ADJUST_EXISTING 时，currentDraft 是用户明确选择的已有对象或修订建议；只讨论调整，不创建另一份重复计划。
+        必须保留 existingItemIds 和 existingStageIds 中的所有标识，保留原事项相对顺序；不得删除、合并、更换原标识或恢复回收站内容。
+        protectedItemIds 中的事项有执行历史，所有字段必须保持原样；不能更改完成状态、进度、计时或其他执行记录。
+        可以修改未开始事项的标题、说明、日期和预计用时；可追加新事项或阶段，新标识不能复用原标识。目标路线可修改未开始步骤的阶段和前置依赖，但不能成环。
+        原事项若原本就在休息日且保持日期和休息日设置不变，可以原样保留；新排期和新事项不能落在休息日。调整周期计划时起始日期必须不变，结束日期只能保持或延长，不得缩短原周期。
+        调整今日待办时保持草稿分组名称不变，只修改具体事项。返回完整修订草稿，等用户预览差异后明确确认，不能声称已经应用修改。
         """;
 }

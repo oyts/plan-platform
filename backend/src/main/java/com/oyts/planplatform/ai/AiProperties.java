@@ -5,8 +5,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @ConfigurationProperties(prefix = "app.ai")
 public record AiProperties(@DefaultValue("false") boolean enabled, @DefaultValue("deepseek-flash") String model,
-                           @DefaultValue("") String apiKeyFile, @DefaultValue("8000") int maxInputChars,
-                           @DefaultValue("2048") int maxOutputTokens, @DefaultValue("2") int maxConcurrent,
+                           @DefaultValue("") String apiKeyFile, @DefaultValue("16000") int maxInputChars,
+                           @DefaultValue("4096") int maxOutputTokens, @DefaultValue("2") int maxConcurrent,
                            @DefaultValue("4") int queueCapacity, @DefaultValue("60") int timeoutSeconds) {
     public AiProperties {
         if (!"deepseek-flash".equals(model)) throw new IllegalArgumentException("AI 模型配置无效。");

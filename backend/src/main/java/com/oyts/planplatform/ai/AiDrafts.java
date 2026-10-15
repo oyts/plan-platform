@@ -17,9 +17,9 @@ public final class AiDrafts {
     public record Stage(@NotBlank @Pattern(regexp="[A-Za-z0-9_-]{1,40}") String localId,
                         @NotBlank @Size(max=120) String title) {}
     public record Item(@NotBlank @Pattern(regexp="[A-Za-z0-9_-]{1,40}") String localId,
-                       @NotBlank @Size(max=120) String title, @NotNull @Size(max=2000) String note,
+                       @NotBlank @Size(max=180) String title, @NotNull @Size(max=2000) String note,
                        LocalDate dueDate, @Min(0) @Max(1440) int plannedMinutes, String stageId,
-                       @NotNull @Size(max=20) List<@NotBlank String> prerequisites) {}
+                       @NotNull @Size(max=100) List<@NotBlank String> prerequisites) {}
     public record Draft(@Min(1) @Max(1) int schemaVersion, @NotNull Mode mode, @Min(0) long revision,
                         @NotBlank @Size(max=120) String title, LocalDate startDate, LocalDate endDate,
                         @NotNull @Size(max=7) List<@NotNull @Min(1) @Max(7) Integer> restDays,
@@ -31,6 +31,11 @@ public final class AiDrafts {
                         @NotNull @Size(min=1,max=100) List<@NotNull @Valid Change> changes,
                         @NotNull @Size(max=100) Map<@NotBlank String,@NotNull @Min(0) Long> baseVersions) {}
     public static Draft parseDraft(String json, ObjectMapper mapper, Validator validator) {
+        return parseDraft(json,mapper,validator,Set.of());
+    }
+    // Existing rows may predate the rest-day setting. The adjustment service separately
+    // validates whether a retained date is truly unchanged; new items get no exception.
+    static Draft parseDraft(String json, ObjectMapper mapper, Validator validator, Set<String> retainedIds) {
         Draft draft = parse(json, Draft.class, mapper, validator);
         Set<String> stageIds = new HashSet<>();
         for (Stage stage : draft.stages) if (!stageIds.add(stage.localId)) invalid();
@@ -49,8 +54,8 @@ public final class AiDrafts {
             if (draft.mode != Mode.ROUTE && (item.stageId != null || !item.prerequisites.isEmpty())) invalid();
             if (draft.mode == Mode.ROUTE && (item.dueDate != null || item.stageId != null && !stageIds.contains(item.stageId))) invalid();
             if (draft.mode == Mode.TODO && item.dueDate == null) invalid();
-            if (draft.mode == Mode.PLAN && (item.dueDate == null || item.dueDate.isBefore(draft.startDate) || item.dueDate.isAfter(draft.endDate))) invalid();
-            if (draft.mode == Mode.PLAN && draft.restDays.contains(item.dueDate.getDayOfWeek().getValue())) invalid();
+            if (draft.mode == Mode.PLAN && (item.dueDate == null || !retainedIds.contains(item.localId) && (item.dueDate.isBefore(draft.startDate) || item.dueDate.isAfter(draft.endDate)))) invalid();
+            if (draft.mode == Mode.PLAN && !retainedIds.contains(item.localId) && draft.restDays.contains(item.dueDate.getDayOfWeek().getValue())) invalid();
             if (new HashSet<>(item.prerequisites).size() != item.prerequisites.size()) invalid();
         }
         Set<String> visiting = new HashSet<>(), done = new HashSet<>();

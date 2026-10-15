@@ -1,19 +1,29 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import { api, apiMessage } from '@/api/client';
-import { aiModeNames, aiInitialMode, aiPending, aiState, aiAppliedPath, aiExternalPrompt, type AiMode, type AiSession, type AiSummary, type AiDraft } from '@/aiPlanning';
+import { api, apiMessage, currentQueueOwner } from '@/api/client';
+import { listOperations, onQueueChange } from '@/offlineQueue';
+import { aiModeNames, aiInitialMode, aiPending, aiState, aiAppliedPath, aiExternalPrompt, aiExternalAdjustmentPrompt, aiDifferences, type AiMode, type AiSession, type AiSummary, type AiDraft } from '@/aiPlanning';
 import type { AiUsage } from '@/aiQuota';
 import AiDraftEditor from '@/components/AiDraftEditor.vue';
+import AiChangePreview from '@/components/AiChangePreview.vue';
 const route = useRoute(), router = useRouter();
-const capability = ref({ available: false, message: '正在确认 AI 服务状态…', maxInputChars: 8000 });
+const capability = ref({ available: false, message: '正在确认 AI 服务状态…', maxInputChars: 8000, adjustmentEnabled: false });
 const quota = ref<AiUsage | null>(null), summaries = ref<AiSummary[]>([]), session = ref<AiSession | null>(null);
 const mode = ref<AiMode | ''>(aiInitialMode(route.query.mode) ?? ''), consent = ref(false), message = ref(''), error = ref(''), notice = ref('');
 const busy = ref(false), loading = ref(true), draft = ref<AiDraft | null>(null), dirty = ref(false), confirmed = ref(false), importJson = ref(''), uncertain = ref(false);
 const pending = computed(() => aiPending(session.value));
+const requestedTarget = computed(() => typeof route.query.target === 'string' && /^[a-f0-9-]{36}$/.test(route.query.target) ? route.query.target : null);
+const isAdjustment = computed(() => !!session.value?.adjustment || !!requestedTarget.value);
+const queued = ref(0);
+const differences = computed(() => session.value?.adjustment && draft.value ? aiDifferences(session.value.adjustment.original, draft.value) : []);
+const externalFormat = computed(() => session.value?.adjustment && draft.value ? aiExternalAdjustmentPrompt(session.value.adjustment, draft.value) : requestedTarget.value ? '请先勾选说明并载入所选内容，再复制保留原标识的调整格式。' : mode.value ? aiExternalPrompt(mode.value) : '请先选择模式。');
 const editable = computed(() => !busy.value && !pending.value && !session.value?.applied);
 const resultPath = computed(() => aiAppliedPath(session.value?.applied?.path));
 let timer: ReturnType<typeof setTimeout> | undefined; let disposed = false; let generation = 0;
+async function checkQueue() { const owner = currentQueueOwner(); queued.value = owner ? (await listOperations(owner)).length : 0; }
+async function assertCleanQueue() { await checkQueue(); if (queued.value) throw new Error('本机有待同步操作或冲突，请先到同步中心处理，再开始或应用 AI 调整。原队列不会清除。'); }
+const stopQueueWatch = onQueueChange(() => { if (isAdjustment.value) void checkQueue().catch(() => { queued.value = -1; }); });
 function accept(value: AiSession) { session.value = value; draft.value = value.draft ? structuredClone(value.draft) : null; dirty.value = false; confirmed.value = false; mode.value = value.mode ?? ''; }
 async function loadSummary() { summaries.value = (await api.get<AiSummary[]>('/ai/sessions')).data; }
 async function loadQuota() { quota.value = (await api.get<AiUsage>('/ai/quota')).data; }
@@ -34,8 +44,18 @@ async function open(id: string) {
 }
 async function create() {
   if (!consent.value) throw new Error('请先阅读并勾选对话处理说明。');
-  const value = (await api.post<AiSession>('/ai/sessions', { mode: mode.value || null, consent: true })).data;
+  let value: AiSession;
+  if (requestedTarget.value) {
+    if (!mode.value || !capability.value.adjustmentEnabled) throw new Error('当前服务器尚不支持已有对象的 AI 调整，请等待服务器升级或继续手动编辑。');
+    await assertCleanQueue();
+    value = (await api.post<AiSession>('/ai/adjustments', { mode: mode.value, targetId: requestedTarget.value, consent: true })).data;
+  } else value = (await api.post<AiSession>('/ai/sessions', { mode: mode.value || null, consent: true })).data;
   accept(value); await router.replace({ path: '/ai', query: { session: value.id } }); await loadSummary();
+}
+async function loadSelection() {
+  busy.value = true; error.value = '';
+  try { await create(); notice.value = '已载入所选内容。此处只修改建议，不会直接改变原对象。'; }
+  catch (reason) { error.value = apiMessage(reason); } finally { busy.value = false; }
 }
 async function send() {
   if (busy.value || pending.value || uncertain.value || dirty.value) return;
@@ -52,13 +72,13 @@ async function choose(value: AiMode) {
 async function saveDraft() {
   if (!session.value || !draft.value) return;
   busy.value = true; error.value = '';
-  try { accept((await api.put<AiSession>(`/ai/sessions/${session.value.id}/draft`, { version: session.value.version, draftJson: JSON.stringify(draft.value) })).data); notice.value = '草稿已保存，还没有生成真实计划。'; }
+  try { accept((await api.put<AiSession>(`/ai/sessions/${session.value.id}/draft`, { version: session.value.version, draftJson: JSON.stringify(draft.value) })).data); notice.value = session.value.adjustment ? '调整草稿已保存，原对象尚未改变。' : '草稿已保存，还没有生成真实计划。'; }
   catch (reason) { error.value = apiMessage(reason); } finally { busy.value = false; }
 }
 async function apply() {
   if (!session.value || !confirmed.value || dirty.value) return;
   busy.value = true; error.value = '';
-  try { await api.post(`/ai/sessions/${session.value.id}/apply`, { version: session.value.version, confirmed: true }); await refresh(false); notice.value = '已生成，可进入对应模式查看。'; }
+  try { if (session.value.adjustment) await assertCleanQueue(); await api.post(`/ai/sessions/${session.value.id}/apply`, { version: session.value.version, confirmed: true }); await refresh(false); notice.value = session.value.adjustment ? '已应用修改，原执行记录和未修改事项保留。' : '已生成，可进入对应模式查看。'; }
   catch (reason) { error.value = apiMessage(reason); } finally { busy.value = false; }
 }
 async function importDraft() {
@@ -77,31 +97,33 @@ async function fresh() {
   generation++; clearTimeout(timer); session.value = null; draft.value = null; dirty.value = false; confirmed.value = false; consent.value = false; uncertain.value = false; message.value = ''; error.value = ''; notice.value = ''; mode.value = aiInitialMode(route.query.mode) ?? ''; await router.replace('/ai');
 }
 function changed() { dirty.value = true; confirmed.value = false; }
-async function copyFormat() { if (!mode.value) return; try { await navigator.clipboard.writeText(aiExternalPrompt(mode.value)); notice.value = '格式说明已复制，可发给外部 AI。'; } catch { error.value = '无法自动复制，请在下方格式说明中手动选择并复制。'; } }
+async function copyFormat() { if (!mode.value) return; try { await navigator.clipboard.writeText(externalFormat.value); notice.value = '格式说明已复制，可发给外部 AI。'; } catch { error.value = '无法自动复制，请在下方格式说明中手动选择并复制。'; } }
 onBeforeRouteLeave(() => !dirty.value || window.confirm('草稿有尚未保存的修改，仍要离开吗？'));
 watch(() => route.query.session, id => { if (typeof id === 'string' && id !== session.value?.id && !busy.value) void open(id); });
 onMounted(async () => {
-  try { capability.value = (await api.get('/ai/capabilities')).data; await Promise.all([loadQuota(), loadSummary()]); if (typeof route.query.session === 'string') await open(route.query.session); }
+  try { capability.value = (await api.get('/ai/capabilities')).data; await Promise.all([loadQuota(), loadSummary()]); if (typeof route.query.session === 'string') await open(route.query.session); if (isAdjustment.value) await checkQueue(); }
   catch (reason) { error.value = apiMessage(reason); } finally { loading.value = false; }
 });
-onUnmounted(() => { disposed = true; clearTimeout(timer); });
+onUnmounted(() => { disposed = true; clearTimeout(timer); stopQueueWatch(); });
 </script>
 <template>
   <div class="page ai-page">
-    <header class="page-head"><div><h1>AI 规划助手</h1><p>先聊清目标，再预览草稿。你确认以后，才生成真实计划。</p></div><div class="button-row"><button class="btn" :disabled="busy" @click="fresh">新建对话</button><button class="btn" :disabled="busy || loading" @click="refresh()">刷新对话</button></div></header>
+    <header class="page-head"><div><h1>AI 规划助手</h1><p>{{ isAdjustment ? '讨论调整节奏，逐项查看前后差异。你确认以后，才修改所选对象。' : '先聊清目标，再预览草稿。你确认以后，才生成真实计划。' }}</p></div><div class="button-row"><button class="btn" :disabled="busy" @click="fresh">新建对话</button><button class="btn" :disabled="busy || loading" @click="refresh()">刷新对话</button></div></header>
     <p v-if="error" class="error-text" role="alert">{{ error }}</p><p v-if="notice" class="helper-text" role="status">{{ notice }}</p>
     <p v-if="!capability.available && !loading" class="ai-service-note">{{ capability.message }} <router-link to="/plans">手动周期计划</router-link> · <router-link to="/mainlines">手动目标路线</router-link> · <router-link to="/todos">手动待办</router-link></p>
-    <div class="ai-toolbar"><label>最近对话<select :value="session?.id ?? ''" :disabled="busy" @change="open(($event.target as HTMLSelectElement).value)"><option value="" disabled>选择已保存的对话</option><option v-for="item in summaries" :key="item.id" :value="item.id">{{ item.mode ? aiModeNames[item.mode] : '模式待定' }} · {{ new Date(item.createdAt).toLocaleString('zh-CN') }}{{ item.applied ? ' · 已生成' : '' }}</option></select></label><p v-if="quota">今日剩余 <strong>{{ quota.remaining }}</strong> / {{ quota.dailyLimit }} 次 · 已用 {{ quota.used }} · 占用 {{ quota.pending }}<span v-if="quota.paused"> · AI 已暂停</span></p><button v-if="session" class="text-btn danger-text" :disabled="busy || pending" @click="remove">删除对话</button></div>
-    <details v-if="mode" class="ai-service-note"><summary>给外部 AI 的格式说明</summary><p>内置 AI 不可用时，可复制这段说明给外部 AI，再在下方导入返回的草稿。</p><label class="ai-format">外部 AI 格式说明<textarea :value="aiExternalPrompt(mode)" readonly rows="8" /></label><button class="btn" @click="copyFormat">复制格式说明</button></details>
+    <div class="ai-toolbar"><label>最近对话<select :value="session?.id ?? ''" :disabled="busy" @change="open(($event.target as HTMLSelectElement).value)"><option value="" disabled>选择已保存的对话</option><option v-for="item in summaries" :key="item.id" :value="item.id">{{ item.adjustment ? '调整 · ' : '' }}{{ item.mode ? aiModeNames[item.mode] : '模式待定' }} · {{ new Date(item.createdAt).toLocaleString('zh-CN') }}{{ item.applied ? ' · 已应用' : '' }}</option></select></label><p v-if="quota">今日剩余 <strong>{{ quota.remaining }}</strong> / {{ quota.dailyLimit }} 次 · 已用 {{ quota.used }} · 占用 {{ quota.pending }}<span v-if="quota.paused"> · AI 已暂停</span></p><button v-if="session" class="text-btn danger-text" :disabled="busy || pending" @click="remove">删除对话</button></div>
+    <p v-if="quota && !quota.remaining" class="helper-text">今日暂无可用对话次数。管理员可在成员页面分配每日次数或解除暂停；你仍可手动编辑、导入和确认草稿。</p>
+    <p v-if="isAdjustment && queued !== 0" class="error-text" role="status">{{ queued > 0 ? `本机仍有 ${queued} 项待同步操作或冲突，请先到同步中心处理，再应用 AI 调整。` : '暂时无法核对本机队列，应用前会重新检查。' }}<router-link to="/sync">进入同步中心</router-link></p>
+    <details v-if="mode" class="ai-service-note"><summary>给外部 AI 的格式说明</summary><p>内置 AI 不可用时，可复制这段说明给外部 AI，再在下方导入返回的草稿。{{ isAdjustment ? '调整格式会包含所选对象的事项和说明，请确认愿意向你选用的外部 AI 提供这些内容。' : '' }}</p><label class="ai-format">外部 AI 格式说明<textarea :value="externalFormat" readonly rows="8" /></label><button class="btn" :disabled="!!requestedTarget && !session" @click="copyFormat">复制格式说明</button></details>
     <div class="ai-layout">
       <section class="section ai-chat" aria-labelledby="ai-chat-title"><header class="section-title"><h2 id="ai-chat-title"><span>01</span> 对话</h2><strong v-if="session?.mode">{{ aiModeNames[session.mode] }}</strong></header>
-        <div class="ai-chat-body"><label v-if="!session">创建方式<select v-model="mode"><option value="">先请 AI 推荐模式</option><option v-for="(name, value) in aiModeNames" :key="value" :value="value">{{ name }}</option></select></label><p v-if="!session?.turns.length" class="ai-empty">告诉我你想做什么、每次能投入多久，以及是否有截止日期。没有固定时间的长期目标，也可以慢慢推进。</p>
+        <div class="ai-chat-body"><label v-if="!session">创建方式<select v-model="mode" :disabled="!!requestedTarget"><option value="">先请 AI 推荐模式</option><option v-for="(name, value) in aiModeNames" :key="value" :value="value">{{ name }}</option></select></label><p v-if="!session?.turns.length" class="ai-empty">{{ isAdjustment ? '告诉我哪里太紧、哪里需要增加练习，或希望怎样调整。已有执行历史的事项会保留，不会重新创建另一份计划。' : '告诉我你想做什么、每次能投入多久，以及是否有截止日期。没有固定时间的长期目标，也可以慢慢推进。' }}</p>
           <ol class="ai-turns" aria-label="对话记录"><li v-for="turn in session?.turns" :key="turn.id"><article class="ai-user-message"><strong>你</strong><p>{{ turn.message }}</p></article><article class="ai-assistant-message"><strong>规划助手</strong><p v-if="turn.reply">{{ turn.reply }}</p><p v-else role="status">{{ aiState(turn.state) }}</p><p v-if="turn.state === 'FAILED' || turn.state === 'UNKNOWN'" class="helper-text">已有草稿仍保留，可手工编辑或稍后再试。不会自动重复调用。{{ turn.error ? `（${turn.error}）` : '' }}</p></article></li></ol>
           <div v-if="session && !session.mode" class="ai-mode-choice"><p v-if="session.recommendedMode">AI 建议使用<strong>{{ aiModeNames[session.recommendedMode] }}</strong>，请你选择：</p><p v-else>选择规划模式后，AI 才能生成对应草稿。</p><div class="button-row"><button v-for="(name, value) in aiModeNames" :key="value" class="btn" :disabled="!editable" @click="choose(value)">选择{{ name }}</button></div></div>
-          <form v-if="!session?.applied" class="ai-message-form" @submit.prevent="send"><label>你的目标或修改要求<textarea v-model="message" rows="4" :maxlength="capability.maxInputChars" :disabled="busy || pending" placeholder="例如：我想学吉他，每次有半小时，没有固定结束时间。" required /></label><label v-if="!session" class="ai-consent"><input v-model="consent" type="checkbox" />我同意将本次对话和草稿发给 DeepSeek 处理；请勿输入密码、身份信息等敏感内容。</label><p class="helper-text">对话保存 30 天，可主动删除。只发送本次对话与草稿，不读取你已有的私人计划。每次成功回复计 1 次。</p><p v-if="dirty" class="helper-text">先保存草稿修改，再让 AI 继续调整。</p><p v-if="uncertain" class="helper-text">请先刷新确认本次请求状态，再继续发送。</p><button class="btn primary" :disabled="busy || pending || uncertain || dirty || !capability.available || !message.trim() || (!session && !consent) || !quota?.remaining">{{ pending ? 'AI 正在处理…' : '发送给 AI' }}</button></form>
+          <form v-if="!session?.applied" class="ai-message-form" @submit.prevent="send"><label>你的目标或修改要求<textarea v-model="message" rows="4" :maxlength="capability.maxInputChars" :disabled="busy || pending" :placeholder="isAdjustment ? '例如：最近比较忙，把未开始的任务分散到两周，每次缩短到15分钟。' : '例如：我想学吉他，每次有半小时，没有固定结束时间。'" required /></label><label v-if="!session" class="ai-consent"><input v-model="consent" type="checkbox" />{{ isAdjustment ? '我同意将所选对象的事项、阶段及必要内容和本次对话发给 DeepSeek 处理；不发送其他计划、账号或执行备注。' : '我同意将本次对话和草稿发给 DeepSeek 处理；请勿输入密码、身份信息等敏感内容。' }}</label><p class="helper-text">对话保存 30 天，可主动删除。{{ isAdjustment ? '仅使用你明确选择的对象，不读取其他私人计划；执行历史受到保护。' : '只发送本次对话与草稿，不读取你已有的私人计划。' }}每次成功回复计 1 次。</p><button v-if="requestedTarget && !session" class="btn" type="button" :disabled="busy || !consent || !capability.adjustmentEnabled || queued !== 0" @click="loadSelection">载入所选内容（不调用 AI）</button><p v-if="dirty" class="helper-text">先保存草稿修改，再让 AI 继续调整。</p><p v-if="uncertain" class="helper-text">请先刷新确认本次请求状态，再继续发送。</p><button class="btn primary" :disabled="busy || pending || uncertain || dirty || !capability.available || !message.trim() || (!session && !consent) || !quota?.remaining || (isAdjustment && queued !== 0)">{{ pending ? 'AI 正在处理…' : '发送给 AI' }}</button></form>
         </div>
       </section>
-      <section class="section ai-preview" aria-labelledby="ai-preview-title"><header class="section-title"><h2 id="ai-preview-title"><span>02</span> 草稿预览</h2><span v-if="draft">{{ draft.items.length }} 项</span></header><div class="ai-preview-body"><template v-if="draft"><p class="helper-text">{{ aiModeNames[draft.mode] }} · {{ dirty ? '有未保存修改' : '已保存草稿' }}。此处编辑不会直接改变真实业务。</p><AiDraftEditor :key="`${session?.id}:${session?.version}`" :draft="draft" :disabled="!editable" @change="changed" /><button class="btn" :disabled="!editable || !dirty" @click="saveDraft">保存草稿修改</button><template v-if="!session?.applied"><label class="ai-consent"><input v-model="confirmed" type="checkbox" :disabled="!editable || dirty" />我已核对 {{ draft.items.length }} 项内容，确认创建新的{{ aiModeNames[draft.mode] }}。</label><button class="btn primary" :disabled="!editable || dirty || !confirmed" @click="apply">确认生成</button></template></template><p v-else class="ai-empty">草稿会显示在这里。AI 需要先了解你的要求；也可以导入符合格式的外部 AI 草稿。</p><p v-if="session?.applied" class="ai-applied" role="status">已生成 {{ session.applied.count }} 项内容。<router-link v-if="resultPath" :to="resultPath">进入查看</router-link>。重复确认不会再次创建。</p><details v-if="!session?.applied" class="ai-import"><summary>导入外部 AI 草稿</summary><p class="helper-text">使用计划舱 schemaVersion 1 JSON 格式，模式须与当前选择一致。导入后仍须预览确认。</p><label>草稿 JSON<textarea v-model="importJson" rows="6" maxlength="128000" :disabled="!editable" /></label><label v-if="!session" class="ai-consent"><input v-model="consent" type="checkbox" />同意上方对话处理说明（仅导入不会调用 AI）。</label><button class="btn" :disabled="!editable || !importJson.trim() || !mode || (!session && !consent)" @click="importDraft">导入并校验草稿</button></details></div></section>
+      <section class="section ai-preview" aria-labelledby="ai-preview-title"><header class="section-title"><h2 id="ai-preview-title"><span>02</span> {{ isAdjustment ? '调整预览' : '草稿预览' }}</h2><span v-if="draft">{{ draft.items.length }} 项</span></header><div class="ai-preview-body"><template v-if="draft"><p class="helper-text">{{ aiModeNames[draft.mode] }} · {{ dirty ? '有未保存修改' : '已保存草稿' }}。此处编辑不会直接改变真实业务。</p><AiChangePreview v-if="session?.adjustment" :adjustment="session.adjustment" :draft="draft" /><AiDraftEditor :key="`${session?.id}:${session?.version}`" :draft="draft" :adjustment="session?.adjustment" :disabled="!editable" @change="changed" /><button class="btn" :disabled="!editable || !dirty" @click="saveDraft">保存草稿修改</button><template v-if="!session?.applied"><label class="ai-consent"><input v-model="confirmed" type="checkbox" :disabled="!editable || dirty || (isAdjustment && (!differences.length || queued !== 0))" />{{ isAdjustment ? '我已逐项核对前后差异，确认将建议应用到原对象，保留执行历史。' : `我已核对 ${draft.items.length} 项内容，确认创建新的${aiModeNames[draft.mode]}。` }}</label><button class="btn primary" :disabled="!editable || dirty || !confirmed || (isAdjustment && (!differences.length || queued !== 0))" @click="apply">{{ isAdjustment ? '确认应用修改' : '确认生成' }}</button></template></template><p v-else class="ai-empty">草稿会显示在这里。AI 需要先了解你的要求；也可以导入符合格式的外部 AI 草稿。</p><p v-if="session?.applied" class="ai-applied" role="status">{{ session.adjustment ? `已应用 ${session.applied.count} 处修改，原对象和执行历史保留` : `已生成 ${session.applied.count} 项内容` }}。<router-link v-if="resultPath" :to="resultPath">进入查看</router-link>。重复确认不会再次创建。</p><details v-if="!session?.applied" class="ai-import"><summary>导入外部 AI 草稿</summary><p class="helper-text">{{ isAdjustment ? '调整草稿须保留原事项和阶段的 localId；不得删除或改写受保护事项。请使用上方已载入的草稿结构，导入后核对差异。' : '使用计划舱 schemaVersion 1 JSON 格式，模式须与当前选择一致。导入后仍须预览确认。' }}</p><label>草稿 JSON<textarea v-model="importJson" rows="6" maxlength="128000" :disabled="!editable" /></label><label v-if="!session" class="ai-consent"><input v-model="consent" type="checkbox" />同意上方对话处理说明（仅导入不会调用 AI）。</label><button class="btn" :disabled="!editable || !importJson.trim() || !mode || (!session && !consent)" @click="importDraft">导入并校验草稿</button></details></div></section>
     </div>
   </div>
 </template>
