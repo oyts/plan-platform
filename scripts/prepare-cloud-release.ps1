@@ -1,7 +1,9 @@
-param([switch]$SkipTests)
+param([switch]$SkipTests, [ValidateSet('affected','full')][string]$TestScope = 'affected')
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
+. (Join-Path $PSScriptRoot 'release-test-scope.ps1')
+$affectedTests = if ($TestScope -eq 'affected' -and -not $SkipTests) { Get-ReleaseTestScope } else { $null }
 $portableNode = Join-Path $projectRoot '.desktop-tools/node22/node-v22.23.3-win-x64'
 if (Test-Path -LiteralPath "$portableNode/node.exe") { $env:PATH = "$portableNode;$env:PATH" }
 if (-not $env:JAVA_HOME -and (Test-Path 'E:/biancheng/JDK21/bin/java.exe')) { $env:JAVA_HOME = 'E:/biancheng/JDK21' }
@@ -12,12 +14,23 @@ $maven = (Get-Command mvn.cmd -ErrorAction SilentlyContinue).Source
 if (-not $maven -and (Test-Path 'E:/biancheng/maven/apache-maven-3.9.4-bin/apache-maven-3.9.4/bin/mvn.cmd')) { $maven = 'E:/biancheng/maven/apache-maven-3.9.4-bin/apache-maven-3.9.4/bin/mvn.cmd' }
 if (-not $maven) { throw 'Maven 3.9+ required.' }
 $arguments = @('-B','-f','backend/pom.xml','-Dplan.build.directory=target-acceptance','clean','package')
-if ($SkipTests) { $arguments += '-DskipTests' }
+if ($SkipTests -or ($TestScope -eq 'affected' -and -not @($affectedTests.backend).Count)) { $arguments += '-DskipTests' }
+elseif ($TestScope -eq 'affected') { $arguments += ('-Dtest=' + ($affectedTests.backend -join ',')) }
 & $maven @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Isolated API build failed.' }
-if (-not $SkipTests) { & npm.cmd --prefix web test; if ($LASTEXITCODE -ne 0) { throw 'Web tests failed.' } }
+if (-not $SkipTests) { Invoke-ReleaseFrontendTests $TestScope }
 & npm.cmd --prefix web run build
 if ($LASTEXITCODE -ne 0) { throw 'Web build failed.' }
+if (-not $SkipTests) {
+    $localBrowsers = Join-Path $projectRoot '.desktop-tools/playwright'
+    if (-not $env:PLAYWRIGHT_BROWSERS_PATH -and (Test-Path -LiteralPath $localBrowsers)) { $env:PLAYWRIGHT_BROWSERS_PATH = $localBrowsers }
+    $browserArguments = @('--prefix','web','run','test:e2e','--')
+    if ($TestScope -eq 'affected') { $browserArguments += @($affectedTests.browser) }
+    if ($TestScope -eq 'full' -or @($affectedTests.browser).Count) {
+        & npm.cmd @browserArguments
+        if ($LASTEXITCODE -ne 0) { throw 'Selected browser acceptance failed; no release archive prepared.' }
+    }
+}
 $version = (Get-Content web/package.json -Raw | ConvertFrom-Json).version
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Expected x.y.z release version.' }
 $output = Join-Path $projectRoot "production-artifacts/$version"

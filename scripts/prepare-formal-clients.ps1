@@ -1,4 +1,4 @@
-param([switch]$DirectMavenCentral)
+param([switch]$DirectMavenCentral, [ValidateSet('affected','full')][string]$TestScope = 'affected')
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
@@ -8,7 +8,7 @@ $version=(Get-Content web/package.json -Raw -Encoding UTF8 | ConvertFrom-Json).v
 $run=[DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')+'-'+[Guid]::NewGuid().ToString('N').Substring(0,8)
 $base=Join-Path $projectRoot "production-artifacts/client-release/$version/$run"
 foreach ($platform in @('windows','android')) {
-    $arguments=@('-NoProfile','-ExecutionPolicy','Bypass','-File','scripts/release-signing.ps1','-Action',"build-$platform",'-ArtifactDirectory',"$base/$platform")
+    $arguments=@('-NoProfile','-ExecutionPolicy','Bypass','-File','scripts/release-signing.ps1','-Action',"build-$platform",'-ArtifactDirectory',"$base/$platform",'-TestScope',$TestScope)
     if ($platform -eq 'android' -and $DirectMavenCentral) { $arguments+='-DirectMavenCentral' }
     & powershell @arguments
     if ($LASTEXITCODE -ne 0) { throw "Formal $platform build failed; partial candidate retained: $base" }

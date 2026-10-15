@@ -1,4 +1,4 @@
-param([string]$SshTarget = 'oyts@115.29.176.141', [string]$RemoteRoot = '/home/oyts/plan-platform')
+param([string]$SshTarget = 'oyts@115.29.176.141', [string]$RemoteRoot = '/home/oyts/plan-platform', [ValidateSet('affected','full')][string]$TestScope = 'affected')
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath (Split-Path $PSScriptRoot -Parent)
 if ($SshTarget -notmatch '^[a-zA-Z0-9_-]+@[a-zA-Z0-9.-]+$' -or $RemoteRoot -notmatch '^/(home/[a-zA-Z0-9_-]+|opt)/plan-platform$') { throw 'Unexpected SSH target or deployment root.' }
@@ -6,7 +6,7 @@ if (git status --porcelain) { throw 'Commit the tested release first. Existing c
 $version = (Get-Content web/package.json -Raw | ConvertFrom-Json).version
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Expected x.y.z release version.' }
 $commit = (git rev-parse --short=12 HEAD).Trim()
-& ./scripts/prepare-cloud-release.ps1
+& ./scripts/prepare-cloud-release.ps1 -TestScope $TestScope
 if ($LASTEXITCODE -ne 0) { throw 'Release verification failed; no upload performed.' }
 $archive = Join-Path (Get-Location) "production-artifacts/plan-platform-$version.tar.gz"
 if (-not (Test-Path -LiteralPath $archive)) { throw 'Run prepare-cloud-release.bat first.' }

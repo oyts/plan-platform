@@ -1,0 +1,8 @@
+{
+  "version": "0.1.9",
+  "reason": "Shared route scrolling and focus only; no backend or native bridge business changes.",
+  "frontendUnit": ["src/router/scroll.test.ts"],
+  "browser": ["e2e/navigation.spec.ts"],
+  "backend": [],
+  "android": []
+}

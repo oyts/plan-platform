@@ -4,7 +4,8 @@ param(
     [string]$BackupPath = '',
     [string]$BackupPassphraseFile = '',
     [switch]$Rehearsal,
-    [switch]$DirectMavenCentral
+    [switch]$DirectMavenCentral,
+    [ValidateSet('affected','full')][string]$TestScope = 'affected'
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -233,7 +234,7 @@ try {
         $env:PLAN_ANDROID_KEYSTORE = $keystore; $env:PLAN_ANDROID_KEY_ALIAS = 'plan-cabin-release'
         $env:PLAN_ANDROID_STORE_PASSWORD = $credentials.android; $env:PLAN_ANDROID_KEY_PASSWORD = $credentials.android
         $env:PLAN_ANDROID_UPDATE_URL = 'https://plan.zijun701.cn/api/client-updates/android/latest'
-        $androidArguments = @('-NoProfile','-ExecutionPolicy','Bypass','-File','scripts/android.ps1','-Action','release','-ArtifactDirectory',$output)
+        $androidArguments = @('-NoProfile','-ExecutionPolicy','Bypass','-File','scripts/android.ps1','-Action','release','-ArtifactDirectory',$output,'-TestScope',$TestScope)
         if ($DirectMavenCentral) { $androidArguments += '-DirectMavenCentral' }
         & powershell @androidArguments
     } else {
