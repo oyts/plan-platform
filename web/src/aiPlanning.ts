@@ -1,5 +1,19 @@
 export type AiMode = 'PLAN' | 'ROUTE' | 'TODO';
 export const aiModeNames: Record<AiMode, string> = { PLAN: '周期计划', ROUTE: '目标路线', TODO: '今日待办' };
+// Native auth restores after the router mounts so offline connection settings
+// remain reachable. Preserve only a validated AI deep link across that redirect.
+export function aiNativeResumePath(hash: string): string | null {
+  if (!hash.startsWith('#/ai')) return null;
+  try {
+    const url = new URL(hash.slice(1), 'https://native.invalid');
+    if (url.origin !== 'https://native.invalid' || url.pathname !== '/ai' || url.hash) return null;
+    for (const key of url.searchParams.keys()) if (!['session', 'mode', 'target'].includes(key) || url.searchParams.getAll(key).length !== 1) return null;
+    for (const key of ['session', 'target']) if (url.searchParams.has(key) && !/^[a-f0-9-]{36}$/.test(url.searchParams.get(key)!)) return null;
+    if (url.searchParams.has('mode') && !['PLAN', 'ROUTE', 'TODO'].includes(url.searchParams.get('mode')!)) return null;
+    if (url.searchParams.has('target') && !url.searchParams.has('mode')) return null;
+    return '/ai' + url.search;
+  } catch { return null; }
+}
 export interface AiItem { localId: string; title: string; note: string; dueDate: string | null; plannedMinutes: number; stageId: string | null; prerequisites: string[] }
 export interface AiDraft { schemaVersion: 1; mode: AiMode; revision: number; title: string; startDate: string | null; endDate: string | null; restDays: number[]; stages: { localId: string; title: string }[]; items: AiItem[] }
 export interface AiAdjustment { original: AiDraft; protectedItems: string[]; path: string }

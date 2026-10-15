@@ -11,11 +11,13 @@ import { initializeDesktop, isNativeClient as isDesktop, isAndroid } from './des
 import { initializeClientUpdates, checkClientUpdate } from './clientUpdates';
 import { workspace, workspaceEntry } from './workspace';
 import { workspaceHome } from './workspaceModel';
+import { aiNativeResumePath } from './aiPlanning';
 const app = createApp(App);
 const pinia = createPinia();
 app.use(pinia);
 async function bootstrap(): Promise<void> {
   await initializeDesktop();
+  const aiResume = isDesktop() ? aiNativeResumePath(location.hash) : null;
   await initializeClientUpdates();
   const auth = useAuthStore(pinia);
   if (!isDesktop()) await auth.bootstrap();
@@ -37,7 +39,7 @@ async function bootstrap(): Promise<void> {
   }
   if (isDesktop()) {
     await auth.bootstrap();
-    if (auth.user && router.currentRoute.value.path === '/login') await router.replace(await workspaceEntry());
+    if (auth.user && router.currentRoute.value.path === '/login') await router.replace(aiResume ?? await workspaceEntry());
     if (isAndroid() && auth.user) void checkClientUpdate();
   }
 }

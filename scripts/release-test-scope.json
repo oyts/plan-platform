@@ -1,7 +1,7 @@
 {
-  "version": "0.1.10",
-  "reason": "0.1.10 AI release: consented existing-object adjustment, immutable history, full snapshot/version conflict, diff/editor/queue protection, V17 snapshot and bounded context. AI creation, quota, transport and native upgrade/release boundaries directly affected. No unrelated business full regression.",
-  "frontendUnit": ["src/aiPlanning.test.ts", "src/aiAdjustment.test.ts", "src/aiTransport.test.ts"],
+  "version": "0.1.11",
+  "reason": "AI release: consented existing-object adjustment, immutable history, snapshot conflict, diff/editor/queue protection, V17 and bounded context. Native AI conversation deep-link restoration fixes the 0.1.10 acceptance finding. AI creation, quota, transport and native upgrade/release boundaries directly affected; no unrelated business full regression.",
+  "frontendUnit": ["src/aiPlanning.test.ts", "src/aiAdjustment.test.ts", "src/aiTransport.test.ts", "src/aiNativeResume.test.ts"],
   "browser": ["e2e/ai-adjustment.spec.ts", "e2e/ai-planning.spec.ts", "e2e/ai-foundation.spec.ts"],
   "backend": ["AiAdjustmentIntegrationTest", "AiConversationIntegrationTest", "DeepSeekProviderTest", "AiQuotaIntegrationTest", "AiFoundationTest", "AuthPlanIntegrationTest#idempotencyKeysReplayCompletedWritesAndRejectDifferentPayloads"],
   "android": []
