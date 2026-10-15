@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { chromium, expect as baseExpect } from '../web/node_modules/@playwright/test/index.mjs';
 import { PORTS, ANDROID_PACKAGE, selectDevice, validateManifest, verifyHash, sourceFingerprint, assertPortsFree, reportHtml } from './native-regression-support.mjs';
+import { exerciseLearning } from './learning-acceptance.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const releaseVersion=JSON.parse(await readFile(join(root,'web/package.json'),'utf8')).version;
 const releaseCode=Number((await readFile(join(root,'web/android/app/build.gradle'),'utf8')).match(/versionCode[^\n]*'([0-9]+)'/)?.[1]);
@@ -180,6 +181,9 @@ async function run() {
     expect((await webContext.cookies()).filter(cookie=>cookie.name==='plan_refresh').every(cookie=>cookie.secure&&cookie.httpOnly)).toBe(true);
   });
   const pc=clients[0], phone=clients[1];
+  await scenario('云端账号的三端教学：四节练习、原生重开与各端进度保存',async()=>{
+    for(const client of [pc,phone,web]) await exerciseLearning(client,expect,route,async(target,path)=>{if(target.kind==='web')await reload(target,path);else{await restart(target);await route(target,path);}});
+  });
   await scenario('PC 创建云端周期计划，手机与网页可见并交叉修改任务',async()=>{
     await pc.page.getByLabel('工作模式').selectOption('plan'); await route(pc,'/plans');
     await pc.page.getByLabel('计划名称',{exact:true}).fill(prefix+'周期计划');

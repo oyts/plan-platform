@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
 import { chromium, expect as baseExpect } from '../web/node_modules/@playwright/test/index.mjs';
 import { PORTS, ANDROID_PACKAGE, selectDevice, validateManifest, verifyHash, sourceFingerprint, assertPortsFree, createFaultProxy, reportHtml, junitXml } from './native-regression-support.mjs';
+import { exerciseLearning } from './learning-acceptance.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const artifactDir = join(root, '.desktop-tools/native-regression');
@@ -239,6 +240,12 @@ async function run() {
   const endDate = end.toISOString().slice(0, 10);
   await scenario('真实原生桥接、服务器配置与双端登录', async () => {
     for (const client of clients) await configure(client, owner);
+  });
+  await scenario('四节教学实际操作、保存重开与真实业务隔离', async () => {
+    for (const client of clients) await exerciseLearning(client, expect, route, async (target, path) => { await restart(target); await route(target, path); });
+    expect(await api('/plans', undefined, owner.token)).toEqual([]);
+    expect(await api('/mainlines', undefined, owner.token)).toEqual([]);
+    expect(await api(`/todos?from=${date}&to=${endDate}`, undefined, owner.token)).toEqual([]);
   });
   await scenario('UI 创建计划和任务，其他客户端可见；默认不把周末当休息日', async () => {
     await route(first, '/plans');
