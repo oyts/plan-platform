@@ -55,7 +55,7 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
     <ConnectionBar v-if="auth.user && !productPage" :key="auth.user.id" :busy="reconnecting" @reconnect="reconnect" />
     <ClientUpdateNotice v-if="!productPage" />
     <LearningPrompt v-if="auth.user && !productPage"/>
-    <main :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
+    <main tabindex="-1" :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
     <MobileNavigation v-if="auth.user && !productPage" @logout="logout"/>
   </div>
 </template>

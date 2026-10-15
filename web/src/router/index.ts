@@ -5,7 +5,8 @@ import { requiredClientUpdate, updateRouteAllowed } from '@/clientUpdates';
 import { observeWorkspacePath, workspaceEntry } from '@/workspace';
 import HomeEntryView from '@/views/HomeEntryView.vue';
 import ProductHomeView from '@/views/ProductHomeView.vue';
-const router = createRouter({ history: isDesktop() ? createWebHashHistory() : createWebHistory(), routes: [
+import { navigationScroll } from './scroll';
+const router = createRouter({ history: isDesktop() ? createWebHashHistory() : createWebHistory(), scrollBehavior: navigationScroll, routes: [
   { path: '/desktop', component: () => import('@/views/DesktopView.vue'), meta: { public: true, allowAuthenticated: true } },
   { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
   { path: '/register', component: () => import('@/views/RegisterView.vue'), meta: { public: true } },

@@ -6,6 +6,8 @@
 
 旧正式 Android 的临时匿名迁移窗口已于北京时间 **2026-10-15 02:17:33** 到期，旧匿名地址现已返回 404，不重新开放。已接入受限通道的客户端继续登录后更新；未迁移的旧版本需私下取得同包名、同签名的正式 APK。见 [迁移说明](docs/legacy-android-migration.md)。
 
+下一版开发：已在共享源码修复页面切换回顶、主内容焦点及异步列表的历史返回位置，保留模式记忆和原界面风格；尚未切换正式下载或更新源。范围和本地验证见 [导航体验优化](docs/navigation-experience.md)。
+
 0.1.4 已完成 HTTPS 新版部署、MySQL 备份恢复、加密签名备份、Windows 官网下载及更新源发布，见 [Windows 发布记录](docs/windows-public-release.md)。Android 继续只提供受邀测试 APK，官网下载等待 APP 备案，公开注册保持关闭，见 [受邀客户端测试](docs/invited-client-testing.md)。成员页手机卡片与底部编辑面板已进入共享源码，桌面保留表格，详见 [成员邀请手机验收](docs/mobile-members.md)。
 
 ## 当前状态
