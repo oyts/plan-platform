@@ -23,6 +23,7 @@ function Invoke-ReleaseFrontendTests([string]$Scope) {
         $arguments += '--'
         $arguments += @($plan.frontendUnit)
     }
-    & npm.cmd @arguments
+    if ($env:OS -eq 'Windows_NT') { & npm.cmd @arguments }
+    else { & npm @arguments }
     if ($LASTEXITCODE -ne 0) { throw 'Selected frontend tests failed.' }
 }

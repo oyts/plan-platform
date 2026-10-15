@@ -12,6 +12,8 @@ async function fixture(page:Page) {
     if(!path.startsWith('/api/')) return route.continue();
     if(path==='/api/auth/config') return route.fulfill({json:{apiVersion:1,serverVersion:'0.1.4',registrationEnabled:false,invitationEnabled:true,planRestDaysEnabled:true,todoEnabled:true}});
     if(path==='/api/auth/refresh') return route.fulfill({json:{accessToken:'layout-fixture-only',expiresInSeconds:3600,user}});
+    if(path==='/api/admin/ai/settings') return route.fulfill({json:{dailyLimit:0,version:0}});
+    if(path==='/api/admin/ai/users'||path==='/api/admin/ai/audit') return route.fulfill({json:{items:[],page:0,size:10,total:0}});
     if(path==='/api/admin/invitations'&&method==='GET') return route.fulfill({json:rows});
     if(path==='/api/admin/invitations'&&method==='POST') {
       const draft=route.request().postDataJSON();

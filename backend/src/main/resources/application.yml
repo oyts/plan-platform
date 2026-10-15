@@ -31,6 +31,15 @@ management:
 
 app:
   version: 0.1.9
+  ai:
+    enabled: ${AI_ENABLED:false}
+    model: ${AI_MODEL:deepseek-flash}
+    api-key-file: ${AI_API_KEY_FILE:}
+    max-input-chars: ${AI_MAX_INPUT_CHARS:8000}
+    max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:2048}
+    max-concurrent: ${AI_MAX_CONCURRENT:2}
+    queue-capacity: ${AI_QUEUE_CAPACITY:4}
+    timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
   android-updates:
     enabled: ${ANDROID_UPDATE_ENABLED:false}
     directory: ${ANDROID_UPDATE_DIRECTORY:}

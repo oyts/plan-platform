@@ -39,6 +39,7 @@ web/src-tauri/target/
 .desktop-tools/
 .desktop-signing/
 .release-signing/
+.ai-secrets/
 *.plan-signing-backup
 desktop-artifacts/
 client-update-artifacts/

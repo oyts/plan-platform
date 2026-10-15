@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { api, apiMessage } from '@/api/client';
 import type { Invitation } from '@/types';
 import AppSheet from '@/components/AppSheet.vue';
+import AiQuotaPanel from '@/components/AiQuotaPanel.vue';
 
 const rows = ref<Invitation[]>([]); const error = ref(''); const message = ref(''); const busy = ref(false); const oneTimeLink = ref(''); const draft = reactive({ email: '', expiresInHours: 168 });
 const creating = ref(false); const loading = ref(true);
@@ -27,6 +28,7 @@ onMounted(() => load().catch(reason => error.value = apiMessage(reason)).finally
       </template>
       <p v-else-if="!error" class="empty">还没有邀请记录。创建邀请后，受邀人可使用链接注册。</p>
     </section>
+    <AiQuotaPanel />
     <AppSheet :open="creating" title="创建邀请" title-id="invite-editor-title" :busy="busy" @close="creating = false"><form class="sheet-form invitation-editor" @submit.prevent="create">
       <p v-if="error" class="error-text" role="alert">{{ error }}</p><p v-if="message" class="helper-text" role="status">{{ message }}</p>
       <label>受邀邮箱<input v-model="draft.email" type="email" autocomplete="email" inputmode="email" required /></label><label>有效小时数<input v-model.number="draft.expiresInHours" type="number" min="1" max="720" inputmode="numeric" required /></label><p class="helper-text">邀请有效期为 1 至 720 小时，默认 7 天。</p>

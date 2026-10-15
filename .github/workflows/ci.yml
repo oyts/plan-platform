@@ -2,6 +2,15 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Test scope (full only for major releases or explicit investigation)'
+        type: choice
+        options: [affected, full]
+        default: affected
+env:
+  TEST_SCOPE: ${{ github.event.inputs.scope || 'affected' }}
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -9,8 +18,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21', cache: maven }
-      - run: mvn -B test
-        working-directory: backend
+      - name: Selected backend tests
+        shell: pwsh
+        run: |
+          . ./scripts/release-test-scope.ps1
+          $plan = Get-ReleaseTestScope
+          if ($env:TEST_SCOPE -eq 'full') { mvn -B -f backend/pom.xml test }
+          elseif (@($plan.backend).Count) { mvn -B -f backend/pom.xml "-Dtest=$($plan.backend -join ',')" test }
+          else { mvn -B -f backend/pom.xml -DskipTests package }
+          if ($LASTEXITCODE -ne 0) { throw 'Selected backend validation failed.' }
   web:
     runs-on: ubuntu-latest
     steps:
@@ -24,8 +40,11 @@ jobs:
       - run: node --test scripts/formal-release.test.mjs scripts/windows-public-release.test.mjs scripts/client-static-config.test.mjs scripts/retain-windows-releases.test.mjs
       - run: npm run build
         working-directory: web
-      - run: npm test
-        working-directory: web
+      - name: Selected frontend tests
+        shell: pwsh
+        run: |
+          . ./scripts/release-test-scope.ps1
+          Invoke-ReleaseFrontendTests $env:TEST_SCOPE
   browser-acceptance:
     runs-on: ubuntu-latest
     steps:
@@ -44,6 +63,16 @@ jobs:
         working-directory: web
       - run: node scripts/check-pwa.mjs
         working-directory: web
-      - run: npm run test:e2e
-        working-directory: web
+      - name: Selected browser tests
+        shell: pwsh
+        run: |
+          . ./scripts/release-test-scope.ps1
+          $plan = Get-ReleaseTestScope
+          if ($env:TEST_SCOPE -eq 'full') { npm --prefix web run test:e2e }
+          elseif (@($plan.browser).Count) {
+            $selected = @('--prefix', 'web', 'run', 'test:e2e', '--') + @($plan.browser)
+            & npm @selected
+          }
+          else { Write-Host 'No browser business changes selected.'; exit 0 }
+          if ($LASTEXITCODE -ne 0) { throw 'Selected browser validation failed.' }
       # Traces can contain test session tokens; do not upload them to public artifacts.
