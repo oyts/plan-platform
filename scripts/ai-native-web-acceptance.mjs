@@ -56,10 +56,15 @@ async function exercise(client){
       adjustmentId=new URLSearchParams(location).get('session');expect(adjustmentId).toMatch(/^[a-f0-9-]{36}$/);
       const title=draft.items[0].title+'－新节奏';
       await client.page.getByLabel('任务标题',{exact:true}).fill(title);
+      const addedTitle='新增合成事项 '+randomUUID().slice(0,8);
+      await client.page.getByRole('button',{name:'添加步骤',exact:true}).click();
+      await client.page.getByLabel('任务标题',{exact:true}).nth(1).fill(addedTitle);
+      await expect(client.page.getByRole('region',{name:'调整前后对照'})).toContainText('新增');
       await expect(client.page.getByRole('button',{name:'确认应用修改',exact:true})).toBeDisabled();
       await client.page.getByRole('button',{name:'保存草稿修改',exact:true}).click();
       await expect(client.page.getByRole('status').filter({hasText:'调整草稿已保存'})).toBeVisible();
-      await client.page.reload();await expect(client.page.getByLabel('任务标题',{exact:true})).toHaveValue(title);
+      await client.page.reload();await expect(client.page.getByLabel('任务标题',{exact:true}).nth(0)).toHaveValue(title);
+      await expect(client.page.getByLabel('任务标题',{exact:true}).nth(1)).toHaveValue(addedTitle);
       await expect(client.page.getByRole('region',{name:'调整前后对照'})).toContainText('新节奏');
       await client.page.screenshot({path:join(out,client.kind+'-'+mode+'-preview.png'),fullPage:true});
       await client.page.getByRole('checkbox',{name:/我已逐项核对前后差异/}).check();await client.page.getByRole('button',{name:'确认应用修改',exact:true}).click();
@@ -68,6 +73,8 @@ async function exercise(client){
       if(mode==='TODO')expect((await api('/todos?from='+today+'&to='+today)).find(x=>x.id===target).title).toBe(title);
       if(mode==='ROUTE')expect((await api('/mainlines')).find(x=>x.id===target).items[0].title).toBe(title);
       if(mode==='PLAN')expect((await api('/plans/'+target+'/tasks')).find(x=>x.title===title)).toBeTruthy();
+      const items=mode==='TODO'?await api('/todos?from='+today+'&to='+today):mode==='ROUTE'?(await api('/mainlines')).find(x=>x.id===target).items:await api('/plans/'+target+'/tasks');
+      expect(items.find(x=>x.title===addedTitle)).toBeTruthy();
     });
     if(adjustmentId){const s=await api('/ai/sessions/'+adjustmentId);await api('/ai/sessions/'+adjustmentId+'?version='+s.version,undefined,'DELETE',204);}
   }
