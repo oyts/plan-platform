@@ -1,16 +1,11 @@
 {
-  "version": "0.1.11",
-  "reason": "AI release: consented existing-object adjustment, immutable history, snapshot conflict, diff/editor/queue protection, V17 and bounded context. Native AI conversation deep-link restoration fixes the 0.1.10 acceptance finding. AI creation, quota, transport and native upgrade/release boundaries directly affected; no unrelated business full regression.",
-  "frontendUnit": ["src/aiPlanning.test.ts", "src/aiAdjustment.test.ts", "src/aiTransport.test.ts", "src/aiNativeResume.test.ts"],
-  "browser": ["e2e/ai-adjustment.spec.ts", "e2e/ai-planning.spec.ts", "e2e/ai-foundation.spec.ts"],
-  "backend": ["AiAdjustmentIntegrationTest", "AiConversationIntegrationTest", "DeepSeekProviderTest", "AiQuotaIntegrationTest", "AiFoundationTest", "AuthPlanIntegrationTest#idempotencyKeysReplayCompletedWritesAndRejectDifferentPayloads"],
+  "version": "0.1.12",
+  "reason": "AI hands-on lesson, backwards-compatible v1 learning progress and non-executing pacing suggestions. Validate only learning lifecycle and affected adjustment flow including one two-week history-preserving pacing example; no unrelated business full regression or automatic paid calls.",
+  "frontendUnit": ["src/learningModel.test.ts", "src/learning.test.ts", "src/aiPacing.test.ts"],
+  "browser": ["e2e/learning-ai.spec.ts", "e2e/learning.spec.ts", "e2e/ai-adjustment.spec.ts"],
+  "backend": ["AiAdjustmentIntegrationTest#twoWeekPacingPreservesHistoryAndAppliesOnlyPendingChanges"],
   "android": [],
   "nativeAcceptance": [
-    "scripts/ai-native-web-acceptance.mjs --android-only: PLAN/ROUTE/TODO adjustment, explicit consent and confirmation, draft reload, cloud result verification, quota-zero fallback",
-    "scripts/ai-native-web-acceptance.mjs --android-only --creation-only: three-mode free import, manual draft edit, reload and confirmed creation",
-    "scripts/android-ai-formal-acceptance.py: signed formal cover upgrade session, AI entry, affected mode navigation and restart; --update-only checks protected source without repeating business tests",
-    "scripts/ai-official-client-acceptance.mjs: explicit --official campaign, persistent five-request bound across Web/Rust/Java, recommendation, three-mode generation, revision, resume, confirmation and exact quota accounting",
-    "scripts/verify-ai-official-results.mjs: read-only fresh web visibility of records created on all clients, inherited default20, used5/pending0/remaining15 and ordinary-user admin denial",
-    "node --test scripts/ai-official-client-acceptance.test.mjs: free paid-budget validation, known platforms, no repeated started/completed campaign and invalid-count denial"
+    "Pending 0.1.12 signed EXE/APK candidates: AI lesson and pacing suggestions only; do not reuse 0.1.11 device evidence or publish unaccepted APKs."
   ]
 }

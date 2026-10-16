@@ -9,7 +9,7 @@ test('first contact can be dismissed independently, recalled and is absent from 
   const user=await account(request);await login(page,user.email);await page.goto('/plans');
   const prompt=page.getByLabel('首次使用教学');await expect(prompt).toContainText('第一次使用周期计划');await prompt.getByRole('button',{name:'稍后再看'}).click();await expect(prompt).toHaveCount(0);
   await page.reload();await expect(page.locator('.site-header')).toBeVisible();await expect(prompt).toHaveCount(0);await page.goto('/todos');await expect(prompt).toContainText('第一次使用今日待办');await prompt.getByRole('link',{name:'开始教学'}).click();await expect(page).toHaveURL(/\/learn\/todo$/);
-  await page.goto('/learn');await expect(page.getByRole('heading',{name:'使用教学',exact:true})).toBeVisible();await expect(page.locator('.lesson-card')).toHaveCount(4);
+  await page.goto('/learn');await expect(page.getByRole('heading',{name:'使用教学',exact:true})).toBeVisible();await expect(page.locator('.lesson-card')).toHaveCount(5);
 });
 test('all four hands-on lessons require actions, survive reload and never write business data',async({page,request},info)=>{
   const user=await account(request);await login(page,user.email);const mutations:string[]=[];

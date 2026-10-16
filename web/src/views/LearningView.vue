@@ -4,6 +4,7 @@ import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router';
 import { advanceLesson, bindLearning, dismissLesson, learning, practiceLesson, previousLesson, restartLesson } from '@/learning';
 import { freshPractice, isLesson, lessons, stepReady, type LessonId, type Practice } from '@/learningModel';
 import RestDaysPicker from '@/components/RestDaysPicker.vue';
+import AiLearningPractice from '@/components/AiLearningPractice.vue';
 const route = useRoute(); const busy = ref(false); const title = ref<HTMLElement>(); const draft = ref<Practice>(freshPractice());
 const lesson = computed(() => lessons.find(item => item.id === route.params.lesson));
 const progress = computed(() => lesson.value ? learning.progress[lesson.value.id] : null);
@@ -25,6 +26,7 @@ async function back() { if (!lesson.value || busy.value) return; busy.value = tr
 async function restart(id: LessonId) { busy.value = true; try { await restartLesson(id); draft.value = freshPractice(); saved.value = ''; await nextTick(); title.value?.focus(); } finally { busy.value = false; } }
 function scheduleExample() { draft.value.rescheduled = true; }
 const hints = computed(() => {
+  if (lesson.value?.id === 'ai') return ['用大白话说明目标、每次有多少时间、是否有期限。先阅读说明，再由你确认模式；推荐不是自动决定。', '示例回复只是草稿。亲手修改一处标题，学习先预览再调整；此练习不会调用收费 API。', '真实生成需要核对内容、勾选确认并点击“确认生成”。在此之前，AI 回复不会自动变成真实任务。', '从具体对象进入调整，先核对保留内容和修改内容。已经完成或有执行历史的事项受到保护；确认之前不会写入原计划。'];
   if (lesson.value?.id === 'plan') return ['给练习起个名称，选一个不超过 31 天的日期范围。真实计划可以更长。', '为这次练习至少选一天休息、留一天计划日。真实计划可以不设休息日，星期六和星期日不会默认休息。', '在周期内选一个非休息日，安排一条阅读任务。真实任务在计划的任务页添加；日程会按日期显示。', '勾选完成，看看进度如何改变。真实使用时也可以记录实际用时，再在统计与复盘中回顾。'];
   if (lesson.value?.id === 'route') return ['写下长期目标，例如“学会弹奏一首歌”。路线不要求每天执行，也不用设置结束日期。', '给一组步骤起阶段名称，例如“认识吉他”。阶段把相关步骤归在一起，不等同于某一天。', '这次选择明确依赖：先认识琴弦，再练习单音。真实路线支持灵活推进；只有设了前置依赖的步骤才要等待。', '完成前置步骤后，后一个步骤就可以开始。有空做一两步，忙的时候暂停，不会变成逾期的每日任务。'];
   if (lesson.value?.id === 'todo') return ['输入一件小事，例如“寄出资料”。待办不属于周期计划或目标路线。', '加一句提示，例如“确认收件地址”。真实使用也可以留空备注。', '勾选表示已经完成。真实待办默认只显示未完成，切换“状态”到“已完成”或“全部”可找回。', '临时改期很常见：在练习中取消完成并改到明天。真实页面中点击“编辑”，调整“安排日期”；随后切换查看日期。'];
@@ -67,6 +69,7 @@ const hints = computed(() => {
               <div v-else-if="step === 2" class="practice-record"><strong>{{ draft.task }}</strong><p>{{ draft.note }}</p><label class="check"><input v-model="draft.done" type="checkbox"/>完成练习待办</label><p aria-live="polite">{{ draft.done ? '已完成，可在已完成列表查看' : '未完成' }}</p></div>
               <div v-else class="practice-record"><strong>{{ draft.task }}</strong><p>{{ draft.rescheduled ? '安排：明天 · 未完成' : '安排：今天 · 已完成' }}</p><button type="button" class="btn" @click="scheduleExample">取消完成并改到明天（练习）</button></div>
             </template>
+            <AiLearningPractice v-else-if="lesson.id === 'ai'" v-model="draft" :step="step" />
             <template v-else>
               <label v-if="step === 0" class="check"><input v-model="draft.cached" type="checkbox"/>已在练习中联网打开这条任务</label>
               <template v-else-if="step === 1"><p>模拟离线：把“阅读”改为“阅读 20 分钟”。</p><button type="button" class="btn" @click="draft.queued = true">模拟离线保存</button><p aria-live="polite">{{ draft.queued ? '1 项本地操作 · 0 项冲突，其他设备尚未收到' : '0 项本地操作' }}</p></template>

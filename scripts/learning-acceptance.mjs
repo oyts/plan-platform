@@ -35,6 +35,9 @@ export async function exerciseLearning(client, expect, navigate, reopen) {
   await start('sync', '准备离线'); await page.getByLabel('已在练习中联网打开这条任务').check(); await next();
   await page.getByRole('button', { name: '模拟离线保存', exact: true }).click(); await next(); await page.getByRole('button', { name: '查看两份内容', exact: true }).click(); await next();
   await page.getByLabel('保留云端版本（练习）').check(); await finish('离线与同步');
-  await reopen(client, '/learn'); page = client.page; await expect(page.getByText('已完成，可随时重学', { exact: true })).toHaveCount(4);
+  await reopen(client, '/learn'); page = client.page;
+  // This legacy scope exercises four courses only; a separately completed AI
+  // lesson must not turn a successful result into a spurious count failure.
+  for (const title of ['周期计划','目标路线','今日待办','离线与同步']) await expect(page.locator('.lesson-card').filter({has:page.getByRole('heading',{name:title,exact:true})}).getByText('已完成，可随时重学',{exact:true})).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 }

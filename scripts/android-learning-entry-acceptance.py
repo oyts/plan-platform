@@ -8,7 +8,7 @@ spec=importlib.util.spec_from_file_location('upgrade',Path(__file__).with_name('
 upgrade=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(upgrade)
 ui=upgrade.ui
-ui.LABELS.update({'使用教学','全部课程','离线与同步'})
+ui.LABELS.update({'使用教学','全部课程','离线与同步','AI 规划'})
 
 def main():
     parser=argparse.ArgumentParser()
@@ -16,16 +16,18 @@ def main():
     parser.add_argument('--expected-version',required=True)
     parser.add_argument('--expected-code',required=True,type=int)
     args=parser.parse_args()
+    courses=[('周期计划','练习计划名称'),('目标路线','练习目标名称'),('今日待办','练习待办标题'),('离线与同步','已在练习中联网打开这条任务')]
+    if tuple(map(int,args.expected_version.split('.'))) >= (0,1,12):courses.append(('AI 规划','练习目标'))
     device=ui.Device(args.serial)
     device.foreground()
     upgrade.verify_version(device.adb('shell','dumpsys','package',ui.PACKAGE),args.expected_version,args.expected_code)
     before=upgrade.sync_state(device)
     upgrade.menu(device,'使用教学')
-    nodes=upgrade.wait(device,lambda n:any(v.get('text')=='选择教学' or v.get('content-desc')=='选择教学' for v in n) or sum(v.get('text')=='开始练习' for v in n)==4,'Four teaching cards')
-    for title in ['周期计划','目标路线','今日待办','离线与同步']:
+    nodes=upgrade.wait(device,lambda n:any(v.get('text')=='选择教学' or v.get('content-desc')=='选择教学' for v in n) or sum(v.get('text')=='开始练习' for v in n)==len(courses),'Teaching cards')
+    for title,_ in courses:
         if not any(v.get('text')==title for v in nodes):raise RuntimeError('A teaching course is missing.')
     result={'version':args.expected_version,'versionCode':args.expected_code,'scope':'Installed formal APK, read-only teaching navigation; full interactions covered separately in isolated native regression','courses':[]}
-    for title,marker in [('周期计划','练习计划名称'),('目标路线','练习目标名称'),('今日待办','练习待办标题'),('离线与同步','已在练习中联网打开这条任务')]:
+    for title,marker in courses:
         upgrade.reveal(device,title,'up')
         device.click(title)
         nodes=upgrade.wait(device,lambda n:any(v.get('text')==marker for v in n),'Teaching exercise '+title)
@@ -33,7 +35,7 @@ def main():
         result['courses'].append(title)
     upgrade.reveal(device,'全部课程','up')
     device.click('全部课程')
-    upgrade.wait(device,lambda n:sum(v.get('text')=='开始练习' for v in n)==4,'Return to four courses')
+    upgrade.wait(device,lambda n:sum(v.get('text')=='开始练习' for v in n)==len(courses),'Return to courses')
     after=upgrade.sync_state(device)
     if before!=after:raise RuntimeError('Read-only teaching navigation changed the queue.')
     result.update(status='PASS',queueBefore=before,queueAfter=after)

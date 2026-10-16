@@ -117,6 +117,29 @@ class AiAdjustmentIntegrationTest {
         sessions.apply(owner,ready.id(),ready.version(),true);
         assertEquals("2026-11-07",db.queryForObject("SELECT end_date FROM plans WHERE owner_id=?",String.class,owner));
     }
+    @Test void twoWeekPacingPreservesHistoryAndAppliesOnlyPendingChanges() throws Exception {
+        String id=fixture(AiDrafts.Mode.PLAN);
+        db.update("UPDATE plans SET start_date='2026-10-12',end_date='2026-10-25' WHERE id=?",id);
+        String completed=db.queryForObject("SELECT id FROM plan_tasks WHERE plan_id=? AND sort_order=1",String.class,id);
+        String pending=db.queryForObject("SELECT id FROM plan_tasks WHERE plan_id=? AND sort_order=2",String.class,id);
+        db.update("UPDATE task_progress SET status='COMPLETED',completed_at=CURRENT_TIMESTAMP,note='原完成记录',version=version+1 WHERE task_id=?",completed);
+        var initial=sessions.createAdjustment(owner,AiDrafts.Mode.PLAN,id,true);
+        var proposal=draft(initial);proposal.put("endDate","2026-11-01");
+        for(var n:proposal.withArray("items"))if(!initial.adjustment().protectedItems().contains(n.path("localId").asText()))((ObjectNode)n).put("dueDate","2026-10-26").put("plannedMinutes",15).put("note","放慢后的练习");
+        var ready=save(initial,proposal);
+        assertEquals("2026-10-25",db.queryForObject("SELECT end_date FROM plans WHERE id=?",String.class,id));
+        assertEquals(30,db.queryForObject("SELECT planned_minutes FROM plan_tasks WHERE id=?",Integer.class,pending));
+        var applied=sessions.apply(owner,ready.id(),ready.version(),true);
+        assertEquals(applied,sessions.apply(owner,ready.id(),ready.version(),true));
+        assertEquals("2026-11-01",db.queryForObject("SELECT end_date FROM plans WHERE id=?",String.class,id));
+        assertEquals("2026-10-26",db.queryForObject("SELECT task_date FROM plan_tasks WHERE id=?",String.class,pending));
+        assertEquals(15,db.queryForObject("SELECT planned_minutes FROM plan_tasks WHERE id=?",Integer.class,pending));
+        assertEquals("2026-10-16",db.queryForObject("SELECT task_date FROM plan_tasks WHERE id=?",String.class,completed));
+        assertEquals(30,db.queryForObject("SELECT planned_minutes FROM plan_tasks WHERE id=?",Integer.class,completed));
+        assertEquals("原完成记录",db.queryForObject("SELECT note FROM task_progress WHERE task_id=?",String.class,completed));
+        assertEquals(2,db.queryForObject("SELECT COUNT(*) FROM plan_tasks WHERE plan_id=?",Integer.class,id));
+        assertEquals(0,quotas.usage(owner).used());
+    }
     @Test void newStepsAndStagesAreAtomicAndDependenciesMapToRealIds() throws Exception {
         String id=fixture(AiDrafts.Mode.ROUTE);var initial=sessions.createAdjustment(owner,AiDrafts.Mode.ROUTE,id,true);var proposal=draft(initial);
         proposal.withArray("stages").add(mapper.createObjectNode().put("localId","new_stage").put("title","新阶段"));

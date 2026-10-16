@@ -71,3 +71,21 @@ test('pending local operations block snapshot capture without clearing the queue
   },user.id);
   await page.getByRole('checkbox',{name:/我同意将所选对象/}).check();await expect(page.getByRole('button',{name:'载入所选内容（不调用 AI）'})).toBeDisabled();await expect(page.getByRole('status').filter({hasText:'本机仍有'})).toContainText('1 项');expect(counts.adjustments).toBe(0);
 });
+test('pacing examples only fill the message and protect an unsent request',async({page},info)=>{
+  const counts=await fixture(page,'PLAN');await page.goto(`/ai?mode=PLAN&target=${target}`);
+  await page.getByRole('checkbox',{name:/我同意将所选对象/}).check();await page.getByRole('button',{name:'载入所选内容（不调用 AI）'}).click();
+  const guide=page.getByRole('region',{name:'调整节奏指南'});
+  await expect(guide).toContainText('其中 1 项有执行历史');
+  await guide.getByRole('button',{name:'周期延长一周'}).click();
+  await expect(page.getByLabel('你的目标或修改要求')).toHaveValue(/2026-11-07/);
+  await expect(page.getByLabel('你的目标或修改要求')).toHaveValue(/保持原休息日/);
+  expect(counts.jobs).toBe(0);expect(counts.applies).toBe(0);
+  page.once('dialog',d=>d.dismiss());await guide.getByRole('button',{name:'每项缩短到15分钟'}).click();
+  await expect(page.getByLabel('你的目标或修改要求')).toHaveValue(/2026-11-07/);
+  page.once('dialog',d=>d.accept());await guide.getByRole('button',{name:'每项缩短到15分钟'}).click();
+  await expect(page.getByLabel('你的目标或修改要求')).toHaveValue(/15分钟/);
+  await expect(page.getByLabel('任务标题',{exact:true}).first()).toBeDisabled();
+  await guide.scrollIntoViewIfNeeded();expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({path:info.outputPath('ai-pacing-guide.png'),fullPage:true});
+  expect(counts.jobs).toBe(0);expect(counts.applies).toBe(0);
+});
