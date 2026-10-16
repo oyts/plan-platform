@@ -1,6 +1,6 @@
 # 计划舱 0.1.11 AI 规划发布记录
 
-Web 和 API 已在 `https://plan.zijun701.cn` 升级到 0.1.11，AI 已启用，默认每日额度为 0。Windows 正式签名包已完成保留数据覆盖安装，官网与可选更新源发布 0.1.11。Android 同身份正式候选为 0.1.11、构建 16，尚待 USB 真机验收，受限更新源继续保留 0.1.9、构建 14；官网 APK、二维码和公开注册保持关闭。
+Web 和 API 已在 `https://plan.zijun701.cn` 升级到 0.1.11，AI 已启用，默认每日额度为 0。Windows 正式签名包已完成保留数据覆盖安装，官网与可选更新源发布 0.1.11。Android 同身份正式包为 0.1.11、构建 16，2026 年 10 月 16 日已完成 USB 真机定向验收并发布到登录受限更新源；官网 APK、二维码和公开注册保持关闭。
 
 ## 本版功能
 
@@ -32,7 +32,8 @@ AI 仅自动附带所选对象的必要内容和当前对话，不扫描全账�
 | MySQL 8.4 V17、三模式调整、历史保护、所有权、409、重放、整批回滚 | 独立候选通过 |
 | 新增 DeepSeek 官方调用 | 3 次均成功，仅合成内容，提交前记账，无自动重试；原有 5 次新建规划验收未重跑 |
 | 生产备份恢复、V13 → V17、旧镜像回退 | 独立恢复库通过，全部原有业务表校验和不变 |
-| Android 正式身份、构建号、签名、内置受限更新地址 | 通过；尚未真机安装或业务验收 |
+| Android 正式身份、构建号、签名、内置受限更新地址 | 通过；同哈希 APK 已完成保留登录覆盖安装、重开和更新检查 |
+| Android 真机 AI 定向业务 | 独立测试包真实 Java HTTPS 7 项通过，正式包只读 6 项及发布后更新检查 1 项通过 |
 
 8 项真实云端界面测试包括三种模式修改原事项和追加新事项、差异预览、保存、重载、确认写入，以及零额度时的免费手动路径。Windows 使用独立回归身份与真实 Rust 请求桥，不修改正式应用数据；测试账号通过真实受邀账号 API 认证，不自动填写用户登录窗口。
 
@@ -69,17 +70,34 @@ mv -T /home/oyts/plan-platform/current.rollback-0111 /home/oyts/plan-platform/cu
 正式候选目录为 `production-artifacts/client-release/0.1.11/20261015T203153Z-fcb5a6c1`。
 
 - Windows：`windows/Plan Cabin_0.1.11_x64-setup.exe`，3485846 字节，SHA256 `a8c37532532db6fbb41b77848fdac3d10a854559927e6ef1d9d67d5dddeb1b10`。
-- Android：`android/PlanCabin-0.1.11-release.apk`，构建 16，SHA256 `e2782154be61b1441676be79846e972d9114d2885cf976a7f1d512405fa02e71`。此时只是待验收候选，不向朋友分发，不放入更新源。
+- Android：`android/PlanCabin-0.1.11-release.apk`，构建 16，SHA256 `e2782154be61b1441676be79846e972d9114d2885cf976a7f1d512405fa02e71`。真机验收后同一文件已发布到登录受限更新源，可供受邀测试；不上传 GitHub 公共附件，不开放官网 APK。
 - Windows 使用保留的更新公钥验签；APK 包名仍为 `cn.zijun701.plan.app`，使用原正式证书，不能用旧测试身份或调试包替代。
 
-## 早上继续 Android 验收
+## Android 真机验收与受限发布
 
-手机 USB 连接、解锁并由用户确认系统安装后，仅验收本次新增内容：
+2026 年 10 月 16 日使用已授权的 vivo V2426A、Android 15 完成本次新增内容的验收，没有重跑旧业务全量回归。
 
-1. 同包名同证书覆盖安装，原账号、计划、休息日与队列保留，关闭重开仍登录；有未同步操作时不得清空。
-2. AI 三模式入口、隐私同意、草稿编辑、保存重开与确认；已有对象的差异预览和历史保护，确认后 PC 和网页可见修改。
-3. 零额度和断网时提示清楚，手动功能可用；AI 不进入离线付费重放。使用专用合成账号，不改管理员真实计划。
-4. 只在需要真实对话时，由管理员为合成账号授予少量次数；先记录请求上限，不重复夜间已完成的付费验收。
-5. 真机通过后才将这一份相同哈希的正式 APK 发布到登录受限更新通道，并给受邀朋友使用。官网 APK、二维码与公开注册继续关闭。
+正式 APK 从 0.1.9、构建 14 通过 `adb install -r` 覆盖到 0.1.11、构建 16；同包名同证书，不卸载、不清数据。原账号自动恢复，三种模式无连接错误，AI 入口与隐私说明可见，进程关闭重开后仍登录。同步队列升级前后均为 0 项、0 冲突；本次没有验证非空队列跨升级，不将空队列等同于该项验收，也没有改写原计划、休息日或同步队列。
 
-夜间未运行 Android 真机，不能称三端均已验收或受限 Android 更新源已是 0.1.11。
+独立回归包与正式包并存，使用同版业务源码、真实 Java 请求桥和云端受邀合成普通账号。7 项通过包括三模式的所选对象同意载入、差异预览、手改和追加、保存重载、确认应用；三模式的免费外部草稿导入、手改、重开和确认生成；以及零额度下禁止付费请求、保留手动降级。云端接口逐项核对生成与修改结果，手机横向溢出不超过 1 像素。没有改真实账号业务数据，未新增 DeepSeek 付费调用。断网与历史保护的既有后端／浏览器证据沿用，本轮未在手机上重复其全部场景。
+
+通过后将同一哈希 APK 发布到登录受限源。两个普通受邀账号均通过清单身份绑定、APK 大小／哈希和私有不缓存检查；未登录或无效凭据均不能获取清单和 APK，公共 APK／旧静态源保持 404，官网清单 `android=null`，公开注册关闭。正式手机再点击检查更新，显示当前最新版本，自动下载仍未勾选。本次是覆盖安装加更新检查，不称为从旧版应用内下载安装的重测。
+
+本机证据（均被 Git 忽略，不上传账号、图片或日志）为：
+
+- 调整及零额度：`acceptance-results/ai-native-web/2026-10-16T06-22-42-121Z-3d3100/report.json`。
+- 新建导入：`acceptance-results/ai-native-web/2026-10-16T06-27-47-040Z-f7e586/report.json`。
+- 正式包只读与重开：`acceptance-results/android-ai-formal/20261016T062952Z/report.json`。
+- 鉴权更新源：`acceptance-results/invited-android/2026-10-16T06-31-35-254Z-021bc132/report.json`。
+- 正式包更新检查：`acceptance-results/android-ai-formal/20261016T063252Z/report.json`。
+
+失败的脚本定位、WebView 连接及网络中间记录保留，以上是修正测试驱动后的成功轮次，产品代码与正式 APK 字节未因此更改。新增定向驱动支持以下命令（先构建并安装当前独立回归 APK；`--serial` 替换为实际授权设备）：
+
+```powershell
+node scripts/ai-native-web-acceptance.mjs --android-only --serial DEVICE_SERIAL
+node scripts/ai-native-web-acceptance.mjs --android-only --creation-only --serial DEVICE_SERIAL
+python scripts/android-ai-formal-acceptance.py --serial DEVICE_SERIAL --expected-version 0.1.11 --expected-code 16
+python scripts/android-ai-formal-acceptance.py --serial DEVICE_SERIAL --expected-version 0.1.11 --expected-code 16 --update-only
+```
+
+受限源回滚只恢复前一清单和挂载配置，不降级手机或数据库：在服务器执行 `sh /home/oyts/plan-platform/android-private/staging/android-16-4de73032/rollback.sh`。已发布的 Windows GitHub 附件及 `v0.1.11` 标签不重写，Android 验收记录作为后续提交推送。

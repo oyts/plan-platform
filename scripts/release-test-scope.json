@@ -4,5 +4,10 @@
   "frontendUnit": ["src/aiPlanning.test.ts", "src/aiAdjustment.test.ts", "src/aiTransport.test.ts", "src/aiNativeResume.test.ts"],
   "browser": ["e2e/ai-adjustment.spec.ts", "e2e/ai-planning.spec.ts", "e2e/ai-foundation.spec.ts"],
   "backend": ["AiAdjustmentIntegrationTest", "AiConversationIntegrationTest", "DeepSeekProviderTest", "AiQuotaIntegrationTest", "AiFoundationTest", "AuthPlanIntegrationTest#idempotencyKeysReplayCompletedWritesAndRejectDifferentPayloads"],
-  "android": []
+  "android": [],
+  "nativeAcceptance": [
+    "scripts/ai-native-web-acceptance.mjs --android-only: PLAN/ROUTE/TODO adjustment, explicit consent and confirmation, draft reload, cloud result verification, quota-zero fallback",
+    "scripts/ai-native-web-acceptance.mjs --android-only --creation-only: three-mode free import, manual draft edit, reload and confirmed creation",
+    "scripts/android-ai-formal-acceptance.py: signed formal cover upgrade session, AI entry, affected mode navigation and restart; --update-only checks protected source without repeating business tests"
+  ]
 }
