@@ -8,6 +8,9 @@
   "nativeAcceptance": [
     "scripts/ai-native-web-acceptance.mjs --android-only: PLAN/ROUTE/TODO adjustment, explicit consent and confirmation, draft reload, cloud result verification, quota-zero fallback",
     "scripts/ai-native-web-acceptance.mjs --android-only --creation-only: three-mode free import, manual draft edit, reload and confirmed creation",
-    "scripts/android-ai-formal-acceptance.py: signed formal cover upgrade session, AI entry, affected mode navigation and restart; --update-only checks protected source without repeating business tests"
+    "scripts/android-ai-formal-acceptance.py: signed formal cover upgrade session, AI entry, affected mode navigation and restart; --update-only checks protected source without repeating business tests",
+    "scripts/ai-official-client-acceptance.mjs: explicit --official campaign, persistent five-request bound across Web/Rust/Java, recommendation, three-mode generation, revision, resume, confirmation and exact quota accounting",
+    "scripts/verify-ai-official-results.mjs: read-only fresh web visibility of records created on all clients, inherited default20, used5/pending0/remaining15 and ordinary-user admin denial",
+    "node --test scripts/ai-official-client-acceptance.test.mjs: free paid-budget validation, known platforms, no repeated started/completed campaign and invalid-count denial"
   ]
 }

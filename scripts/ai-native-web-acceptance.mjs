@@ -8,6 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
 import {chromium,expect} from '../web/node_modules/@playwright/test/index.mjs';
 import {sourceFingerprint,PORTS,ANDROID_PACKAGE,selectDevice} from './native-regression-support.mjs';
+import {exerciseOfficial} from './ai-official-client-acceptance.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const origin='https://plan.zijun701.cn';
@@ -27,6 +28,7 @@ if(!account?.password)throw Error('Existing invited synthetic acceptance account
 const secrets=[account.password];
 let token,browser,context,page,child,nativeBrowser,nativePage,previousServer;
 const report={version,startedAt:new Date().toISOString(),scope:androidOnly?'New AI functionality only, real Android device, isolated regression identity and real Java HTTPS transport; synthetic invited USER, no paid calls. Formal APK separately checked through accessibility.':'New AI functionality only, real HTTPS, synthetic invited USER, no paid calls; isolated Windows package with real Rust transport.',status:'FAIL',cases:[]};
+if(process.argv.includes('--official'))report.scope='Real official DeepSeek acceptance, synthetic invited USER only, persistent maximum 5 requests across Web/Rust Windows/Java Android; exact per-run charges in official.paidCalls. Formal native identities are not modified.';
 await mkdir(out,{recursive:true});
 async function api(path,data,method=data===undefined?'GET':'POST',status=200){
   const r=await fetch(origin+'/api'+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:data===undefined?undefined:JSON.stringify(data),signal:AbortSignal.timeout(20000)});
@@ -48,6 +50,7 @@ async function waitFor(check){for(let i=0;i<80;i++){if(await check())return;awai
 async function path(client,value){if(client.kind==='web')await client.page.goto(origin+value);else await client.page.evaluate(path=>{location.hash=path;},value);}
 async function scenario(name,action){const row={name,status:'PASS'};report.cases.push(row);try{await action();}catch(e){row.status='FAIL';throw e;}console.log('[PASS] '+name);}
 async function exercise(client){
+  const quotaBefore=await api('/ai/quota');
   await expect(client.page.locator('.site-header')).toBeVisible({timeout:20000});
   for(const mode of ['PLAN','ROUTE','TODO']){
     const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(new Date());
@@ -98,15 +101,16 @@ async function exercise(client){
     });
     if(adjustmentId){const s=await api('/ai/sessions/'+adjustmentId);await api('/ai/sessions/'+adjustmentId+'?version='+s.version,undefined,'DELETE',204);}
   }
-  await scenario(client.kind+' quota-zero manual fallback and no paid replay',async()=>{
+  await scenario(client.kind+' free manual fallback does not consume quota',async()=>{
     await path(client,'/todos');await expect(client.page.getByRole('heading',{name:'今日待办',exact:true})).toBeVisible();
     await path(client,'/ai?mode=TODO');await expect(client.page.getByRole('heading',{name:'AI 规划助手'})).toBeVisible();
-    const quota=await api('/ai/quota');expect(quota.used).toBe(0);expect(quota.pending).toBe(0);expect(quota.dailyLimit).toBe(0);
+    const quota=await api('/ai/quota');expect(quota.used).toBe(quotaBefore.used);expect(quota.pending).toBe(quotaBefore.pending);
     await expect(client.page.getByRole('button',{name:'发送给 AI',exact:true})).toBeDisabled();
     await client.page.getByText('给外部 AI 的格式说明',{exact:true}).click();await expect(client.page.getByLabel('外部 AI 格式说明',{exact:true})).toHaveValue(/schemaVersion/);
   });
 }
 async function exerciseCreation(client){
+  const quotaBefore=await api('/ai/quota');
   await expect(client.page.locator('.site-header')).toBeVisible({timeout:20000});
   for(const mode of ['PLAN','ROUTE','TODO'])await scenario(client.kind+' '+mode+' external draft import/edit/resume/explicit creation',async()=>{
     const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(new Date());
@@ -140,7 +144,7 @@ async function exerciseCreation(client){
     await capture(client,client.kind+'-'+mode+'-created.png');
     await api('/ai/sessions/'+id+'?version='+s.version,undefined,'DELETE',204);
   });
-  const quota=await api('/ai/quota');expect(quota.used).toBe(0);expect(quota.pending).toBe(0);
+  const quota=await api('/ai/quota');expect(quota.used).toBe(quotaBefore.used);expect(quota.pending).toBe(quotaBefore.pending);
 }
 try{
   const auth=await api('/auth/login',{email:'web-acceptance-a-20261012@example.test',password:account.password});token=auth.accessToken;secrets.push(token);expect(auth.user.role).toBe('USER');
@@ -149,8 +153,12 @@ try{
   browser=await chromium.launch({headless:true});context=await browser.newContext({locale:'zh-CN',timezoneId:'Asia/Shanghai',viewport:{width:1280,height:900},serviceWorkers:'block'});
   // API session setup for an isolated test context, not UI password automation.
   const response=await context.request.post(origin+'/api/auth/login',{data:{email:'web-acceptance-a-20261012@example.test',password:account.password}});expect(response.status()).toBe(200);
-  page=await context.newPage();await page.goto(origin+'/plans');await exercise({kind:'web',page});
+  page=await context.newPage();await page.goto(origin+'/plans');
+  if(process.argv.includes('--official'))await exerciseOfficial({root,client:{kind:'web',page},api,invoke,token,origin,report});
+  else await exercise({kind:'web',page});
   }
+  if(process.argv.includes('--web-only')){report.status='PASS';if(!process.argv.includes('--official'))report.paidCalls=0;}
+  else{
   // Use the independent regression identity. Refuse an occupied debugger port.
   const debuggerUrl='http://127.0.0.1:'+(androidOnly?PORTS.androidCdp:PORTS.desktopCdp);
   try{await fetch(debuggerUrl+'/json/list',{signal:AbortSignal.timeout(1000)});throw Error('Regression debugger already running');}catch(e){if(e.message==='Regression debugger already running')throw e;}
@@ -186,9 +194,11 @@ try{
   },{scope:origin,user:syntheticUser});
   const nativeKind=androidOnly?'android':'windows';
   await nativePage.reload();await path({kind:nativeKind,page:nativePage},'/plans');
-  if(process.argv.includes('--creation-only'))await exerciseCreation({kind:nativeKind,page:nativePage});
+  if(process.argv.includes('--official'))await exerciseOfficial({root,client:{kind:nativeKind,page:nativePage},api,invoke,token,origin,report});
+  else if(process.argv.includes('--creation-only'))await exerciseCreation({kind:nativeKind,page:nativePage});
   else await exercise({kind:nativeKind,page:nativePage});
-  report.status='PASS';report.paidCalls=0;
+  report.status='PASS';if(!process.argv.includes('--official'))report.paidCalls=0;
+  }
 }catch(error){report.error=secrets.reduce((text,value)=>text.replaceAll(value,'[redacted]'),String(error.stack||error));if(nativePage&&!nativePage.isClosed())report.visibleAlerts=await nativePage.getByRole('alert').allTextContents().catch(()=>[]);console.error('AI native/web acceptance failed; details in ignored local report.');process.exitCode=1;}
 finally{
   if(nativePage&&!nativePage.isClosed()&&previousServer)try{await invoke('desktop_save_server',{serverUrl:previousServer});}catch{}
