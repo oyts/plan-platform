@@ -38,6 +38,13 @@ compose_from() {
   shift
   sh '__REMOTE__/scripts/production-compose.sh' "$directory" "$@"
 }
+# Never restart an application while a known paid request is queued/running.
+# Read only counts; do not expose credentials or user conversation contents.
+set -a; . ./.env; set +a
+mysql_container=$(compose_from '__REMOTE__' ps -q mysql)
+test -n "$mysql_container"
+pending_ai=$(docker exec -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" "$mysql_container" mysql -uroot -N plan_platform -e "SELECT COUNT(*) FROM ai_jobs WHERE state IN ('QUEUED','RUNNING');")
+test "$pending_ai" = 0 || { echo 'Active AI jobs found; deployment postponed, production unchanged.'; exit 1; }
 rollback_on_error() {
   code=$?
   trap - EXIT HUP INT TERM

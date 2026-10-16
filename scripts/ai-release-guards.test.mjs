@@ -21,3 +21,10 @@ test('migration drill clears candidate DB environment and verifies rollback with
   assert.ok(script.includes('-e AI_ENABLED=false -e AI_API_KEY_FILE='));
   assert.ok(!script.includes('--mount'));assert.ok(!script.includes('-p 127.0.0.1:'));
 });
+
+test('application deployment refuses to restart known active paid work',()=>{
+  const script=read('./deploy-cloud-release.ps1');
+  assert.ok(script.includes("WHERE state IN ('QUEUED','RUNNING')"));
+  assert.ok(script.includes('deployment postponed, production unchanged'));
+  assert.ok(script.indexOf('pending_ai=')<script.indexOf("compose_from '__REMOTE__' up -d"));
+});
