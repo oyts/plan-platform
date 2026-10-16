@@ -21,9 +21,16 @@ case "$database" in *[!a-z0-9_]*) exit 1;; esac
 sql() { docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" "$AI_MYSQL_CONTAINER" mysql --default-character-set=utf8mb4 -uroot -N; }
 printf "GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%';\n" "$database" "$AI_DB_USER" | sql
 tables=$(printf "SELECT table_name FROM information_schema.tables WHERE table_schema='%s' ORDER BY table_name;\n" "$database" | sql)
+# V18 adds nullable metadata to the quota ledger. CHECKSUM TABLE includes the
+# schema, so compare its original columns separately instead of ignoring data.
+quota_columns=$(printf "SELECT column_name FROM information_schema.columns WHERE table_schema='%s' AND table_name='ai_quota_requests' ORDER BY ordinal_position;\n" "$database" | sql | paste -sd, -)
+case "$quota_columns" in ''|*[!a-z0-9_,]*) exit 1;; esac
+quota_projection() { printf 'SELECT JSON_ARRAY(%s) FROM %s.ai_quota_requests ORDER BY 1;\n' "$quota_columns" "$database" | sql | sha256sum | cut -d ' ' -f 1; }
+quota_projection > production-quota-before.sha256
 for table in $tables; do
   case "$table" in *[!a-zA-Z0-9_]*) exit 1;; esac
   [ "$table" = flyway_schema_history ] && continue
+  [ "$table" = ai_quota_requests ] && continue
   printf 'CHECKSUM TABLE %s.%s EXTENDED;\n' "$database" "$table" | sql
 done > production-business-before.txt
 name="plan-ai-migration-$(date -u +%Y%m%d%H%M%S)"
@@ -43,9 +50,12 @@ for attempt in $(seq 1 60); do
 done
 docker stop "$name" >/dev/null
 [ "$healthy" = true ] || { echo 'Migration drill failed; stopped container and restore DB retained'; exit 1; }
-test "$(printf 'SELECT MAX(CAST(version AS UNSIGNED)) FROM %s.flyway_schema_history WHERE success=1;\n' "$database" | sql)" = 17
+test "$(printf 'SELECT MAX(CAST(version AS UNSIGNED)) FROM %s.flyway_schema_history WHERE success=1;\n' "$database" | sql)" = 18
+quota_projection > production-quota-after.sha256
+cmp production-quota-before.sha256 production-quota-after.sha256
 for table in $tables; do
   [ "$table" = flyway_schema_history ] && continue
+  [ "$table" = ai_quota_requests ] && continue
   printf 'CHECKSUM TABLE %s.%s EXTENDED;\n' "$database" "$table" | sql
 done > production-business-after.txt
 cmp production-business-before.txt production-business-after.txt
@@ -67,7 +77,10 @@ docker stop "$rollback_name" >/dev/null
 [ "$healthy" = true ] || { echo 'Old image rollback drill failed; production unchanged'; exit 1; }
 for table in $tables; do
   [ "$table" = flyway_schema_history ] && continue
+  [ "$table" = ai_quota_requests ] && continue
   printf 'CHECKSUM TABLE %s.%s EXTENDED;\n' "$database" "$table" | sql
 done > production-business-rollback.txt
 cmp production-business-before.txt production-business-rollback.txt
-printf 'PASS: production snapshot V17 migration AND previous-image rollback; all pre-existing business table checksums unchanged. No key, public port, AI request or production write. Restore DB and stopped containers retained.\n'
+quota_projection > production-quota-rollback.sha256
+cmp production-quota-before.sha256 production-quota-rollback.sha256
+printf 'PASS: production snapshot V18 migration AND previous-image rollback; unchanged tables and all original quota-ledger columns match. No key, public port, AI request or production write. Restore DB and stopped containers retained.\n'

@@ -1,0 +1,10 @@
+<script setup lang="ts">
+import {onMounted,ref} from 'vue';
+import {api,apiMessage} from '@/api/client';
+const state=ref<{configured:boolean;passwordResetEnabled:boolean;emailVerificationEnabled:boolean}|null>(null),busy=ref(false),error=ref(''),message=ref('');
+async function load(){try{state.value=(await api.get('/admin/mail')).data;}catch(reason){error.value=apiMessage(reason);}}
+async function test(){if(!window.confirm('向当前管理员账号的邮箱发送一封测试邮件？不发送给其他成员。'))return;busy.value=true;error.value='';message.value='';try{message.value=(await api.post('/admin/mail/test')).data.message;}catch(reason){error.value=apiMessage(reason);}finally{busy.value=false;}}
+onMounted(load);
+</script>
+<template><section class="section mail-status" aria-label="账号邮件服务"><header class="section-title"><h2>账号邮件服务</h2><button class="btn" :disabled="busy" @click="load">刷新邮件状态</button></header><div class="mail-body"><p v-if="error" role="alert" class="error-text">{{error}}</p><template v-if="state"><dl><div><dt>SMTP 配置</dt><dd>{{state.configured?'已配置，需确认实际收信':'未配置'}}</dd></div><div><dt>密码找回</dt><dd>{{state.passwordResetEnabled?'已启用':'未启用'}}</dd></div><div><dt>邮箱验证</dt><dd>{{state.emailVerificationEnabled?'已启用':'未启用'}}</dd></div></dl><p>授权码只保存在服务器受限文件中，不在这里输入或显示。测试成功仅表示发件服务器接受，仍需本人检查收件箱。</p><button class="btn" :disabled="busy||!state.configured" @click="test">{{busy?'正在提交…':'发送管理员测试邮件'}}</button></template><p v-if="message" role="status">{{message}}</p></div></section></template>
+<style scoped>.mail-status{margin-top:24px;background:#fff}.mail-status h2{margin:0}.mail-status .section-title{gap:16px;flex-wrap:wrap}.mail-body{padding:20px;line-height:1.7}.mail-body dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:0}.mail-body dt{color:var(--muted);font-size:.8rem}.mail-body dd{margin:8px 0 0;font-weight:700}.mail-body p{font-size:.85rem}.mail-body .btn{min-height:44px}@media(max-width:700px){.mail-body dl{grid-template-columns:1fr}.mail-body{padding:16px}.mail-body .btn{width:100%}}</style>

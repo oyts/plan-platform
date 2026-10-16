@@ -170,6 +170,7 @@ public class AiConversationService {
         if(!"RUNNING".equals(db.queryForObject("SELECT state FROM ai_jobs WHERE id=?",String.class,work.id))) return;
         db.update("UPDATE ai_sessions SET recommended_mode=?,draft_json=?,version=version+1 WHERE id=?",recommendation,draft==null?row.draft:write(revision(draft,row.version+1)),row.id);
         db.update("UPDATE ai_jobs SET state='SUCCEEDED',context_json=NULL,reply_text=?,input_tokens=?,output_tokens=?,updated_at=? WHERE id=?",output.path("message").asText(),result.inputTokens(),result.outputTokens(),now(),work.id);
+        usageMetadata(work,"SUCCEEDED",null,result.inputTokens(),result.outputTokens());
         quotas.settle(work.owner,work.reservation,"SUCCEEDED");
     }
     @Transactional
@@ -178,7 +179,14 @@ public class AiConversationService {
         if(!"RUNNING".equals(state) && !"QUEUED".equals(state)) return;
         db.update("UPDATE ai_jobs SET state=?,context_json=NULL,error_code=?,updated_at=? WHERE id=?",failure.uncertain()?"UNKNOWN":"FAILED",failure.code().name(),now(),work.id);
         db.update("UPDATE ai_sessions SET version=version+1 WHERE id=?",work.sessionId);
+        usageMetadata(work,failure.uncertain()?"UNKNOWN":"FAILED",failure.code().name(),null,null);
         quotas.settle(work.owner,work.reservation,failure.uncertain()?"UNKNOWN":"RELEASED");
+    }
+    private void usageMetadata(Work work,String state,String code,Long input,Long output) {
+        var created=db.queryForObject("SELECT created_at FROM ai_jobs WHERE id=?",Timestamp.class,work.id).toInstant();
+        var completed=Instant.now();
+        db.update("UPDATE ai_quota_requests SET terminal_state=?,failure_code=?,input_tokens=?,output_tokens=?,completed_at=?,duration_ms=? WHERE id=? AND owner_id=?",
+            state,code,input,output,Timestamp.from(completed),Math.max(0,Duration.between(created,completed).toMillis()),work.reservation,work.owner);
     }
     @Transactional
     public void maintain() {

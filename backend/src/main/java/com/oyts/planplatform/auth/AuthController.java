@@ -75,7 +75,7 @@ public class AuthController {
 
     @PostMapping("/password-reset/request")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void requestPasswordReset(@Valid @RequestBody AuthDtos.PasswordResetRequest request) { authService.requestPasswordReset(request); }
+    void requestPasswordReset(@Valid @RequestBody AuthDtos.PasswordResetRequest request, HttpServletRequest servletRequest) { authService.requestPasswordReset(request,servletRequest.getRemoteAddr()); }
 
     @PostMapping("/password-reset/confirm")
     @ResponseStatus(HttpStatus.NO_CONTENT)

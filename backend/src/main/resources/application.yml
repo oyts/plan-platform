@@ -30,7 +30,7 @@ management:
         enabled: true
 
 app:
-  version: 0.1.12
+  version: 0.1.13
   ai:
     enabled: ${AI_ENABLED:false}
     model: ${AI_MODEL:deepseek-flash}

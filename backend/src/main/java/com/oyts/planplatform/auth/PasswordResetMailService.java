@@ -36,6 +36,8 @@ class PasswordResetMailService {
     String invitationLink(String email, String rawToken) {
         return publicUrl + "/register?email=" + URLEncoder.encode(email, StandardCharsets.UTF_8) + "&invite=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
     }
+    boolean configured() { return senders.getIfAvailable()!=null && !from.isBlank(); }
+    boolean sendTest(String recipient) { return send(recipient,"计划舱：邮件服务测试","这是一封由计划舱管理员主动请求的邮件测试。它不包含密码、重置链接、邀请链接或私人计划。收到后请回到管理员页面核对。"); }
     private boolean send(String recipient, String subject, String text) {
         JavaMailSender sender = senders.getIfAvailable();
         if (sender == null || from.isBlank()) return false;

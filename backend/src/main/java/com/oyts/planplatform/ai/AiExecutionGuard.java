@@ -37,5 +37,11 @@ public final class AiExecutionGuard implements AutoCloseable {
     private void failed() {
         if (failures.incrementAndGet() >= 3) blockedUntil.set(System.nanoTime() + TimeUnit.SECONDS.toNanos(30));
     }
+    public record Snapshot(int active,int queued,boolean circuitOpen,long retryAfterSeconds) {}
+    public Snapshot snapshot() {
+        long remaining=blockedUntil.get()-System.nanoTime();
+        boolean open=blockedUntil.get()!=0 && remaining>0;
+        return new Snapshot(executor.getActiveCount(),executor.getQueue().size(),open,open?Math.max(1,TimeUnit.NANOSECONDS.toSeconds(remaining)+1):0);
+    }
     @Override public void close() { executor.shutdownNow(); }
 }

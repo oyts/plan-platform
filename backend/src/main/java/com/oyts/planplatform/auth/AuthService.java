@@ -37,12 +37,13 @@ public class AuthService {
     private final SecurityProperties securityProperties;
     private final LoginAttemptService loginAttempts;
     private final BootstrapProperties bootstrap;
+    private final MailRequestLimiter mailLimiter;
 
     public AuthService(UserAccountRepository users, RefreshTokenRepository refreshTokens, PasswordResetTokenRepository passwordResetTokens,
                        InvitationRepository invitations, EmailVerificationTokenRepository emailVerificationTokens,
                        PasswordResetMailService passwordResetMail, PasswordEncoder passwordEncoder,
                        JwtEncoder jwtEncoder, JwtProperties jwtProperties, SecurityProperties securityProperties,
-                       LoginAttemptService loginAttempts, BootstrapProperties bootstrap) {
+                       LoginAttemptService loginAttempts, BootstrapProperties bootstrap, MailRequestLimiter mailLimiter) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.passwordResetTokens = passwordResetTokens;
@@ -55,6 +56,7 @@ public class AuthService {
         this.securityProperties = securityProperties;
         this.loginAttempts = loginAttempts;
         this.bootstrap = bootstrap;
+        this.mailLimiter = mailLimiter;
     }
 
     @Transactional
@@ -150,7 +152,13 @@ public class AuthService {
     /** Always returns normally to prevent account enumeration. A reset is possible only with configured SMTP delivery. */
     @Transactional
     public void requestPasswordReset(AuthDtos.PasswordResetRequest request) {
+        requestPasswordReset(request,"internal");
+    }
+
+    @Transactional
+    public void requestPasswordReset(AuthDtos.PasswordResetRequest request,String address) {
         if (!securityProperties.passwordResetEnabled()) return;
+        if (!mailLimiter.acquire("reset",request.email(),address)) return;
         users.findByEmailIgnoreCase(request.email().trim()).filter(UserAccount::isEnabled).ifPresent(user -> {
             String rawToken = UUID.randomUUID() + "." + UUID.randomUUID();
             if (!passwordResetMail.send(user, rawToken)) return;
@@ -165,6 +173,7 @@ public class AuthService {
             .filter(item -> item.getUsedAt() == null && item.getExpiresAt().isAfter(Instant.now()))
             .orElseThrow(() -> new UnauthorizedException("重置链接无效、已使用或已经过期。"));
         UserAccount user = token.getUser();
+        if (!user.isEnabled()) throw new UnauthorizedException("重置链接无效、已使用或已经过期。");
         user.changePassword(passwordEncoder.encode(request.newPassword()));
         token.consume();
         revokeAllSessions(user.getId());

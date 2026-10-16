@@ -1,14 +1,12 @@
 {
-  "version": "0.1.12",
-  "reason": "AI hands-on lesson, backwards-compatible v1 learning progress and non-executing pacing suggestions. Validate only learning lifecycle and affected adjustment flow including one two-week history-preserving pacing example; no unrelated business full regression or automatic paid calls.",
-  "frontendUnit": ["src/learningModel.test.ts", "src/learning.test.ts", "src/aiPacing.test.ts"],
-  "browser": ["e2e/learning-ai.spec.ts", "e2e/learning.spec.ts", "e2e/ai-adjustment.spec.ts"],
-  "backend": ["AiAdjustmentIntegrationTest#twoWeekPacingPreservesHistoryAndAppliesOnlyPendingChanges"],
+  "version": "0.1.13",
+  "reason": "Account recovery confirmation, SMTP readiness and invitation renewal; clearer AI failures and quota guidance; private administrator usage metadata retained independently of conversations. Only new and directly affected authentication/AI/admin flows. No paid API calls or unrelated business full regression. Android formal acceptance deferred until owner connects phone.",
+  "frontendUnit": ["src/aiExperience.test.ts", "src/registration.test.ts", "src/aiPlanning.test.ts"],
+  "browser": ["e2e/account-ai-operations.spec.ts", "e2e/ai-planning.spec.ts", "e2e/ai-foundation.spec.ts", "e2e/members-layout.spec.ts", "e2e/registration.spec.ts"],
+  "backend": ["AccountRecoveryIntegrationTest", "AiUsageIntegrationTest", "AiConversationIntegrationTest", "AiQuotaIntegrationTest#adminChangesAreHotVersionedAuditedAndDoNotResetUsage"],
   "android": [],
   "nativeAcceptance": [
-    "node scripts/ai-native-web-acceptance.mjs --windows-only --learning-pacing-only (real Rust HTTPS; synthetic USER)",
-    "node scripts/ai-native-web-acceptance.mjs --android-only --serial DEVICE_SERIAL --learning-pacing-only (real Java HTTPS; synthetic USER)",
-    "python scripts/android-learning-entry-acceptance.py --serial DEVICE_SERIAL --expected-version 0.1.12 --expected-code 17 --ai-only (formal same-signature cover install; no business writes)",
-    "Formal Windows original-profile install hash preservation, AI lesson entry, queue, restart and post-publication update check; Android protected feed check after publication. No unrelated old business regression."
+    "Windows isolated native acceptance: recovery confirmation and metadata-only admin panels, controlled synthetic data and fake upstream. Formal cover install only after saved/closed confirmation.",
+    "Android 0.1.13 build 18: build and signature checks only overnight; exact candidate USB acceptance pending. Do not publish unaccepted APK to protected feed."
   ]
 }

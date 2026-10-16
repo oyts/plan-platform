@@ -27,7 +27,7 @@ public final class AuthDtos {
         @NotBlank @Size(min = 10, max = 72) @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$", message = "密码至少包含一个英文字母和一个数字") String newPassword) {}
     public record PasswordResetRequest(@Email @NotBlank String email) {}
     public record PasswordResetConfirmRequest(@Email @NotBlank String email, @NotBlank @Size(max = 300) String token,
-        @Size(min = 10, max = 72) @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$", message = "密码至少包含一个英文字母和一个数字") String newPassword) {}
+        @NotBlank @Size(min = 10, max = 72) @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$", message = "密码至少包含一个英文字母和一个数字") String newPassword) {}
     public record InvitationRequest(@Email @NotBlank String email, Integer expiresInHours) {}
     public record InvitationResponse(String id, String email, Instant expiresAt, Instant acceptedAt, Instant revokedAt, String createdBy, String registrationUrl) {}
     public record EmailVerificationRequest() {}

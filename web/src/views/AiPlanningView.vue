@@ -8,12 +8,14 @@ import type { AiUsage } from '@/aiQuota';
 import AiDraftEditor from '@/components/AiDraftEditor.vue';
 import AiChangePreview from '@/components/AiChangePreview.vue';
 import { pacingPrompts } from '@/aiPacing';
+import {aiFailureGuidance,aiQuotaHint,aiSubmitUncertain} from '@/aiExperience';
 const route = useRoute(), router = useRouter();
 const capability = ref({ available: false, message: '正在确认 AI 服务状态…', maxInputChars: 8000, adjustmentEnabled: false });
 const quota = ref<AiUsage | null>(null), summaries = ref<AiSummary[]>([]), session = ref<AiSession | null>(null);
 const mode = ref<AiMode | ''>(aiInitialMode(route.query.mode) ?? ''), consent = ref(false), message = ref(''), error = ref(''), notice = ref('');
 const busy = ref(false), loading = ref(true), draft = ref<AiDraft | null>(null), dirty = ref(false), confirmed = ref(false), importJson = ref(''), uncertain = ref(false);
 const pending = computed(() => aiPending(session.value));
+const unsaved=computed(()=>dirty.value||Boolean(message.value.trim()));
 const requestedTarget = computed(() => typeof route.query.target === 'string' && /^[a-f0-9-]{36}$/.test(route.query.target) ? route.query.target : null);
 const isAdjustment = computed(() => !!session.value?.adjustment || !!requestedTarget.value);
 const queued = ref(0);
@@ -23,24 +25,24 @@ function usePacing(text: string) { if (message.value.trim() && !window.confirm('
 const externalFormat = computed(() => session.value?.adjustment && draft.value ? aiExternalAdjustmentPrompt(session.value.adjustment, draft.value) : requestedTarget.value ? '请先勾选说明并载入所选内容，再复制保留原标识的调整格式。' : mode.value ? aiExternalPrompt(mode.value) : '请先选择模式。');
 const editable = computed(() => !busy.value && !pending.value && !session.value?.applied);
 const resultPath = computed(() => aiAppliedPath(session.value?.applied?.path));
-let timer: ReturnType<typeof setTimeout> | undefined; let disposed = false; let generation = 0;
+let timer: ReturnType<typeof setTimeout> | undefined; let disposed = false; let generation = 0;let pollFailures=0;
 async function checkQueue() { const owner = currentQueueOwner(); queued.value = owner ? (await listOperations(owner)).length : 0; }
 async function assertCleanQueue() { await checkQueue(); if (queued.value) throw new Error('本机有待同步操作或冲突，请先到同步中心处理，再开始或应用 AI 调整。原队列不会清除。'); }
 const stopQueueWatch = onQueueChange(() => { if (isAdjustment.value) void checkQueue().catch(() => { queued.value = -1; }); });
 function accept(value: AiSession) { session.value = value; draft.value = value.draft ? structuredClone(value.draft) : null; dirty.value = false; confirmed.value = false; mode.value = value.mode ?? ''; }
 async function loadSummary() { summaries.value = (await api.get<AiSummary[]>('/ai/sessions')).data; }
 async function loadQuota() { quota.value = (await api.get<AiUsage>('/ai/quota')).data; }
-function schedule() { clearTimeout(timer); if (!disposed && pending.value) timer = setTimeout(() => void refresh(false), 1500); }
+function schedule() { clearTimeout(timer); if (!disposed && pending.value) timer = setTimeout(() => void refresh(false), Math.min(15000,1500*2**Math.min(pollFailures,4))); }
 async function refresh(manual = true) {
   if (manual && dirty.value && !window.confirm('刷新会放弃尚未保存的草稿修改，是否继续？')) return;
   error.value = '';
   const id = session.value?.id, expected = generation;
-  try { if (id) { const data = (await api.get<AiSession>(`/ai/sessions/${id}`)).data; if (expected !== generation || disposed) return; accept(data); } await Promise.all([loadQuota(), loadSummary()]); uncertain.value = false; }
-  catch (reason) { error.value = apiMessage(reason); }
+  try { if (manual) capability.value=(await api.get('/ai/capabilities')).data; if (id) { const data = (await api.get<AiSession>(`/ai/sessions/${id}`)).data; if (expected !== generation || disposed) return; accept(data); } await Promise.all([loadQuota(), loadSummary()]); uncertain.value = false;pollFailures=0; }
+  catch (reason) { pollFailures++;error.value = apiMessage(reason); }
   finally { schedule(); }
 }
 async function open(id: string) {
-  if (dirty.value && !window.confirm('切换会放弃尚未保存的草稿修改，是否继续？')) return;
+  if (unsaved.value && !window.confirm('切换会放弃尚未保存的草稿修改或尚未发送的文字，是否继续？')) return;
   busy.value = true; error.value = ''; clearTimeout(timer); const expected = ++generation;
   try { const data = (await api.get<AiSession>(`/ai/sessions/${id}`)).data; if (expected !== generation || disposed) return; accept(data); consent.value = true; await router.replace({ path: '/ai', query: { session: id } }); }
   catch (reason) { error.value = apiMessage(reason); } finally { busy.value = false; schedule(); }
@@ -64,7 +66,7 @@ async function send() {
   if (busy.value || pending.value || uncertain.value || dirty.value) return;
   busy.value = true; error.value = ''; notice.value = '';
   try { if (!session.value) await create(); await api.post(`/ai/sessions/${session.value!.id}/jobs`, { message: message.value, version: session.value!.version, operationKey: crypto.randomUUID() }); message.value = ''; await refresh(false); }
-  catch (reason) { error.value = apiMessage(reason); uncertain.value = true; }
+  catch (reason) { error.value = apiMessage(reason); uncertain.value = aiSubmitUncertain(reason); }
   finally { busy.value = false; schedule(); }
 }
 async function choose(value: AiMode) {
@@ -96,18 +98,20 @@ async function remove() {
   catch (reason) { error.value = apiMessage(reason); } finally { busy.value = false; }
 }
 async function fresh() {
-  if (dirty.value && !window.confirm('新建对话会放弃尚未保存的草稿修改，是否继续？')) return;
+  if (unsaved.value && !window.confirm('新建对话会放弃尚未保存的草稿修改或尚未发送的文字，是否继续？')) return;
   generation++; clearTimeout(timer); session.value = null; draft.value = null; dirty.value = false; confirmed.value = false; consent.value = false; uncertain.value = false; message.value = ''; error.value = ''; notice.value = ''; mode.value = aiInitialMode(route.query.mode) ?? ''; await router.replace('/ai');
 }
 function changed() { dirty.value = true; confirmed.value = false; }
 async function copyFormat() { if (!mode.value) return; try { await navigator.clipboard.writeText(externalFormat.value); notice.value = '格式说明已复制，可发给外部 AI。'; } catch { error.value = '无法自动复制，请在下方格式说明中手动选择并复制。'; } }
-onBeforeRouteLeave(() => !dirty.value || window.confirm('草稿有尚未保存的修改，仍要离开吗？'));
+function beforeUnload(event:BeforeUnloadEvent){if(unsaved.value){event.preventDefault();event.returnValue='';}}
+onBeforeRouteLeave(() => !unsaved.value || window.confirm('草稿有尚未保存的修改或尚未发送的文字，仍要离开吗？'));
 watch(() => route.query.session, id => { if (typeof id === 'string' && id !== session.value?.id && !busy.value) void open(id); });
 onMounted(async () => {
+  window.addEventListener('beforeunload',beforeUnload);
   try { capability.value = (await api.get('/ai/capabilities')).data; await Promise.all([loadQuota(), loadSummary()]); if (typeof route.query.session === 'string') await open(route.query.session); if (isAdjustment.value) await checkQueue(); }
   catch (reason) { error.value = apiMessage(reason); } finally { loading.value = false; }
 });
-onUnmounted(() => { disposed = true; clearTimeout(timer); stopQueueWatch(); });
+onUnmounted(() => { disposed = true; clearTimeout(timer); stopQueueWatch();window.removeEventListener('beforeunload',beforeUnload); });
 </script>
 <template>
   <div class="page ai-page">
@@ -115,14 +119,15 @@ onUnmounted(() => { disposed = true; clearTimeout(timer); stopQueueWatch(); });
     <p v-if="error" class="error-text" role="alert">{{ error }}</p><p v-if="notice" class="helper-text" role="status">{{ notice }}</p>
     <p v-if="!capability.available && !loading" class="ai-service-note">{{ capability.message }} <router-link to="/plans">手动周期计划</router-link> · <router-link to="/mainlines">手动目标路线</router-link> · <router-link to="/todos">手动待办</router-link></p>
     <div class="ai-toolbar"><label>最近对话<select :value="session?.id ?? ''" :disabled="busy" @change="open(($event.target as HTMLSelectElement).value)"><option value="" disabled>选择已保存的对话</option><option v-for="item in summaries" :key="item.id" :value="item.id">{{ item.adjustment ? '调整 · ' : '' }}{{ item.mode ? aiModeNames[item.mode] : '模式待定' }} · {{ new Date(item.createdAt).toLocaleString('zh-CN') }}{{ item.applied ? ' · 已应用' : '' }}</option></select></label><p v-if="quota">今日剩余 <strong>{{ quota.remaining }}</strong> / {{ quota.dailyLimit }} 次 · 已用 {{ quota.used }} · 占用 {{ quota.pending }}<span v-if="quota.paused"> · AI 已暂停</span></p><button v-if="session" class="text-btn danger-text" :disabled="busy || pending" @click="remove">删除对话</button></div>
-    <p v-if="quota && !quota.remaining" class="helper-text">今日暂无可用对话次数。管理员可在成员页面分配每日次数或解除暂停；你仍可手动编辑、导入和确认草稿。</p>
+    <p class="helper-text" aria-label="AI 额度说明">{{aiQuotaHint(quota)}}</p>
+    <details class="ai-service-note ai-help"><summary>不确定下一步怎么做？</summary><ol><li>说明目标、每次可投入多久、有没有期限；不确定模式可以先让 AI 推荐。</li><li>收到草稿后可以手改，也可以继续对话；手改后先保存。</li><li>核对内容并勾选确认，再点击生成或应用。仅收到回复不会创建计划。</li></ol><p><router-link to="/learn/ai">进入 AI 四步教学</router-link> · <router-link to="/plans">手动周期计划</router-link> · <router-link to="/mainlines">手动目标路线</router-link> · <router-link to="/todos">手动待办</router-link></p><p>若请求结果不确定，先刷新最近对话核对，不要反复发送。需要反馈时只提供错误分类、发生时间和客户端版本，不要发送密码、完整邀请链接或私人对话。</p></details>
     <p v-if="isAdjustment && queued !== 0" class="error-text" role="status">{{ queued > 0 ? `本机仍有 ${queued} 项待同步操作或冲突，请先到同步中心处理，再应用 AI 调整。` : '暂时无法核对本机队列，应用前会重新检查。' }}<router-link to="/sync">进入同步中心</router-link></p>
     <details v-if="mode" class="ai-service-note"><summary>给外部 AI 的格式说明</summary><p>内置 AI 不可用时，可复制这段说明给外部 AI，再在下方导入返回的草稿。{{ isAdjustment ? '调整格式会包含所选对象的事项和说明，请确认愿意向你选用的外部 AI 提供这些内容。' : '' }}</p><label class="ai-format">外部 AI 格式说明<textarea :value="externalFormat" readonly rows="8" /></label><button class="btn" :disabled="!!requestedTarget && !session" @click="copyFormat">复制格式说明</button></details>
     <section v-if="session?.adjustment && !session.applied" class="ai-service-note ai-pacing" aria-label="调整节奏指南"><h2>想怎样调整节奏？</h2><p>所选对象共 {{ session.adjustment.original.items.length }} 项，其中 {{ session.adjustment.protectedItems.length }} 项有执行历史，受到保护。先说明新的时间安排，再核对下方差异；只有确认后才应用。</p><div class="button-row"><button v-for="item in pacing" :key="item.id" class="btn" type="button" :disabled="busy || pending || dirty || queued !== 0" @click="usePacing(item.message)">{{ item.label }}</button></div><p class="helper-text">示例只填写输入框，不自动调用 AI、不扣次数、不自动修改计划。可以在发送前继续编辑。<router-link to="/learn/ai">查看 AI 教学</router-link></p></section>
     <div class="ai-layout">
       <section class="section ai-chat" aria-labelledby="ai-chat-title"><header class="section-title"><h2 id="ai-chat-title"><span>01</span> 对话</h2><strong v-if="session?.mode">{{ aiModeNames[session.mode] }}</strong></header>
         <div class="ai-chat-body"><label v-if="!session">创建方式<select v-model="mode" :disabled="!!requestedTarget"><option value="">先请 AI 推荐模式</option><option v-for="(name, value) in aiModeNames" :key="value" :value="value">{{ name }}</option></select></label><p v-if="!session?.turns.length" class="ai-empty">{{ isAdjustment ? '告诉我哪里太紧、哪里需要增加练习，或希望怎样调整。已有执行历史的事项会保留，不会重新创建另一份计划。' : '告诉我你想做什么、每次能投入多久，以及是否有截止日期。没有固定时间的长期目标，也可以慢慢推进。' }}</p>
-          <ol class="ai-turns" aria-label="对话记录"><li v-for="turn in session?.turns" :key="turn.id"><article class="ai-user-message"><strong>你</strong><p>{{ turn.message }}</p></article><article class="ai-assistant-message"><strong>规划助手</strong><p v-if="turn.reply">{{ turn.reply }}</p><p v-else role="status">{{ aiState(turn.state) }}</p><p v-if="turn.state === 'FAILED' || turn.state === 'UNKNOWN'" class="helper-text">已有草稿仍保留，可手工编辑或稍后再试。不会自动重复调用。{{ turn.error ? `（${turn.error}）` : '' }}</p></article></li></ol>
+          <ol class="ai-turns" aria-label="对话记录"><li v-for="turn in session?.turns" :key="turn.id"><article class="ai-user-message"><strong>你</strong><p>{{ turn.message }}</p></article><article class="ai-assistant-message"><strong>规划助手</strong><p v-if="turn.reply">{{ turn.reply }}</p><p v-else role="status">{{ aiState(turn.state) }}</p><p v-if="aiFailureGuidance(turn.state,turn.error)" class="helper-text">{{aiFailureGuidance(turn.state,turn.error)}}</p><small v-if="turn.error">错误分类：{{turn.error}} · {{new Date(turn.createdAt).toLocaleString('zh-CN')}}</small></article></li></ol>
           <div v-if="session && !session.mode" class="ai-mode-choice"><p v-if="session.recommendedMode">AI 建议使用<strong>{{ aiModeNames[session.recommendedMode] }}</strong>，请你选择：</p><p v-else>选择规划模式后，AI 才能生成对应草稿。</p><div class="button-row"><button v-for="(name, value) in aiModeNames" :key="value" class="btn" :disabled="!editable" @click="choose(value)">选择{{ name }}</button></div></div>
           <form v-if="!session?.applied" class="ai-message-form" @submit.prevent="send"><label>你的目标或修改要求<textarea v-model="message" rows="4" :maxlength="capability.maxInputChars" :disabled="busy || pending" :placeholder="isAdjustment ? '例如：最近比较忙，把未开始的任务分散到两周，每次缩短到15分钟。' : '例如：我想学吉他，每次有半小时，没有固定结束时间。'" required /></label><label v-if="!session" class="ai-consent"><input v-model="consent" type="checkbox" />{{ isAdjustment ? '我同意将所选对象的事项、阶段及必要内容和本次对话发给 DeepSeek 处理；不发送其他计划、账号或执行备注。' : '我同意将本次对话和草稿发给 DeepSeek 处理；请勿输入密码、身份信息等敏感内容。' }}</label><p class="helper-text">对话保存 30 天，可主动删除。{{ isAdjustment ? '仅使用你明确选择的对象，不读取其他私人计划；执行历史受到保护。' : '只发送本次对话与草稿，不读取你已有的私人计划。' }}每次成功回复计 1 次。</p><button v-if="requestedTarget && !session" class="btn" type="button" :disabled="busy || !consent || !capability.adjustmentEnabled || queued !== 0" @click="loadSelection">载入所选内容（不调用 AI）</button><p v-if="dirty" class="helper-text">先保存草稿修改，再让 AI 继续调整。</p><p v-if="uncertain" class="helper-text">请先刷新确认本次请求状态，再继续发送。</p><button class="btn primary" :disabled="busy || pending || uncertain || dirty || !capability.available || !message.trim() || (!session && !consent) || !quota?.remaining || (isAdjustment && queued !== 0)">{{ pending ? 'AI 正在处理…' : '发送给 AI' }}</button></form>
         </div>
