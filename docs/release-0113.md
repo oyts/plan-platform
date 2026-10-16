@@ -1,6 +1,6 @@
 # 计划舱 0.1.13 账号恢复与 AI 运行管理
 
-本版完成账号恢复与邀请闭环、朋友试用时的 AI 状态引导，以及管理员用量面板。2026 年 10 月 17 日已完成定向本地与独立 Windows 验收，正式签名候选为 0.1.13，Android 构建号 18。生产升级、正式 Windows 覆盖验收和 Android 真机结果分别记录，不能以构建通过代替发布。
+本版完成账号恢复与邀请闭环、朋友试用时的 AI 状态引导，以及管理员用量面板。2026 年 10 月 17 日正式 Web/API 已升级到 0.1.13，公网定向检查通过。SMTP 尚未配置，找回密码仍关闭。Windows 和 Android 更新源继续保留 0.1.12；0.1.13 已有正式签名候选，Android 构建号 18，等待正式 PC 覆盖验收和 Android USB 真机验收后分别发布。
 
 ## 账号恢复与邀请
 
@@ -27,9 +27,11 @@ V18 仅为额度账本添加可空运行元数据和索引，不存对话、草�
 - 后端 22 项通过：账号恢复 6 项、用量 4 项、受影响对话 11 项、额度热更新 1 项。包含同链接并发只消费一次、刷新会话撤销、邀请旋转事务、管理员权限、元数据不泄漏和删除会话后统计保留。H2 迁移 V1 至 V18 通过。
 - 前端单元 11 项通过；相关浏览器 24 项通过，覆盖桌面和手机视口。布局防溢出和旧服务器响应保护最终修订后的 10 项新增场景也通过。这些手机视口结果不是 Android 真机结果。
 - 独立 Windows 原生客户端通过 3 项：真实 Rust 传输下的管理员面板与合成 SMTP、排队状态和未发送内容保护、真实接口重置密码与一次性链接。证据：`acceptance-results/account-ai-native/2026-10-16T22-46-43-249Z-c019cd/report.json`。使用本机内存数据库和合成邮箱，不修改正式客户端资料。
-- 发布防护脚本 3 项通过，版本一致性、原更新签名和 Android 证书验证通过。测试范围见 `scripts/release-test-scope.json`。
+- 发布防护脚本 4 项通过，版本一致性、原更新签名和 Android 证书验证通过。部署在已知 AI 排队／生成中时拒绝重启，不把新版本环境变量带入旧版本回退。测试范围见 `scripts/release-test-scope.json`。
 - 本轮 DeepSeek 付费调用 0 次，真实外部邮件 0 封。
 - 生产快照在独立 MySQL 8.4 恢复库完成 V18 迁移和原 0.1.12 镜像回退；未变化表校验相同，额度账本按原列投影逐项比对相同。新增可空列导致表结构变化，不冒称整张新表与旧表的 CHECKSUM TABLE 相同。恢复库及停止的演练容器保留，未挂载密钥或改写生产数据。
+- 独立 MySQL 候选 3 组检查通过：元数据分组及分页、缺失 token 和隐私边界，邀请换新后旧链接拒绝，以及普通成员无法读取邮件／用量／额度管理。全部使用合成账号和元数据，不调用模型。
+- 正式 HTTPS 网页桌面和手机视口 2 组通过：实际登录、AI 帮助及未发送文字保护、普通账号访问管理接口为 403、私有不缓存、未配置 SMTP 不伪装为开放。前后额度不变。证据：`acceptance-results/account-ai-public/2026-10-16T22-55-08-042Z-b25fb3/report.json`。
 
 重跑定向原生场景：先构建当前 `scripts/desktop.ps1 -Action regression` 与隔离 API，再运行 `node scripts/account-ai-native-acceptance.mjs`。脚本只启动并关闭自身测试进程，不卸载或清理正式应用。
 
@@ -37,7 +39,7 @@ V18 仅为额度账本添加可空运行元数据和索引，不存对话、草�
 
 目录：`production-artifacts/client-release/0.1.13/20261016T224235Z-d87422e1`。
 
-- Windows：`windows/Plan Cabin_0.1.13_x64-setup.exe`，由原长期更新密钥签名，具体字节数和哈希见该目录 `metadata/candidate.json`。
+- Windows：`windows/Plan Cabin_0.1.13_x64-setup.exe`，3488144 字节，SHA256 `0c83ee0a19753b06030b8d7f34f17fa69913f364fd8b89161e71d65606ffebf3`。由原长期更新密钥签名，尚未发布到官网或更新源。
 - Android：`android/PlanCabin-0.1.13-release.apk`，构建 18，SHA256 `a5fbf315047f5e5dfbd1c82a839f9de60c73cfec4fa61198b94b0b9178614ded`。保留原包名、正式证书，不公开上传；待 USB 真机验收后才能提供给朋友或推送受限更新。
 
 ## 邮件启用步骤
@@ -61,6 +63,28 @@ sudo sh scripts/activate-mail.sh enable-reset --received-test-email
 
 最后用自己的邮箱验证一次找回密码。自动化不会替管理员确认收件。邮件配置异常时脚本恢复原邮件配置，数据库和受限密钥文件保留；已有 SMTP 文件不自动覆盖。邀请制和公开注册状态不变。
 
+## 生产升级和回退
+
+业务部署目录为 `/home/oyts/plan-platform/releases/0.1.13-932e951cce35`，当前指针已切换。升级前备份 `backups/plan_platform-mysql-20261016-225411.sql.gz` 及 SHA256 校验文件已通过检查，并使用原 ECS 角色上传私有 OSS。生产迁移版本为 18，默认额度仍为 20，AI 密钥保持原 100:101、0600、只读挂载，值未被读取。
+
+上一版本 `/home/oyts/plan-platform/releases/0.1.12-561c16635f1b`、旧镜像、MySQL 卷和旧 Node 服务均保留。需要回退时，在新的服务器终端执行以下应用镜像回退，不导入旧备份覆盖新数据库：
+
+```sh
+unset PLAN_VERSION
+sh /home/oyts/plan-platform/releases/0.1.13-932e951cce35/scripts/production-compose.sh /home/oyts/plan-platform/releases/0.1.12-561c16635f1b up -d
+curl -fsS https://plan.zijun701.cn/api/health
+```
+
+确认健康版本恢复到 0.1.12 后再同步部署指针：
+
+```sh
+test ! -e /home/oyts/plan-platform/current.rollback-0113
+ln -s /home/oyts/plan-platform/releases/0.1.12-561c16635f1b /home/oyts/plan-platform/current.rollback-0113
+mv -Tf /home/oyts/plan-platform/current.rollback-0113 /home/oyts/plan-platform/current
+```
+
+回退前也应确认没有正在处理的付费 AI 请求。V18 是向后兼容的新增可空列，旧镜像已在恢复库实际启动验证；不删除新增元数据。
+
 ## 剩余发布门槛
 
-生产版本切换、正式 Windows 保留数据升级及官网更新源验收，按实际结果追加。真实 SMTP 收发等待管理员配置；Android 真机等待用户次日连接手机。未通过这些门槛的渠道不发布，原 0.1.12 下载和受限更新源保留。
+正式 Windows 保留数据升级及官网更新源验收，等待用户确认关闭客户端后推进。真实 SMTP 收发等待管理员配置；Android 真机等待用户次日连接手机。未通过这些门槛的客户端渠道不发布，原 0.1.12 下载和受限更新源保留。
