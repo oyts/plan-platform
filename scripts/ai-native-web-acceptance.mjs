@@ -14,6 +14,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const origin='https://plan.zijun701.cn';
 const version=JSON.parse(await readFile(join(root,'web/package.json'),'utf8')).version;
 const androidOnly=process.argv.includes('--android-only');
+const learningPacingOnly=process.argv.includes('--learning-pacing-only');
 const serialArgument=process.argv.indexOf('--serial');
 let serial=serialArgument<0?'':process.argv[serialArgument+1];
 const exec=promisify(execFile);
@@ -28,6 +29,7 @@ if(!account?.password)throw Error('Existing invited synthetic acceptance account
 const secrets=[account.password];
 let token,browser,context,page,child,nativeBrowser,nativePage,previousServer;
 const report={version,startedAt:new Date().toISOString(),scope:androidOnly?'New AI functionality only, real Android device, isolated regression identity and real Java HTTPS transport; synthetic invited USER, no paid calls. Formal APK separately checked through accessibility.':'New AI functionality only, real HTTPS, synthetic invited USER, no paid calls; isolated Windows package with real Rust transport.',status:'FAIL',cases:[]};
+if(learningPacingOnly)report.scope='0.1.12 AI lesson and non-executing pacing suggestions only; real HTTPS, synthetic invited USER, isolated native identity when selected. No paid calls, no other business regression.';
 if(process.argv.includes('--official'))report.scope='Real official DeepSeek acceptance, synthetic invited USER only, persistent maximum 5 requests across Web/Rust Windows/Java Android; exact per-run charges in official.paidCalls. Formal native identities are not modified.';
 await mkdir(out,{recursive:true});
 async function api(path,data,method=data===undefined?'GET':'POST',status=200){
@@ -49,6 +51,82 @@ async function capture(client,name){
 async function waitFor(check){for(let i=0;i<80;i++){if(await check())return;await new Promise(r=>setTimeout(r,250));}throw Error('Owned regression WebView not ready');}
 async function path(client,value){if(client.kind==='web')await client.page.goto(origin+value);else await client.page.evaluate(path=>{location.hash=path;},value);}
 async function scenario(name,action){const row={name,status:'PASS'};report.cases.push(row);try{await action();}catch(e){row.status='FAIL';throw e;}console.log('[PASS] '+name);}
+async function exerciseLearningPacing(client){
+  const quotaBefore=await api('/ai/quota');
+  const sessionsBefore=await api('/ai/sessions');
+  const plansBefore=await api('/plans');
+  await scenario(client.kind+' four-step AI lesson, reload and restart; no business or paid writes',async()=>{
+    await path(client,'/learn/ai');
+    const restart=client.page.getByRole('button',{name:'重新练习',exact:true});
+    if(await restart.isVisible())await restart.click();
+    // Restart only this synthetic profile's AI lesson, preserving old courses.
+    for(let i=0;i<3&&!await client.page.getByLabel('练习目标',{exact:true}).isVisible();i++)await client.page.getByRole('button',{name:'上一步',exact:true}).click();
+    const next=client.page.getByRole('button',{name:'下一步',exact:true});
+    await client.page.getByLabel('练习目标',{exact:true}).fill('');
+    await client.page.getByLabel('已阅读对话处理说明（练习）').uncheck();
+    await client.page.getByLabel('选择练习模式').selectOption('');
+    await expect(next).toBeDisabled();
+    await client.page.getByLabel('练习目标',{exact:true}).fill('两周复习英语，每次20分钟');
+    await client.page.getByLabel('已阅读对话处理说明（练习）').check();
+    await client.page.getByLabel('选择练习模式').selectOption('ROUTE');await expect(next).toBeDisabled();
+    await client.page.getByLabel('选择练习模式').selectOption('PLAN');await next.click();
+    await client.page.getByRole('button',{name:'生成示例草稿（不调用 AI）'}).click();
+    await client.page.getByLabel('修改练习任务标题').fill('复习10个英语单词');await expect(next).toBeDisabled();
+    await client.page.getByLabel('修改练习任务标题').fill('复习5个英语单词');
+    await client.page.getByRole('button',{name:'保存练习',exact:true}).click();
+    await expect(client.page.getByRole('status')).toContainText('练习已保存在当前设备');
+    await client.page.reload();
+    // Native startup deliberately restores the workspace home, not arbitrary
+    // teaching routes. Reopen the lesson as a user would, then inspect storage.
+    await expect(client.page.locator('.site-header')).toBeVisible();await path(client,'/learn/ai');
+    await expect(client.page.getByLabel('修改练习任务标题')).toHaveValue('复习5个英语单词');
+    await next.click();
+    const create=client.page.getByRole('button',{name:'确认生成（练习）',exact:true});
+    await client.page.getByLabel('我已核对内容，确认生成（练习）').uncheck();await expect(create).toBeDisabled();
+    await client.page.getByLabel('我已核对内容，确认生成（练习）').check();await expect(next).toBeDisabled();
+    await create.click();await next.click();
+    const finish=client.page.getByRole('button',{name:'完成教学',exact:true});
+    await client.page.getByRole('button',{name:'预览放慢后的安排（练习）'}).click();
+    await expect(client.page.getByLabel('练习调整对照')).toContainText('20 分钟 → 10 分钟');await expect(finish).toBeDisabled();
+    await client.page.getByRole('button',{name:'确认应用调整（练习）'}).click();
+    await expect(client.page.getByRole('status').filter({hasText:'仅未开始的事项放慢'})).toBeVisible();
+    expect(await client.page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+    await capture(client,client.kind+'-ai-lesson.png');await finish.click();
+    await expect(client.page.getByRole('heading',{name:'AI 规划教学已完成'})).toBeVisible();
+    await client.page.reload();await expect(client.page.locator('.site-header')).toBeVisible();await path(client,'/learn/ai');
+    await expect(client.page.getByRole('heading',{name:'AI 规划教学已完成'})).toBeVisible();
+    await restart.click();await expect(client.page.getByLabel('练习目标',{exact:true})).toHaveValue('');
+    expect(await api('/ai/sessions')).toEqual(sessionsBefore);expect(await api('/plans')).toEqual(plansBefore);
+  });
+  await scenario(client.kind+' real HTTPS pacing examples fill only, protect unsent input and retain task versions',async()=>{
+    const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(new Date());
+    const draft={schemaVersion:1,mode:'PLAN',revision:0,title:'节奏提示合成验收 '+run,startDate:today,endDate:today,restDays:[],stages:[],items:[{localId:'i1',title:'仅用于节奏提示验收 '+randomUUID().slice(0,8),note:'合成内容，非用户真实计划',dueDate:today,plannedMinutes:20,stageId:null,prerequisites:[]}]};
+    let session=await api('/ai/sessions',{mode:'PLAN',consent:true});const endpoint='/ai/sessions/'+session.id;
+    session=await api(endpoint+'/draft',{version:session.version,draftJson:JSON.stringify(draft)},'PUT');
+    const applied=await api(endpoint+'/apply',{version:session.version,confirmed:true});
+    const target=applied.path.match(/[a-f0-9-]{36}/)[0];
+    const tasksBefore=await api('/plans/'+target+'/tasks');
+    await path(client,'/ai?mode=PLAN&target='+target);
+    await client.page.getByRole('checkbox',{name:/我同意将所选对象/}).check();
+    await client.page.getByRole('button',{name:'载入所选内容（不调用 AI）',exact:true}).click();
+    const guide=client.page.getByRole('region',{name:'调整节奏指南'});await expect(guide).toBeVisible();
+    await guide.getByRole('button',{name:'周期延长一周',exact:true}).click();
+    const message=client.page.getByLabel('你的目标或修改要求');await expect(message).toHaveValue(/保持原休息日/);
+    const originalMessage=await message.inputValue();
+    client.page.once('dialog',d=>d.dismiss());await guide.getByRole('button',{name:'每项缩短到15分钟',exact:true}).click();
+    await expect(message).toHaveValue(originalMessage);
+    client.page.once('dialog',d=>d.accept());await guide.getByRole('button',{name:'每项缩短到15分钟',exact:true}).click();
+    await expect(message).toHaveValue(/15分钟/);await expect(client.page.getByRole('region',{name:'调整前后对照'})).toContainText('目前没有改动');
+    expect(await api('/plans/'+target+'/tasks')).toEqual(tasksBefore);
+    expect(await client.page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+    await guide.scrollIntoViewIfNeeded();await capture(client,client.kind+'-pacing-guide.png');
+    // Leave only the clearly labelled synthetic plan; remove this run's drafts.
+    const adjustmentId=new URLSearchParams(client.page.url().split('?')[1]).get('session');
+    for(const id of [session.id,adjustmentId])if(id){const s=await api('/ai/sessions/'+id);await api('/ai/sessions/'+id+'?version='+s.version,undefined,'DELETE',204);}
+  });
+  const quotaAfter=await api('/ai/quota');expect(quotaAfter.used).toBe(quotaBefore.used);expect(quotaAfter.pending).toBe(quotaBefore.pending);
+  report.paidCalls=0;report.serverVersion=(await api('/health')).version;
+}
 async function exercise(client){
   const quotaBefore=await api('/ai/quota');
   await expect(client.page.locator('.site-header')).toBeVisible({timeout:20000});
@@ -148,13 +226,17 @@ async function exerciseCreation(client){
 }
 try{
   const auth=await api('/auth/login',{email:'web-acceptance-a-20261012@example.test',password:account.password});token=auth.accessToken;secrets.push(token);expect(auth.user.role).toBe('USER');
-  expect((await api('/health')).version).toBe(version);expect((await api('/ai/capabilities')).adjustmentEnabled).toBe(true);
+  const health=await api('/health');
+  if(learningPacingOnly){expect(health.apiVersion).toBe(1);expect(['0.1.11',version]).toContain(health.version);}
+  else expect(health.version).toBe(version);
+  expect((await api('/ai/capabilities')).adjustmentEnabled).toBe(true);
   if(!androidOnly&&!process.argv.includes('--windows-only')){
   browser=await chromium.launch({headless:true});context=await browser.newContext({locale:'zh-CN',timezoneId:'Asia/Shanghai',viewport:{width:1280,height:900},serviceWorkers:'block'});
   // API session setup for an isolated test context, not UI password automation.
   const response=await context.request.post(origin+'/api/auth/login',{data:{email:'web-acceptance-a-20261012@example.test',password:account.password}});expect(response.status()).toBe(200);
   page=await context.newPage();await page.goto(origin+'/plans');
   if(process.argv.includes('--official'))await exerciseOfficial({root,client:{kind:'web',page},api,invoke,token,origin,report});
+  else if(learningPacingOnly)await exerciseLearningPacing({kind:'web',page});
   else await exercise({kind:'web',page});
   }
   if(process.argv.includes('--web-only')){report.status='PASS';if(!process.argv.includes('--official'))report.paidCalls=0;}
@@ -195,6 +277,7 @@ try{
   const nativeKind=androidOnly?'android':'windows';
   await nativePage.reload();await path({kind:nativeKind,page:nativePage},'/plans');
   if(process.argv.includes('--official'))await exerciseOfficial({root,client:{kind:nativeKind,page:nativePage},api,invoke,token,origin,report});
+  else if(learningPacingOnly)await exerciseLearningPacing({kind:nativeKind,page:nativePage});
   else if(process.argv.includes('--creation-only'))await exerciseCreation({kind:nativeKind,page:nativePage});
   else await exercise({kind:nativeKind,page:nativePage});
   report.status='PASS';if(!process.argv.includes('--official'))report.paidCalls=0;
