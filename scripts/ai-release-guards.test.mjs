@@ -27,4 +27,5 @@ test('application deployment refuses to restart known active paid work',()=>{
   assert.ok(script.includes("WHERE state IN ('QUEUED','RUNNING')"));
   assert.ok(script.includes('deployment postponed, production unchanged'));
   assert.ok(script.indexOf('pending_ai=')<script.indexOf("compose_from '__REMOTE__' up -d"));
+  assert.ok(!script.includes('set -a; . ./.env; set +a'));
 });

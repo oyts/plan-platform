@@ -40,7 +40,9 @@ compose_from() {
 }
 # Never restart an application while a known paid request is queued/running.
 # Read only counts; do not expose credentials or user conversation contents.
-set -a; . ./.env; set +a
+# Do not export PLAN_VERSION: Compose must read each release's own version,
+# especially when invoking the previous directory during rollback.
+. ./.env
 mysql_container=$(compose_from '__REMOTE__' ps -q mysql)
 test -n "$mysql_container"
 pending_ai=$(docker exec -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" "$mysql_container" mysql -uroot -N plan_platform -e "SELECT COUNT(*) FROM ai_jobs WHERE state IN ('QUEUED','RUNNING');")
