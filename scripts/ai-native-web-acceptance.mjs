@@ -57,10 +57,14 @@ async function exerciseLearningPacing(client){
   const plansBefore=await api('/plans');
   await scenario(client.kind+' four-step AI lesson, reload and restart; no business or paid writes',async()=>{
     await path(client,'/learn/ai');
+    await expect(client.page.locator('.ai-practice, .lesson-finished').first()).toBeVisible();
     const restart=client.page.getByRole('button',{name:'重新练习',exact:true});
     if(await restart.isVisible())await restart.click();
     // Restart only this synthetic profile's AI lesson, preserving old courses.
-    for(let i=0;i<3&&!await client.page.getByLabel('练习目标',{exact:true}).isVisible();i++)await client.page.getByRole('button',{name:'上一步',exact:true}).click();
+    for(let i=0;i<3&&!await client.page.getByLabel('练习目标',{exact:true}).isVisible();i++){
+      const step=client.page.locator('.lesson-instructions .panel-number'),before=await step.textContent();
+      await client.page.getByRole('button',{name:'上一步',exact:true}).click();await expect(step).not.toHaveText(before);
+    }
     const next=client.page.getByRole('button',{name:'下一步',exact:true});
     await client.page.getByLabel('练习目标',{exact:true}).fill('');
     await client.page.getByLabel('已阅读对话处理说明（练习）').uncheck();
