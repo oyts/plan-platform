@@ -1,12 +1,13 @@
 {
   "version": "0.1.13",
-  "reason": "Account recovery confirmation, SMTP readiness and invitation renewal; clearer AI failures and quota guidance; private administrator usage metadata retained independently of conversations. Only new and directly affected authentication/AI/admin flows. No paid API calls or unrelated business full regression. Android formal acceptance deferred until owner connects phone.",
+  "reason": "Account recovery confirmation, SMTP readiness and invitation renewal; clearer AI failures and quota guidance; private administrator usage metadata retained independently of conversations. Only new and directly affected authentication/AI/admin flows. No paid API calls or unrelated business full regression. Exact signed Android build 18 USB acceptance completed after owner connected phone; administrator confirmed real SMTP delivery and password recovery.",
   "frontendUnit": ["src/aiExperience.test.ts", "src/registration.test.ts", "src/aiPlanning.test.ts"],
   "browser": ["e2e/account-ai-operations.spec.ts", "e2e/ai-planning.spec.ts", "e2e/ai-foundation.spec.ts", "e2e/members-layout.spec.ts", "e2e/registration.spec.ts"],
   "backend": ["AccountRecoveryIntegrationTest", "AiUsageIntegrationTest", "AiConversationIntegrationTest", "AiQuotaIntegrationTest#adminChangesAreHotVersionedAuditedAndDoNotResetUsage"],
   "android": [],
   "nativeAcceptance": [
     "Windows isolated native acceptance: recovery confirmation and metadata-only admin panels, controlled synthetic data and fake upstream. Formal cover install only after saved/closed confirmation.",
-    "Android 0.1.13 build 18: build and signature checks only overnight; exact candidate USB acceptance pending. Do not publish unaccepted APK to protected feed."
+    "Android 0.1.13 build 18: scripts/android-account-operations-acceptance.py --phase before/after; 5 exact signed formal APK cases passed for original login/0-0 queue, mail state, AI usage, new guidance and process reopening. No business mutations, mail or paid calls.",
+    "Android driver safety only: scripts/test-android-account-operations.py, 6 tests passed. Post-publication authenticated update check uses scripts/android-ai-formal-acceptance.py --update-only; do not rerun unrelated workspace scenarios."
   ]
 }

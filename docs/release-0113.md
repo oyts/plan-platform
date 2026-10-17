@@ -1,6 +1,6 @@
 # 计划舱 0.1.13 账号恢复与 AI 运行管理
 
-本版完成账号恢复与邀请闭环、朋友试用时的 AI 状态引导，以及管理员用量面板。2026 年 10 月 17 日正式 Web/API、Windows 官网下载与可选更新源均已发布 0.1.13，公网与正式 Windows 定向验收通过。SMTP 尚未配置，找回密码仍关闭。Android 受限更新源保留 0.1.12 构建 17，0.1.13 构建 18 待 USB 真机验收后发布。
+本版完成账号恢复与邀请闭环、朋友试用时的 AI 状态引导，以及管理员用量面板。2026 年 10 月 17 日正式 Web/API、Windows 官网下载与可选更新源、Android 登录受限更新源均已发布 0.1.13（Android 构建 18）。正式双端定向验收通过；管理员确认实际邮件送达，并完成真实找回密码和新密码登录。公众注册、官网 APK 与二维码仍关闭。
 
 ## 账号恢复与邀请
 
@@ -40,7 +40,7 @@ V18 仅为额度账本添加可空运行元数据和索引，不存对话、草�
 目录：`production-artifacts/client-release/0.1.13/20261016T224235Z-d87422e1`。
 
 - Windows：`windows/Plan Cabin_0.1.13_x64-setup.exe`，3488144 字节，SHA256 `0c83ee0a19753b06030b8d7f34f17fa69913f364fd8b89161e71d65606ffebf3`。由原长期更新密钥签名，已发布到官网和可选更新源。
-- Android：`android/PlanCabin-0.1.13-release.apk`，构建 18，SHA256 `a5fbf315047f5e5dfbd1c82a839f9de60c73cfec4fa61198b94b0b9178614ded`。保留原包名、正式证书，不公开上传；待 USB 真机验收后才能提供给朋友或推送受限更新。
+- Android：`android/PlanCabin-0.1.13-release.apk`，构建 18，SHA256 `a5fbf315047f5e5dfbd1c82a839f9de60c73cfec4fa61198b94b0b9178614ded`。原包名、正式证书不变；此原始候选已在真机覆盖验收，通过后发布到登录受限更新源，不公开上传。
 
 ## 邮件启用步骤
 
@@ -107,6 +107,26 @@ mv -Tf /home/oyts/plan-platform/current.rollback-0113 /home/oyts/plan-platform/c
 
 回退前也应确认没有正在处理的付费 AI 请求。V18 是向后兼容的新增可空列，旧镜像已在恢复库实际启动验证；不删除新增元数据。
 
-## 剩余发布门槛
+## 邮件实际启用与验收
 
-Windows 官网与更新源已发布。真实 SMTP 收发等待管理员配置；Android 真机等待用户连接手机。Android 未验收前不更新受限源或提供新版给朋友。
+2026 年 10 月 17 日，管理员在服务器隐藏输入 QQ SMTP 专用授权码，受限配置只读挂载到后端，未进入客户端或仓库。先在找回密码关闭的状态下发送管理员测试邮件；本人确认实际收到后才启用密码找回。管理员随后确认重置邮件、新密码登录和原数据均正常。公网配置已核对 `passwordResetEnabled=true`、`registrationEnabled=false`、`invitationEnabled=true`、`emailVerificationEnabled=false`。本轮 Android 自动验收只读取邮件状态，没有额外发送邮件或更改密码。
+
+## Android 真机与受限发布
+
+2026 年 10 月 17 日，在原 iQOO V2426A / Android 15 手机上完成 0.1.12 构建 17 至 0.1.13 构建 18 的同包名覆盖升级。安装前拉取已安装的原 APK 核对正式证书，候选哈希与原证书一致；用户确认保存后执行 `adb install -r`，未卸载或清数据。安装后直接校验手机 base.apk 的 SHA256，等于上方原候选哈希。
+
+本次仅验证受影响功能，共 5 项通过：原登录与队列保留；手机管理员邮件状态显示已配置、密码找回已启用；私有 AI 用量和运行状态正常加载；新版 AI 操作帮助可展开；进程关闭重开后仍登录且队列数量不变。升级前后均为 0 项本地操作、0 项冲突，不将空队列结果写成非空队列升级证明。没有修改真实计划、邀请或额度，没有发送邮件或付费 AI 请求。证据为 `acceptance-results/android-account-operations/20261017T113706Z/report.json`。
+
+可复现的定向驱动为 `scripts/android-account-operations-acceptance.py`（`--phase before` 记录基线，原签名覆盖后使用 `--phase after`）；辅助驱动的 6 项安全单元检查通过。不会输入登录密码、读取会话存储或提交同步队列。
+
+发布前确认 AI 排队／生成中均为零，新建并验证生产备份 `backups/plan_platform-mysql-20261017-113811.sql.gz`。同一候选通过 `production-artifacts/invited-android/0.1.13/candidate-mb3SbY` 发布，远端阶段目录为 `/home/oyts/plan-platform/android-private/staging/android-18-33b3d578`。后端容器保持运行，未替换业务镜像或修改数据库。
+
+受限 HTTPS 源 4 组通过：未登录及无效凭据均拒绝；官网 APK、旧匿名源与二维码仍不可用；两个专用普通受邀账号分别核对账号绑定、私有不缓存、实际下载大小及 APK 哈希。报告为 `acceptance-results/invited-android/2026-10-17T11-38-24-312Z-c38f4b58/report.json`。最低支持构建仍为 1，本版为可选更新。此次安装方式是 USB 覆盖，不把检查更新与覆盖安装写成从旧版应用内下载安装的完整复测。
+
+发布后正式 Android 应用内检查更新通过，显示当前已是最新版本，自动下载仍未勾选。证据为 `acceptance-results/android-ai-formal/20261017T113920Z/report.json`；只运行 `--update-only`，没有重新执行无关业务。
+
+需要回退受限更新清单时执行以下命令。保留新旧 APK 和用户数据库，不降级已安装应用：
+
+```sh
+sh /home/oyts/plan-platform/android-private/staging/android-18-33b3d578/rollback.sh
+```
