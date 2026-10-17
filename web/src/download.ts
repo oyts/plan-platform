@@ -1,4 +1,9 @@
 import { isAndroid, nativeInvoke } from '@/desktop';
+import axios from 'axios';
+export async function downloadErrorMessage(error:unknown):Promise<string|undefined>{
+  if(!axios.isAxiosError(error)||!(error.response?.data instanceof Blob)||error.response.data.size>8192)return;
+  try{const body=JSON.parse(await error.response.data.text()) as {message?:unknown};return typeof body.message==='string'?body.message.slice(0,300):undefined;}catch{return;}
+}
 export async function downloadFile(blob: Blob, fileName: string): Promise<void> {
   if (isAndroid()) {
     // Blob.text() strips the UTF-8 BOM that the server adds for Excel exports.

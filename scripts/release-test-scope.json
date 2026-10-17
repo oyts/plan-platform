@@ -1,5 +1,17 @@
 {
   "version": "0.1.14",
+  "roadmapPersonalData": {
+    "status":"local-accepted-final-mysql-stream-check-and-native-ui-pending",
+    "reason":"Stage 2: private versioned backup, read-only preview, atomic restore-as-new with remapped relations and stopped timers, isolated weekly copies, three-mode CSV and shared navigation. V21 adds restore metadata/copies only. CSV helper also hardens affected legacy exports. No real user files, AI, mail or production writes.",
+    "backend":["PersonalDataIntegrationTest"],
+    "frontendUnit":["src/personalData.test.ts","src/workspaceModel.test.ts","src/download.test.ts"],
+    "browser":["e2e/personal-data.spec.ts"],
+    "android":["cn.zijun701.plan.mobile.TransportRulesTest"],
+    "results":{"backendPassed":9,"frontendUnitPassed":19,"browserPassed":9,"browserDesignedSkipped":1,"affectedFeedbackBrowserPassed":2,"androidTransportPassed":6,"paidAiCalls":0,"realEmailsSent":0},
+    "evidence":["acceptance-results/roadmap-personal-data-final/","acceptance-results/roadmap-personal-data-verified/","backend/target-acceptance/surefire-reports/","remote roadmap-candidates/20261018-0625-feedback-data/report.json"],
+    "mysql":"V20/V21 migration, synthetic restore/dump checksums and actual prior image compatibility passed on b5a6dab4 JAR; final streaming/byte-cap JAR still needs --verify-final-jar",
+    "pending":["final JAR MySQL streaming read check","independent Windows UI acceptance","Android device acceptance after user authorization"]
+  },
   "roadmapFeedback": {
     "status": "shared-source-and-transport-accepted-native-ui-pending",
     "reason": "Stage 1 complete implementation: private feedback, administrator replies, manually saved offline draft, explicit diagnostic preview/consent, durable creation replay and opaque request correlation. No AI calls, mail, attachments, production cutover or Android device work.",
@@ -12,11 +24,11 @@
     "pending": ["fresh MySQL V20 migration rehearsal before release", "independent Windows candidate acceptance", "Android device acceptance after user authorization"],
     "productionVersionUnchanged": "0.1.14"
   },
-  "reason": "Complete daily-use phase: cross-mode dated overview, opt-in in-app reminders, private weekly review and merged teaching date feedback. Run consolidated tests only after the whole phase is implemented. V19 adds private settings/reviews and nullable todo completion timestamps without fabricating old dates. No paid AI, SMTP, background/system push or unrelated regression.",
-  "frontendUnit": ["src/dailyExperience.test.ts", "src/learningModel.test.ts", "src/offlineCache.test.ts", "src/workspaceModel.test.ts"],
-  "browser": ["e2e/daily-experience.spec.ts", "e2e/learning-dates.spec.ts", "e2e/workspaces.spec.ts"],
-  "backend": ["DailyExperienceIntegrationTest", "TodoIntegrationTest"],
-  "android": [],
+  "reason": "Unreleased roadmap stages 1 and 2: private feedback/diagnostics, private data export/atomic new-copy restore and shared navigation. Version remains the 0.1.14 source baseline until a real candidate release is selected. Only new and directly affected tests; production and formal clients are unchanged.",
+  "frontendUnit": ["src/feedbackModel.test.ts", "src/api/client.test.ts", "src/personalData.test.ts", "src/workspaceModel.test.ts", "src/download.test.ts"],
+  "browser": ["e2e/feedback.spec.ts", "e2e/personal-data.spec.ts"],
+  "backend": ["FeedbackIntegrationTest", "PersonalDataIntegrationTest"],
+  "android": ["cn.zijun701.plan.mobile.TransportRulesTest"],
   "dailyExperience": {
     "status": "released-0.1.14",
     "results": {"frontendUnitPassed": 32, "backendPassed": 12, "browserDistinctPassed": 20},

@@ -159,7 +159,7 @@ public class PlanNativePlugin extends Plugin {
         File[] old = dir.listFiles(); if (old != null) for (File file : old) if (System.currentTimeMillis() - file.lastModified() > 24 * 3600 * 1000L) file.delete();
         File file = new File(dir, name); try (FileOutputStream output = new FileOutputStream(file)) { output.write(bytes); }
         Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", file);
-        Intent intent = new Intent(Intent.ACTION_SEND).setType(name.endsWith(".csv") ? "text/csv" : "text/markdown")
+        Intent intent = new Intent(Intent.ACTION_SEND).setType(name.endsWith(".csv") ? "text/csv" : name.endsWith(".json") ? "application/json" : "text/markdown")
                 .putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.setClipData(ClipData.newUri(getContext().getContentResolver(), name, uri));
         getActivity().runOnUiThread(() -> getActivity().startActivity(Intent.createChooser(intent, "保存或分享导出文件")));

@@ -2,13 +2,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import axios from 'axios';
 const native = vi.hoisted(() => ({ android: true, invoke: vi.fn() }));
 vi.mock('@/desktop', () => ({ isAndroid: () => native.android, nativeInvoke: native.invoke }));
-import { downloadFile } from './download';
+import { downloadFile, downloadErrorMessage } from './download';
 import { desktopAdapter } from './api/desktopAdapter';
 beforeEach(() => { native.invoke.mockReset(); native.android = true; });
 describe('Android exports', () => {
   it('shares UTF-8 contents through the native file provider', async () => {
     await downloadFile(new Blob(['日期,计划\n2026-10-02,学习'], { type: 'text/csv' }), 'plan-ledger.csv');
     expect(native.invoke).toHaveBeenCalledWith('share_file', { body: '日期,计划\n2026-10-02,学习', fileName: 'plan-ledger.csv', mimeType: 'text/csv' });
+  });
+  it('shares a private JSON file without changing its Unicode contents',async()=>{
+    const body=JSON.stringify({format:'plan-cabin-private-backup',schemaVersion:1,title:'合成数据🎸'});
+    await downloadFile(new Blob([body],{type:'application/json'}),'plan-cabin-private.json');
+    expect(native.invoke).toHaveBeenCalledWith('share_file',{body,fileName:'plan-cabin-private.json',mimeType:'application/json'});
+  });
+  it('reads bounded JSON errors instead of treating a failed Blob export as a file',async()=>{
+    const error={isAxiosError:true,response:{data:new Blob([JSON.stringify({message:'备份文件超过允许范围。'})])}};
+    expect(await downloadErrorMessage(error)).toBe('备份文件超过允许范围。');
+    expect(await downloadErrorMessage({isAxiosError:true,response:{data:new Blob(['<html>not JSON</html>'])}})).toBeUndefined();
+    expect(await downloadErrorMessage({isAxiosError:true,response:{data:new Blob(['x'.repeat(8193)])}})).toBeUndefined();
   });
   it.each([
     ['plan-tasks.csv', 'text/csv', '\uFEFF日期,任务\r\n2026-10-02,"学习,复盘"'],

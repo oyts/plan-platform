@@ -24,6 +24,7 @@ public class TransportRulesTest {
     }
     @Test public void exportIsRestrictedToTextFiles() {
         assertEquals("plan-2026-10-02.csv", TransportRules.exportName("plan-2026-10-02.csv"));
+        assertEquals("plan-cabin-private-20261018.json",TransportRules.exportName("plan-cabin-private-20261018.json"));
         for (String name : new String[]{"../session.csv", "secret.apk", "/tmp/test.md"}) assertThrows(IllegalArgumentException.class, () -> TransportRules.exportName(name));
     }
     @Test public void cookieExpiryIsAbsoluteAndCapped() {

@@ -13,6 +13,7 @@ describe('independent workspace preferences', () => {
     expect(pathWorkspace('/mainlines?line=one')).toBe('route'); expect(pathWorkspace('/plans/uuid-1/studio')).toBe('plan');
     expect(pathWorkspace('/routes')).toBe('route'); expect(pathWorkspace('/route-records')).toBe('route');
     expect(pathWorkspace('/sync')).toBeNull(); expect(pathWorkspace('/desktop')).toBeNull(); expect(pathWorkspace('//evil.test')).toBeNull();
+    expect(pathWorkspace('/exports')).toBeNull(); expect(pathWorkspace('/feedback')).toBeNull();
   });
   it('remembers each mode separately and shared pages do not switch modes', () => {
     let state = rememberWorkspace(freshWorkspace(), '/plans/one?filter=test');

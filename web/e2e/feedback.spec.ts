@@ -13,6 +13,7 @@ test('feedback consent, private submission, status, reply and safe diagnostic pr
   expect(diagnostic).toMatchObject({schemaVersion:1,platform:'WEB',queueCount:0,conflictCount:0});
   for(const forbidden of ['email','accessToken','serverUrl','title','deviceId','logs'])expect(diagnostic).not.toHaveProperty(forbidden);
   await page.getByRole('button',{name:'预览待发送内容',exact:true}).click();await expect(page.getByRole('button',{name:'确认发送反馈',exact:true})).toBeDisabled();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.getByLabel('我已核对内容不含敏感信息，同意将以上内容发送给管理员。',{exact:true}).check();
   await page.getByRole('button',{name:'确认发送反馈',exact:true}).click();await expect(page.getByText('反馈已发送。可在下方查看处理状态与管理员回复。',{exact:true})).toBeVisible();
   await page.getByLabel('补充信息',{exact:true}).fill('已用合成案例复现。');await page.getByRole('button',{name:'发送补充',exact:true}).click();await expect(page.getByText('已用合成案例复现。',{exact:true})).toBeVisible();

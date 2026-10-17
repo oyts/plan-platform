@@ -675,9 +675,7 @@ public class PlanService {
             tag == null ? null : tag.getColor(), entry.getStartedAt(), entry.getEndedAt(), entry.getSeconds(), entry.getSource());
     }
     private String csvCell(String value) {
-        String clean = value == null ? "" : value.replace("\"", "\"\"");
-        if (!clean.isEmpty() && "=+-@".indexOf(clean.charAt(0)) >= 0) clean = "'" + clean;
-        return "\"" + clean + "\"";
+        return com.oyts.planplatform.common.CsvCell.encode(value);
     }
     private String markdownValue(String value) { return blank(value) ? "未填写" : value.replace("\n", "<br>"); }
     private org.springframework.data.jpa.domain.Specification<TimeEntry> timeSpecification(String userId, Instant from, Instant to,

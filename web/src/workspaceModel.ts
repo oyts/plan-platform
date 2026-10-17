@@ -5,7 +5,7 @@ export function pathWorkspace(fullPath: string): WorkspaceMode | null {
   const path = fullPath.split(/[?#]/)[0];
   if (path === '/todos') return 'todo';
   if (['/routes', '/mainlines', '/route-progress', '/route-records'].includes(path)) return 'route';
-  if (['/', '/schedule', '/plans', '/stats', '/reviews', '/records', '/exports'].includes(path) || /^\/plans\/[a-zA-Z0-9_-]+(?:\/studio)?$/.test(path)) return 'plan';
+  if (['/', '/schedule', '/plans', '/stats', '/reviews', '/records'].includes(path) || /^\/plans\/[a-zA-Z0-9_-]+(?:\/studio)?$/.test(path)) return 'plan';
   return null;
 }
 function validPath(path: unknown, mode: WorkspaceMode): path is string {

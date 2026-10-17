@@ -12,7 +12,29 @@
 
 MySQL 新迁移演练和独立 PC 界面候选验收仍待执行。现有 Windows 回归包是在最后两项细微界面调整前构建，不能直接作为最终 UI 包发布；集中候选节点须重新构建。Android 真机等待用户明早连接并授权，不能用手机视口截图或连接规则单元替代。正式覆盖安装、云端切换仍待另行确认。
 
-下一步进入阶段二个人数据中心，先核对现有导出、旧迁移和实体关系，再实现版本化快照、预检和恢复为新记录。阶段三至六尚未开始实现，不要根据路线图文字或历史测试记录声明完成。
+阶段二已完成私有快照格式、字段白名单、只读预检、原子恢复与关系重映射、只读周复盘副本、三模式 CSV、共享入口和导出大小保护。本地后端 9 项、前端直接相关 19 项通过；浏览器最终 9 项通过、桌面不适用的手机菜单用例 1 项按设计跳过，另有反馈勾选框直接受影响的 2 项复验通过。证据在 `acceptance-results/roadmap-personal-data-final/`、`acceptance-results/roadmap-personal-data-verified/` 和后端验收报告。修复了桌面勾选框被全局输入框样式撑宽造成的横向溢出，已检查真实桌面和窄屏截图。新迁移 V21 未上生产。
+
+独立 Windows 和 Android 调试包构建通过，身份为 `cn.zijun701.plan.desktop.regression` 和 `cn.zijun701.plan.mobile.regression`，没有安装或操作真机。源资源指纹 `a9372a83262ed5f5ae3a011efde01e4905da1672b93f6a6b812ece69b7d20417`；构建清单在 `.desktop-tools/native-regression/build.json`。后端最后增加读取时的字节保护后重新构建，因此该清单的 API hash 已过期，下一次必须重新绑定最新 API 构建并验证，不能声称原生 UI 已通过。
+
+阶段三至六尚未开始实现。下一窗口先补齐下面的最终 JAR MySQL 读取检查，再进入阶段三；不要根据路线图文字或历史测试记录声明完成。
+
+## MySQL 独立演练与最后补验
+
+远端候选目录为 `/home/oyts/plan-platform/roadmap-candidates/20261018-0625-feedback-data`，仅合成数据库和账号。`report.json` 已为 PASS：V1—V21 MySQL 8.4 迁移、反馈权限／防重／管理员处理、三模式备份恢复与关系重映射、整库 dump 恢复全表校验、实际旧 0.1.14 镜像读取升级库及数据不变、公网健康和注册关闭不变。初次回退脚本误用了镜像内 JAR 路径，随后修正；第二次读取范围超过旧待办接口范围，改为同一天后通过，失败报告保留，没有反复重建迁移数据。
+
+上述 MySQL 证据的 JAR 是 `b5a6dab4e03dd67806b2d15c64d5570cf6cb7243491ea31388aad6b9e9f1d329`。最后为小服务器追加了 Connector/J 流式读取与读取过程字节上限，本地第 9 项大文件测试已通过，**尚未用这个最终新 JAR 补跑 MySQL 读取**。下一次先确认远端 `plan-roadmap-*` 候选全部停止，再只覆盖本任务目录的生成 JAR 与脚本（不改生产）：
+
+```powershell
+scp backend/target-acceptance/plan-platform-api.jar oyts@115.29.176.141:/home/oyts/plan-platform/roadmap-candidates/20261018-0625-feedback-data/api.jar
+scp scripts/roadmap-mysql-acceptance.py oyts@115.29.176.141:/home/oyts/plan-platform/roadmap-candidates/20261018-0625-feedback-data/verify.py
+ssh oyts@115.29.176.141 'python3 /home/oyts/plan-platform/roadmap-candidates/20261018-0625-feedback-data/verify.py --directory /home/oyts/plan-platform/roadmap-candidates/20261018-0625-feedback-data --verify-final-jar'
+```
+
+脚本仅在原独立候选重启新 JAR、读取合成备份和 CSV、比较数据校验和，结束后停止候选并保留资料。不要重跑没有续做参数的整轮脚本，不输出私有配置或凭据。正式服务、MySQL 业务库、旧 Node、更新源和真实账号完全保留。
+
+## 本次额度停止点
+
+最新读取的 300 分钟窗口已用 96%，实际重置为北京时间 2026 年 10 月 18 日 10:22:53。已使用原有 `automation` 将下一次续做安排为 10:29，醒来仍须重查实际额度。未购买额度、未使用重置券、未创建重复自动化。
 
 ## 本机命令
 

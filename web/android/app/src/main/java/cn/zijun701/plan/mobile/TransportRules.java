@@ -37,7 +37,7 @@ final class TransportRules {
     }
     static boolean header(String name) { return HEADERS.contains(name.toLowerCase(Locale.ROOT)); }
     static String exportName(String name) {
-        if (name == null || !name.matches("[a-zA-Z0-9_-]{1,100}\\.(csv|md)")) throw new IllegalArgumentException("导出文件名无效。");
+        if (name == null || !name.matches("[a-zA-Z0-9_-]{1,100}\\.(csv|md|json)")) throw new IllegalArgumentException("导出文件名无效。");
         return name;
     }
     static long cookieExpiry(long now, long maxAge) {
