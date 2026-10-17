@@ -18,6 +18,8 @@
 - Web、Windows 和 Android 共用页面资源构建通过；三端版本一致性及发布测试范围检查通过。签名安装和 Android 真机结果仍待发布门槛，不把浏览器视口当作设备通过。
 - 本轮真实邮件与付费 AI 调用均为 0，未更改真实用户计划、离线队列或云端服务。
 
+收尾强化了云端读取故障和保存后离线重开的体验：读取周复盘失败仍显示当前草稿；收到保存成功响应后，按原账号和服务器更新本机复盘／提醒快照，避免断网重开读到保存前内容。桌面和手机视口的 4 项直接受影响补验通过，证据为 `acceptance-results/daily-experience-0114-draft-recheck/`。不重跑未修改的后端业务。
+
 本机证据目录为 `acceptance-results/daily-experience-0114-final/` 与 `acceptance-results/daily-experience-0114-workspace-recheck/`，后端报告位于 `backend/target-acceptance/surefire-reports/`。这些私有运行产物不上传 GitHub。
 
 ## 仍需完成的发布门槛

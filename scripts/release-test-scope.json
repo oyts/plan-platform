@@ -8,7 +8,8 @@
   "dailyExperience": {
     "status": "local-verified-unreleased",
     "results": {"frontendUnitPassed": 32, "backendPassed": 12, "browserDistinctPassed": 20},
-    "evidence": ["acceptance-results/daily-experience-0114-final/", "acceptance-results/daily-experience-0114-workspace-recheck/"],
+    "evidence": ["acceptance-results/daily-experience-0114-final/", "acceptance-results/daily-experience-0114-workspace-recheck/", "acceptance-results/daily-experience-0114-draft-recheck/"],
+    "draftAndSavedSnapshotRecheckPassed": 4,
     "browserNote": "Final batch 18 passed / 2 failed on missing asynchronous fixture preconditions; exact two workspace cases passed after waiting for online cached data and empty list readiness. Failures retained, no retries.",
     "mysqlProductionMigration": "pending isolated MySQL rehearsal before production",
     "realEmailSent": 0,

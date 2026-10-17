@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
-import { api, apiMessage, currentQueueOwner } from '@/api/client';
+import { api, apiMessage, currentQueueOwner, serverScope } from '@/api/client';
+import { cacheResponse } from '@/offlineCache';
 import { requiresConnection } from '@/connectionState';
 import { localDate, shiftDate } from '@/todos';
 import { mondayOf, recordedTime, type WeeklyReview, type WeekSummary } from '@/dailyExperience';
@@ -14,7 +15,7 @@ const dirty=computed(()=>JSON.stringify(draft)!==baseline.value);
 let requestNumber=0;
 function clean() { baseline.value=JSON.stringify(draft); }
 async function load() {
-  const request=++requestNumber;loading.value=true;error.value='';notice.value='';current.value=null;summary.value=null;
+  const request=++requestNumber;loading.value=true;error.value='';notice.value='';
   try {
     const [metrics,review]=await Promise.all([api.get<WeekSummary>('/weekly/summary',{params:{start:start.value}}),api.get<WeeklyReview>(`/weekly/reviews/${start.value}`)]);
     if(request!==requestNumber)return;
@@ -23,9 +24,20 @@ async function load() {
 }
 async function loadHistory(){try{history.value=(await api.get<PageResponse<WeeklyReview>>('/weekly/reviews',{params:{page:historyPage.value,size:10}})).data;}catch(e){error.value=apiMessage(e);}}
 function mayLeave(){return !currentQueueOwner() || !saving.value && (!dirty.value || confirm('周复盘尚未保存，离开将丢失本页修改。确定继续吗？'));}
-async function choose(value=selected.value){if(!mayLeave()){selected.value=start.value;return;}try{start.value=mondayOf(value);selected.value=start.value;Object.assign(draft,{wins:'',blockers:'',nextFocus:''});clean();await load();}catch(e){error.value=apiMessage(e);}}
+async function choose(value=selected.value){if(!mayLeave()){selected.value=start.value;return;}try{start.value=mondayOf(value);selected.value=start.value;current.value=null;summary.value=null;Object.assign(draft,{wins:'',blockers:'',nextFocus:''});clean();await load();}catch(e){error.value=apiMessage(e);}}
 async function moveWeek(delta:number){await choose(shiftDate(start.value,delta*7));}
-async function save(){if(!current.value||saving.value)return;saving.value=true;error.value='';notice.value='';try{current.value=(await api.put<WeeklyReview>(`/weekly/reviews/${start.value}`,{...draft,version:current.value.version})).data;Object.assign(draft,{wins:current.value.wins,blockers:current.value.blockers,nextFocus:current.value.nextFocus});clean();notice.value='本周复盘已保存，其他设备联网后可读取。';await loadHistory();}catch(e){error.value=apiMessage(e);}finally{saving.value=false;}}
+async function save(){
+  if(!current.value||saving.value)return;
+  const owner=currentQueueOwner(), scope=serverScope(), path=`/weekly/reviews/${start.value}`;
+  saving.value=true;error.value='';notice.value='';
+  try{
+    const value=(await api.put<WeeklyReview>(path,{...draft,version:current.value.version})).data;
+    if(owner)await cacheResponse(scope,owner,path,undefined,value);
+    current.value=value;
+    Object.assign(draft,{wins:current.value.wins,blockers:current.value.blockers,nextFocus:current.value.nextFocus});clean();
+    notice.value='本周复盘已保存，其他设备联网后可读取。';await loadHistory();
+  }catch(e){error.value=apiMessage(e);}finally{saving.value=false;}
+}
 async function reread(){if(mayLeave())await load();}
 async function historyMove(delta:number){historyPage.value+=delta;await loadHistory();}
 function beforeUnload(event:BeforeUnloadEvent){if(dirty.value||saving.value){event.preventDefault();event.returnValue='';}}

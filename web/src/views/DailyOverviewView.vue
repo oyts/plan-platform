@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
-import { api, apiMessage, currentQueueOwner } from '@/api/client';
+import { api, apiMessage, currentQueueOwner, serverScope } from '@/api/client';
+import { cacheResponse } from '@/offlineCache';
 import { requiresConnection } from '@/connectionState';
 import { localDate } from '@/todos';
 import { dailyItemDestination, reminderDefaults, type DailySummary, type DailyRoute, type ItemPage, type Reminders } from '@/dailyExperience';
@@ -22,7 +23,17 @@ async function load() {
 }
 async function loadRoutes(){try{routes.value=(await api.get<PageResponse<DailyRoute>>('/daily/routes',{params:{page:routePage.value,size:10}})).data;}catch(e){error.value=apiMessage(e);}}
 async function loadSettings(){try{const value=(await api.get<Reminders>('/daily/reminders')).data;Object.assign(settings,value);baseline.value=JSON.stringify(settings);settingsReady.value=true;settingsError.value='';}catch(e){settingsError.value=apiMessage(e);}}
-async function saveSettings(){if(saving.value)return;saving.value=true;settingsError.value='';message.value='';try{const value=(await api.put<Reminders>('/daily/reminders',{...settings})).data;Object.assign(settings,value);baseline.value=JSON.stringify(settings);message.value='站内提醒设置已保存，其他设备联网读取后生效。';window.dispatchEvent(new CustomEvent('plan-platform:reminders-changed'));}catch(e){settingsError.value=apiMessage(e);}finally{saving.value=false;}}
+async function saveSettings(){
+  if(saving.value)return;
+  const owner=currentQueueOwner(),scope=serverScope();
+  saving.value=true;settingsError.value='';message.value='';
+  try{
+    const value=(await api.put<Reminders>('/daily/reminders',{...settings})).data;
+    if(owner)await cacheResponse(scope,owner,'/daily/reminders',undefined,value);
+    Object.assign(settings,value);baseline.value=JSON.stringify(settings);message.value='站内提醒设置已保存，其他设备联网读取后生效。';
+    window.dispatchEvent(new CustomEvent('plan-platform:reminders-changed'));
+  }catch(e){settingsError.value=apiMessage(e);}finally{saving.value=false;}
+}
 function reloadSettings(){if(!dirty.value || confirm('读取云端设置将替换本页尚未保存的提醒设置，是否继续？'))void loadSettings();}
 watch([date,days,bucket,mode],()=>{if(page.value===0)void load();else page.value=0;});watch(page,load);watch(routePage,loadRoutes);
 function beforeUnload(event:BeforeUnloadEvent){if(dirty.value||saving.value){event.preventDefault();event.returnValue='';}}

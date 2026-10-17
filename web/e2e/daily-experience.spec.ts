@@ -36,12 +36,18 @@ test('weekly notes survive reopen, prevent lost edits, and keep input on a real 
   await page.getByLabel('下周重点',{exact:true}).fill('本机保留的草稿');page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('link',{name:'今日与提醒',exact:true}).last().click();await expect(page).toHaveURL(/\/weekly-review$/);
   const headers={Authorization:`Bearer ${user.token}`}, current=await (await request.get(`${API}/weekly/reviews/2026-10-12`,{headers})).json();const changed=await request.put(`${API}/weekly/reviews/2026-10-12`,{headers,data:{wins:current.wins,blockers:'',nextFocus:'另一端保存的重点',version:current.version}});expect(changed.status()).toBe(200);
   await page.getByRole('button',{name:'保存本周复盘',exact:true}).click();await expect(page.getByRole('alert')).toContainText('其他设备');await expect(page.getByLabel('下周重点',{exact:true})).toHaveValue('本机保留的草稿');
+  await page.route('**/api/weekly/reviews/2026-10-12',route=>route.request().method()==='GET' ? route.fulfill({status:503,contentType:'application/json',body:'{"message":"暂时无法读取云端版本"}'}) : route.continue());
+  page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'读取云端版本',exact:true}).click();await expect(page.getByRole('alert')).toContainText('暂时无法读取云端版本');await expect(page.getByLabel('下周重点',{exact:true})).toHaveValue('本机保留的草稿');
+  await page.unroute('**/api/weekly/reviews/2026-10-12');
   page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'读取云端版本',exact:true}).click();await expect(page.getByLabel('下周重点',{exact:true})).toHaveValue('另一端保存的重点');
   await page.setViewportSize({width:320,height:740});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:info.outputPath('weekly-review-320.png'),fullPage:true});
   await page.getByRole('region',{name:'本周概况'}).scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath('weekly-review-320-viewport.png')});
 });
 test('new pages can read previously loaded snapshots offline without enqueueing writes',async({page,request})=>{
-  const user=await account(request);await createTodo(request,user.token,'缓存中的事项',localDay());await login(page,user.email);await page.goto('/weekly-review');await expect(page.getByLabel('本周收获',{exact:true})).toBeVisible();await page.goto('/overview');await expect(page.getByRole('heading',{name:'缓存中的事项',exact:true})).toBeVisible();
+  const user=await account(request);await createTodo(request,user.token,'缓存中的事项',localDay());await login(page,user.email);await page.goto('/weekly-review');await expect(page.getByLabel('本周收获',{exact:true})).toBeVisible();
+  await page.getByLabel('本周收获',{exact:true}).fill('保存后离线仍可读取的新复盘');await page.getByRole('button',{name:'保存本周复盘',exact:true}).click();await expect(page.getByText('本周复盘已保存，其他设备联网后可读取。')).toBeVisible();
+  await page.goto('/overview');await expect(page.getByRole('heading',{name:'缓存中的事项',exact:true})).toBeVisible();await page.getByLabel('启用站内提醒',{exact:true}).check();await page.getByRole('button',{name:'保存提醒设置',exact:true}).click();await expect(page.getByText('站内提醒设置已保存，其他设备联网读取后生效。')).toBeVisible();
   await page.route('**/api/**',route=>route.abort('failed'));await page.reload();await expect(page.getByRole('heading',{name:'缓存中的事项',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'保存提醒设置',exact:true})).toBeDisabled();
-  await page.goto('/weekly-review');await expect(page.getByLabel('本周收获',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'保存本周复盘',exact:true})).toBeDisabled();
+  await expect(page.getByLabel('启用站内提醒',{exact:true})).toBeChecked();
+  await page.goto('/weekly-review');await expect(page.getByLabel('本周收获',{exact:true})).toHaveValue('保存后离线仍可读取的新复盘');await expect(page.getByRole('button',{name:'保存本周复盘',exact:true})).toBeDisabled();
 });
