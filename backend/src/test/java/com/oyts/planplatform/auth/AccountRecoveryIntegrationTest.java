@@ -37,6 +37,7 @@ class AccountRecoveryIntegrationTest {
         var cookie=login.getResponse().getCookie("plan_refresh");
         mvc.perform(post("/api/auth/password-reset/request").contentType(MediaType.APPLICATION_JSON).content(json(Map.of("email",user.getEmail())))).andExpect(status().isNoContent());
         var captured=ArgumentCaptor.forClass(SimpleMailMessage.class);verify(sender).send(captured.capture());
+        assertNull(captured.getValue().getCc());assertNull(captured.getValue().getBcc());
         String link=Arrays.stream(captured.getValue().getText().split("\n")).filter(s->s.contains("/reset-password?")).findFirst().orElseThrow();
         String token=URLDecoder.decode(link.substring(link.indexOf("&token=")+7),StandardCharsets.UTF_8);
         mvc.perform(post("/api/auth/password-reset/request").contentType(MediaType.APPLICATION_JSON).content(json(Map.of("email",user.getEmail())))).andExpect(status().isNoContent());verify(sender,times(1)).send(any(SimpleMailMessage.class));
@@ -58,7 +59,7 @@ class AccountRecoveryIntegrationTest {
         mvc.perform(get("/api/admin/mail").with(jwt().jwt(j->j.subject(user.getId())).authorities(new SimpleGrantedAuthority("ROLE_USER")))).andExpect(status().isForbidden());
         mvc.perform(get("/api/admin/mail").with(admin)).andExpect(status().isOk()).andExpect(header().string("Cache-Control",org.hamcrest.Matchers.containsString("no-store"))).andExpect(jsonPath("$.configured").value(true)).andExpect(jsonPath("$.password").doesNotExist());
         mvc.perform(post("/api/admin/mail/test").with(admin).contentType(MediaType.APPLICATION_JSON).content("{\"recipient\":\"other@example.test\"}")).andExpect(status().isOk()).andExpect(jsonPath("$.accepted").value(true));
-        var mail=ArgumentCaptor.forClass(SimpleMailMessage.class);verify(sender).send(mail.capture());assertArrayEquals(new String[]{user.getEmail()},mail.getValue().getTo());assertFalse(mail.getValue().getText().contains("token="));
+        var mail=ArgumentCaptor.forClass(SimpleMailMessage.class);verify(sender).send(mail.capture());assertArrayEquals(new String[]{user.getEmail()},mail.getValue().getTo());assertFalse(mail.getValue().getText().contains("token="));assertNull(mail.getValue().getCc());assertNull(mail.getValue().getBcc());
         mvc.perform(post("/api/admin/mail/test").with(admin)).andExpect(status().isTooManyRequests());
     }
     @Test void limiterAlsoBoundsUnknownAddressesAndNormalizesEmail(){

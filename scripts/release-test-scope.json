@@ -5,6 +5,12 @@
   "browser": ["e2e/account-ai-operations.spec.ts", "e2e/ai-planning.spec.ts", "e2e/ai-foundation.spec.ts", "e2e/members-layout.spec.ts", "e2e/registration.spec.ts"],
   "backend": ["AccountRecoveryIntegrationTest", "AiUsageIntegrationTest", "AiConversationIntegrationTest", "AiQuotaIntegrationTest#adminChangesAreHotVersionedAuditedAndDoNotResetUsage"],
   "android": [],
+  "invitationMailCopy": {
+    "reason": "Server-only invitation CC to the authenticated inviting administrator. No password reset/verification CC, user-supplied copy recipient, business/native change or unrelated regression.",
+    "backend": ["InvitationMailCopyIntegrationTest", "AccountRecoveryIntegrationTest"],
+    "nativeAcceptance": [],
+    "realEmail": "No automated email sent to real recipients. Administrator confirms inbox copy on the next intentional invitation."
+  },
   "websiteRefresh": {
     "reason": "Website-only AI product overview. No business API, database migration, native identity/version, registration policy or update-source changes. Do not repeat unrelated business/native tests.",
     "frontendUnit": ["src/productDownloads.test.ts"],

@@ -25,9 +25,9 @@ class PasswordResetMailService {
         return send(user.getEmail(), "计划平台：重置密码", "你收到了重置计划平台密码的请求。请在有效期内打开以下链接设置新密码：\n" + link
             + "\n\n如果不是你本人操作，请忽略本邮件。此链接仅可使用一次。");
     }
-    boolean sendInvitation(String email, String rawToken) {
+    boolean sendInvitation(String email, String rawToken, String administratorEmail) {
         return send(email, "计划平台：邀请注册", "你被邀请使用计划平台。请在有效期内打开以下链接创建账号：\n" + invitationLink(email, rawToken)
-            + "\n\n此链接仅可使用一次。若不是你本人收到，请忽略本邮件。");
+            + "\n\n此链接仅可使用一次，仅用于收件邮箱的账号注册。管理员抄送副本用于邀请管理，请勿代替受邀人注册。若不是你本人收到，请忽略本邮件。", administratorEmail);
     }
     boolean sendEmailVerification(UserAccount user, String rawToken) {
         String link = publicUrl + "/verify-email?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
@@ -39,10 +39,16 @@ class PasswordResetMailService {
     boolean configured() { return senders.getIfAvailable()!=null && !from.isBlank(); }
     boolean sendTest(String recipient) { return send(recipient,"计划舱：邮件服务测试","这是一封由计划舱管理员主动请求的邮件测试。它不包含密码、重置链接、邀请链接或私人计划。收到后请回到管理员页面核对。"); }
     private boolean send(String recipient, String subject, String text) {
+        return send(recipient, subject, text, null);
+    }
+    private boolean send(String recipient, String subject, String text, String invitationCopy) {
         JavaMailSender sender = senders.getIfAvailable();
         if (sender == null || from.isBlank()) return false;
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from); message.setTo(recipient); message.setSubject(subject); message.setText(text);
+        // Only invitations pass a server-resolved administrator. Reset and
+        // verification credentials must never be copied to an administrator.
+        if (invitationCopy != null && !invitationCopy.isBlank() && !recipient.equalsIgnoreCase(invitationCopy.trim())) message.setCc(invitationCopy.trim());
         try { sender.send(message); return true; }
         catch (MailException exception) { return false; }
     }

@@ -10,6 +10,7 @@
 backend/target/
 backend/target-acceptance/
 backend/target-invited/
+backend/target-invitation-copy/
 backend/data/
 web/node_modules/
 web/dist/
