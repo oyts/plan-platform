@@ -23,6 +23,7 @@ const secondary = computed(() => [
   { path: '/weekly-review', label: '周复盘', description: '本周推进与下周重点' },
   { path: '/sync', label: '同步', description: '待同步操作与冲突' },
   { path: '/ai', label: 'AI 规划', description: '对话、草稿与确认生成' },
+  { path: '/feedback', label: '反馈与诊断', description: '本机草稿与处理回复' },
   { path: '/learn', label: '使用教学', description: '分步练习与随时回顾' },
   { path: '/settings', label: '设置', description: '账号与安全' },
   ...(isNativeClient() ? [{ path: '/desktop', label: '客户端', description: '服务器连接与更新' }] : []),

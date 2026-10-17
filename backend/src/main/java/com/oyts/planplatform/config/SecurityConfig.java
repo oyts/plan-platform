@@ -79,8 +79,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(Arrays.stream(origins.split(",")).map(String::trim).toList());
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "If-Match", "X-Idempotency-Key"));
-        configuration.setExposedHeaders(Arrays.asList("ETag", "X-Idempotent-Replay"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "If-Match", "X-Idempotency-Key", "X-Request-ID"));
+        configuration.setExposedHeaders(Arrays.asList("ETag", "X-Idempotent-Replay", "X-Request-ID"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

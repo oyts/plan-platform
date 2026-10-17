@@ -12,6 +12,11 @@ const session = { accessToken: 'test-only', user: { id: 'user-one' } } as TokenR
 beforeEach(() => { clearTokens(); platform.desktop = true; platform.server = 'https://one.example.cn'; updatePolicy.required = false; });
 
 describe('offline identity partitioning', () => {
+  it('adds an opaque request correlation id without queueing feedback submissions', async () => {
+    saveTokens(session);const original=api.defaults.adapter;
+    api.defaults.adapter=async config=>{expect(config.headers['X-Request-ID']).toMatch(/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i);return {data:{ok:true},status:201,statusText:'Created',headers:{},config};};
+    try{await api.post('/feedback',{title:'synthetic'});expect((await import('@/offlineQueue')).enqueueOperation).not.toHaveBeenCalled();}finally{api.defaults.adapter=original;}
+  });
   it('requires a live access token; cached offline identity cannot authorize updates', async () => {
     await expect(nativeUpdateAuthorization()).rejects.toThrow('联网登录');
     restoreOfflineIdentity({ id: 'user-one' });

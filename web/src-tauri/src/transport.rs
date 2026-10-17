@@ -160,7 +160,7 @@ impl DesktopState {
         let target = request_url(&self.server, &request.path, request.query.as_deref())?;
         let mut builder = self.client.request(method, target);
         for (name, value) in &request.headers {
-            if matches!(name.to_ascii_lowercase().as_str(), "authorization" | "content-type" | "accept" | "x-idempotency-key" | "if-match") {
+            if matches!(name.to_ascii_lowercase().as_str(), "authorization" | "content-type" | "accept" | "x-idempotency-key" | "if-match" | "x-request-id") {
                 builder = builder.header(name, value);
             }
         }
@@ -169,7 +169,7 @@ impl DesktopState {
         self.remember_session(&response)?;
         let status = response.status().as_u16();
         let mut headers = BTreeMap::new();
-        for name in ["content-type", "content-disposition", "x-idempotent-replay", "etag"] {
+        for name in ["content-type", "content-disposition", "x-idempotent-replay", "etag", "x-request-id"] {
             if let Some(value) = response.headers().get(name).and_then(|value| value.to_str().ok()) { headers.insert(name.into(), value.into()); }
         }
         let body = response.text().await.map_err(|_| "无法读取服务器响应。")?;
@@ -190,6 +190,30 @@ pub async fn probe(value: &str) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn feedback_request_correlation_uses_only_allowed_headers() {
+        use std::{io::{Read, Write}, net::TcpListener};
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let server = validate_server(&format!("http://{}",listener.local_addr().unwrap())).unwrap();
+        let worker = std::thread::spawn(move || {
+            let (mut socket,_) = listener.accept().unwrap();
+            socket.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+            let mut request=Vec::new();
+            while !request.windows(4).any(|part|part==b"\r\n\r\n") {
+                let mut buffer=[0;1024];let size=socket.read(&mut buffer).unwrap();assert!(size>0);request.extend_from_slice(&buffer[..size]);
+            }
+            let request=String::from_utf8(request).unwrap().to_ascii_lowercase();
+            assert!(request.contains("x-request-id: 11111111-2222-3333-4444-555555555555"));
+            assert!(!request.contains("never-upload"));
+            write!(socket,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nX-Request-ID: 11111111-2222-3333-4444-555555555555\r\nX-Private-Log: never-upload\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{{}}").unwrap();
+        });
+        let (client,jar)=DesktopState::make_client(&server).unwrap();
+        let state=DesktopState{server,client,jar,config_path:PathBuf::new()};
+        let response=state.request(NativeRequest{method:"GET".into(),path:"/api/health".into(),query:None,headers:BTreeMap::from([
+            ("X-Request-ID".into(),"11111111-2222-3333-4444-555555555555".into()),("X-Private-Log".into(),"never-upload".into()),("Cookie".into(),"never-upload".into())]),body:None}).await.unwrap();
+        assert_eq!(response.headers.get("x-request-id").unwrap(),"11111111-2222-3333-4444-555555555555");
+        assert!(!response.headers.contains_key("x-private-log"));worker.join().unwrap();
+    }
     #[test]
     fn server_validation_requires_https_except_loopback() {
         assert!(validate_server("https://plan.example.cn/").is_ok());

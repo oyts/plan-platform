@@ -7,6 +7,7 @@ import { connectionState, markConnected, markDisconnected, requiresConnection } 
 import { isNativeClient as isDesktop, desktopScope } from '@/desktop';
 import { desktopAdapter } from './desktopAdapter';
 import { requiredClientUpdate, bindClientUpdateOwner } from '@/clientUpdates';
+import { rememberFeedbackFailure, clearFeedbackFailure, rememberFeedbackServer } from '@/feedbackDiagnostics';
 
 type OfflineRequestConfig = AxiosRequestConfig & { retried?: boolean; offlineReplay?: boolean; idempotencyKey?: string };
 type InternalOfflineRequestConfig = InternalAxiosRequestConfig & { retried?: boolean; offlineReplay?: boolean; idempotencyKey?: string; cacheOwner?: string | null; cacheScope?: string; sessionEpoch?: number };
@@ -33,6 +34,7 @@ api.interceptors.request.use(async (config) => {
   if (requiredClientUpdate() && !['GET', 'HEAD'].includes(config.method?.toUpperCase() ?? 'GET') && !config.url?.startsWith('/auth/')) throw new OfflineUnavailableError('当前客户端版本已停止支持，请先更新。已有待同步操作仍保留，更新后再提交。');
   const owner = currentQueueOwner();
   offlineConfig.cacheOwner = owner; offlineConfig.cacheScope = serverScope(); offlineConfig.sessionEpoch = epoch;
+  config.headers['X-Request-ID'] ??= crypto.randomUUID();
   if (accessToken && owner) config.headers.Authorization = `Bearer ${accessToken}`;
   if (config.method?.toUpperCase() === 'GET' && owner && requiresConnection() && config.url !== '/auth/config') {
     if (!cacheable(config.url ?? '')) throw new OfflineUnavailableError('此功能需要连接服务器，请先恢复连接。');
@@ -56,6 +58,7 @@ let refreshing: Promise<string> | null = null;
 api.interceptors.response.use(async (response) => {
   const request = response.config as InternalOfflineRequestConfig;
   if (request.cacheOwner && (request.sessionEpoch !== epoch || request.cacheOwner !== currentQueueOwner())) throw new Error('账号或服务器已变化，请重新读取页面。');
+  if (request.url === '/auth/config' && request.cacheScope === serverScope()) rememberFeedbackServer(request.cacheScope, response.data);
   if (!response.headers['x-plan-local-cache']) {
     markConnected(); connectionState.cacheReadAt = 0;
     if (request.method?.toUpperCase() === 'GET' && request.cacheOwner && cacheable(request.url ?? '')) {
@@ -71,6 +74,7 @@ api.interceptors.response.use(async (response) => {
   if (error instanceof OfflineQueuedError || error instanceof OfflineUnavailableError) throw error;
   const request = error.config as InternalOfflineRequestConfig | undefined;
   if (request?.cacheOwner && (request.sessionEpoch !== epoch || request.cacheOwner !== currentQueueOwner())) throw new Error('账号或服务器已变化，请重新读取页面。');
+  if (request?.cacheOwner && !request.url?.startsWith('/auth/') && !request.url?.includes('feedback')) rememberFeedbackFailure(JSON.stringify([request.cacheScope,request.cacheOwner]), error.response?.status, error.response?.headers['x-request-id']);
   if (!error.response) markDisconnected();
   if (!error.response && request && isQueueable(request) && !request.offlineReplay) {
     await queueRequest(request);
@@ -107,7 +111,7 @@ export function saveTokens(tokens: TokenResponse): void {
   bindClientUpdateOwner(currentQueueOwner());
 }
 export function restoreOfflineIdentity(user: { id: string }): void { epoch++; accessToken = null; queueOwnerId = user.id; authenticatedScope = serverScope(); connectionState.offlineSession = true; markDisconnected(); bindClientUpdateOwner(currentQueueOwner()); }
-export function clearTokens(): void { epoch++; accessToken = null; queueOwnerId = null; connectionState.offlineSession = false; connectionState.cacheReadAt = 0; bindClientUpdateOwner(null); }
+export function clearTokens(): void { epoch++; accessToken = null; queueOwnerId = null; connectionState.offlineSession = false; connectionState.cacheReadAt = 0; bindClientUpdateOwner(null); clearFeedbackFailure(); }
 export async function nativeUpdateAuthorization(): Promise<Record<string, unknown>> {
   if (!hasToken() || !queueOwnerId) throw new Error('请先联网登录受邀账号，再检查或安装更新。');
   const owner = queueOwnerId, scope = serverScope(), sessionEpoch = epoch;

@@ -5,6 +5,7 @@ param(
     [string]$TestCertificatePath = '',
     [string]$TestVersion = '',
     [string]$ArtifactDirectory = '',
+    [string]$NativeTestFilter = '',
     [switch]$IncludeLabTlsTest
 )
 $ErrorActionPreference = 'Stop'
@@ -73,6 +74,11 @@ if (-not (Test-Path -LiteralPath 'node_modules/@tauri-apps/cli')) {
     if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' }
 }
 if ($Action -eq 'test') {
+    if ($NativeTestFilter) {
+        & cargo test --manifest-path src-tauri/Cargo.toml --locked $NativeTestFilter
+        if ($LASTEXITCODE -ne 0) { throw 'Selected native tests failed.' }
+        exit 0
+    }
     & npm.cmd run build:desktop-web
     if ($LASTEXITCODE -ne 0) { throw 'Desktop frontend build failed.' }
     & cargo test --manifest-path src-tauri/Cargo.toml --locked

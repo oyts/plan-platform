@@ -19,6 +19,7 @@ public class TransportRulesTest {
     }
     @Test public void pageCannotInjectCookiesOrMethods() {
         assertFalse(TransportRules.header("Cookie")); assertFalse(TransportRules.header("Host")); assertTrue(TransportRules.header("X-Idempotency-Key"));
+        assertTrue(TransportRules.header("X-Request-ID")); assertFalse(TransportRules.header("X-Private-Log"));
         assertEquals("PATCH", TransportRules.method("PATCH")); assertThrows(IllegalArgumentException.class, () -> TransportRules.method("TRACE"));
     }
     @Test public void exportIsRestrictedToTextFiles() {

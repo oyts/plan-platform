@@ -9,7 +9,7 @@ import java.util.HashSet;
 /** Pure Java rules: independently tested without an Android emulator. */
 final class TransportRules {
     private static final Set<String> METHODS = new HashSet<>(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE"));
-    private static final Set<String> HEADERS = new HashSet<>(Arrays.asList("authorization", "content-type", "accept", "x-idempotency-key", "if-match"));
+    private static final Set<String> HEADERS = new HashSet<>(Arrays.asList("authorization", "content-type", "accept", "x-idempotency-key", "if-match", "x-request-id"));
     static String server(String input, boolean debug) {
         try {
             URI uri = new URI(input.trim());

@@ -15,7 +15,7 @@ onUnmounted(() => stop?.());
 <template>
   <aside v-if="offline || queued || !connectionState.cacheAvailable" class="connection-bar" aria-label="连接状态">
     <div><strong>{{ offline ? '离线工作区' : '已连接服务器' }}</strong><p v-if="offline">正在使用本机缓存；仅已加载的内容可用。计时、完成和删除需联网。</p><p v-else>本地修改仍需在同步中心提交，不会自动覆盖服务器。</p><small v-if="connectionState.cacheReadAt">最近读取的缓存保存于 {{ new Date(connectionState.cacheReadAt).toLocaleString('zh-CN') }} · 统计与进度为历史快照</small><small v-if="!connectionState.cacheAvailable">本地缓存不可用，请检查浏览器存储空间；不要关闭尚未保存的编辑。</small></div>
-    <div class="button-row"><router-link v-if="queued" class="btn" to="/sync">待同步 {{ queued }}</router-link><button v-if="offline" class="btn primary" :disabled="busy" @click="$emit('reconnect')">{{ busy ? '检查连接中…' : '恢复连接' }}</button></div>
+    <div class="button-row"><router-link v-if="queued" class="btn" to="/sync">待同步 {{ queued }}</router-link><router-link class="btn" to="/feedback">反馈与诊断</router-link><button v-if="offline" class="btn primary" :disabled="busy" @click="$emit('reconnect')">{{ busy ? '检查连接中…' : '恢复连接' }}</button></div>
   </aside>
 </template>
 <style scoped>

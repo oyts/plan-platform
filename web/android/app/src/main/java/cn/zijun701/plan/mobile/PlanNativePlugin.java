@@ -126,7 +126,7 @@ public class PlanNativePlugin extends Plugin {
                 }
             }
             JSObject responseHeaders = new JSObject();
-            for (String name : Arrays.asList("content-type", "content-disposition", "etag", "retry-after")) {
+            for (String name : Arrays.asList("content-type", "content-disposition", "etag", "retry-after", "x-request-id")) {
                 String value = connection.getHeaderField(name); if (value != null) responseHeaders.put(name, value);
             }
             InputStream input = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
