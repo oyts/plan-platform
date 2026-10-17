@@ -31,9 +31,12 @@ test -f "$stage/production-compose.sh"
 # Backport only the new web overlay to the installed helper, retaining every
 # previously approved mail, AI, static-download and timezone overlay.
 if ! cmp -s "$stage/production-compose.sh" "$current/scripts/production-compose.sh"; then
-  sed 's|"$root/production-web.yml" ||' "$stage/production-compose.sh" > "$stage/helper-without-web.sh"
-  cmp -s "$stage/helper-without-web.sh" "$current/scripts/production-compose.sh" || { echo 'Existing Compose helper differs; no production change.'; exit 1; }
+  sed '/^  # Website overlay version guard$/,/^  # End website overlay version guard$/d;s|"$root/production-web.yml" ||' "$stage/production-compose.sh" > "$stage/helper-without-web.sh"
+  sed '/^  # Website overlay version guard$/,/^  # End website overlay version guard$/d;s|"$root/production-web.yml" ||' "$current/scripts/production-compose.sh" > "$stage/installed-helper-without-web.sh"
+  cmp -s "$stage/helper-without-web.sh" "$stage/installed-helper-without-web.sh" || { echo 'Existing Compose helper differs; no production change.'; exit 1; }
 fi
+base_version=$(sed -n 's/^PLAN_VERSION=//p' "$current/.env")
+case "$base_version" in ''|*[!0-9.]*) echo 'Unexpected business release version'; exit 1;; esac
 test ! -e "$stage/activation-started"
 test ! -e "$stage/previous-release"
 if docker image inspect "plan-platform-web:$id" >/dev/null 2>&1; then echo 'Website image already exists; preserve it and stage a new release.'; exit 1; fi
@@ -67,7 +70,7 @@ touch "$stage/activation-started"
 failed() { trap - EXIT HUP INT TERM; restore || echo 'Website rollback needs review; all images and data retained.'; exit 1; }
 trap failed EXIT
 trap 'exit 1' HUP INT TERM
-printf 'services:\n  web:\n    image: plan-platform-web:%s\n' "$id" > "$root/production-web.yml"
+printf '# plan-base-version: %s\nservices:\n  web:\n    image: plan-platform-web:%s\n' "$base_version" "$id" > "$root/production-web.yml"
 chmod 600 "$root/production-web.yml"
 cp -p "$stage/production-compose.sh" "$current/scripts/production-compose.sh"
 compose config --quiet

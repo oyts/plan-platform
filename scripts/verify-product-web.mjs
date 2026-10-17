@@ -1,17 +1,18 @@
 // Public read-only homepage checks. No accounts, invitation links or paid calls.
 import assert from 'node:assert/strict';
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium,expect} from '../web/node_modules/@playwright/test/index.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
+const version=JSON.parse(await readFile(join(root,'web/package.json'),'utf8')).version;
 const origin='https://plan.zijun701.cn';
 const output=join(root,'acceptance-results/product-home-refresh',new Date().toISOString().replace(/[:.]/g,'-'));
 await mkdir(output,{recursive:true});
 const report={status:'FAIL',scope:'Public homepage, unchanged authentication/download gates and desktop/mobile presentation only',paidCalls:0,cases:[]};
 const browser=await chromium.launch();
 try {
-  const response=await fetch(origin+'/api/health');assert.equal(response.status,200);const health=await response.json();assert.equal(health.service,'plan-platform-api');assert.equal(health.version,'0.1.13');
+  const response=await fetch(origin+'/api/health');assert.equal(response.status,200);const health=await response.json();assert.equal(health.service,'plan-platform-api');assert.equal(health.version,version);
   const config=await(await fetch(origin+'/api/auth/config')).json();assert.equal(config.registrationEnabled,false);assert.equal(config.invitationEnabled,true);assert.equal(config.passwordResetEnabled,true);
   const manifest=await(await fetch(origin+'/downloads/manifest.json')).json();assert.equal(manifest.android,null);assert.equal(manifest.windows.version,'0.1.13');
   for(const path of ['/client-updates/android/latest.json','/downloads/0.1.13/PlanCabin-0.1.13-release.apk'])assert.equal((await fetch(origin+path)).status,404);

@@ -10,6 +10,13 @@ test "$(dirname "$resolved")" = "$root/releases" || { echo 'Expected a managed r
 test -f "$resolved/docker-compose.production.yml"
 # Prepend in reverse order, retaining the caller's command as separate arguments.
 for overlay in "$root/production-web.yml" "$root/production-mail.yml" "$root/production-ai.yml" "$root/android-private/compose.yml" "$root/production-timezone.yml" "$root/client-public/compose.yml"; do
+  # Website overlay version guard
+  if [ -f "$overlay" ] && [ "$overlay" = "$root/production-web.yml" ]; then
+    base_version=$(sed -n 's/^# plan-base-version: //p' "$overlay")
+    case "$base_version" in ''|*[!0-9.]*) echo 'Invalid website base version'; exit 1;; esac
+    grep -Fqx "PLAN_VERSION=$base_version" "$resolved/.env" || continue
+  fi
+  # End website overlay version guard
   if [ -f "$overlay" ]; then set -- -f "$overlay" "$@"; fi
 done
 docker compose --project-directory "$resolved" -p plan-platform -f "$resolved/docker-compose.production.yml" "$@"
