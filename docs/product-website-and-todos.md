@@ -26,6 +26,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-product-web.
 
 本地定向验收：新增官网用例 8 项、受影响的旧官网／下载／锚点用例 6 项、下载清单单元测试 11 项均通过。没有重跑待办 CRUD、账号隔离、AI 调用等无关业务。
 
+2026 年 10 月 17 日 20:16（北京时间），新版官网已发布到 <https://plan.zijun701.cn/welcome>。公网只读验收 4 组通过，覆盖健康与访问边界，以及桌面、390px 手机和 320px 窄屏的 AI 示例、教学、下载、备案、登录与防溢出。报告和截图保存在 `acceptance-results/product-home-refresh/2026-10-17T12-16-27-007Z/`，不上传账号或测试产物；本轮付费 AI 调用为零。
+
+当前网页阶段目录为 `/home/oyts/plan-platform/product-web/releases/web-20261017t121622z-51c0939b1b4b`，数据库备份为当前业务发布目录下的 `backups/plan_platform-mysql-20261017-121625.sql.gz`。后端与 MySQL 容器身份在切换前后一致，Windows 下载和更新清单哈希不变；业务发布指针仍指向原 0.1.13。
+
+如需恢复到本次改版之前的官网，使用最初切换阶段保留的原始配置；这不会导入旧数据库或降级原生应用：
+
+```sh
+sh /home/oyts/plan-platform/product-web/releases/web-20261017t121407z-79e7ac20990d/publish-product-web.sh rollback /home/oyts/plan-platform/product-web/releases/web-20261017t121407z-79e7ac20990d
+```
+
 ## 网页入口
 
 - 未登录访问 `/`：产品首页，介绍周期计划、目标路线与今日待办。
