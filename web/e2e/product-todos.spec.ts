@@ -15,11 +15,11 @@ test('public homepage presents modes and real release state without requiring an
   await page.goto('/'); await expect(page.getByRole('heading',{level:1})).toContainText('把今天安排好');
   await expect(page.getByRole('link',{name:'鄂ICP备2026050813号-1'})).toHaveAttribute('href','https://beian.miit.gov.cn/');
   await page.getByRole('tab',{name:'目标路线',exact:true}).click(); await expect(page.getByRole('tabpanel')).toContainText('随时暂停');
-  await page.getByRole('tab',{name:'今日待办',exact:true}).click(); await expect(page.getByRole('tabpanel')).toContainText('临时事项');
+  await page.getByRole('tab',{name:'今日待办',exact:true}).click(); await expect(page.getByRole('tabpanel')).toContainText('准备开始练吉他');
   await expect(page.getByRole('button',{name:'正式安装包尚未发布'})).toBeDisabled();
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({path:info.outputPath('product-home.png'),fullPage:true});
-  await page.getByRole('button',{name:'查看 Android 发布状态'}).click(); await expect(page.getByRole('dialog')).toContainText('正式签名包尚未发布');
+  await page.getByRole('button',{name:'查看 Android 发布状态'}).click(); await expect(page.getByRole('dialog')).toContainText('目前仅供受邀测试');
   await page.getByRole('button',{name:'关闭面板'}).click(); await page.getByRole('button',{name:'开始使用网页版'}).click(); await expect(page).toHaveURL(/\/login$/);
 });
 test('Android QR code and PC link use only the release manifest',async({page})=>{

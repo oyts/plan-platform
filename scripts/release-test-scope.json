@@ -5,6 +5,13 @@
   "browser": ["e2e/account-ai-operations.spec.ts", "e2e/ai-planning.spec.ts", "e2e/ai-foundation.spec.ts", "e2e/members-layout.spec.ts", "e2e/registration.spec.ts"],
   "backend": ["AccountRecoveryIntegrationTest", "AiUsageIntegrationTest", "AiConversationIntegrationTest", "AiQuotaIntegrationTest#adminChangesAreHotVersionedAuditedAndDoNotResetUsage"],
   "android": [],
+  "websiteRefresh": {
+    "reason": "Website-only AI product overview. No business API, database migration, native identity/version, registration policy or update-source changes. Do not repeat unrelated business/native tests.",
+    "frontendUnit": ["src/productDownloads.test.ts"],
+    "browser": ["e2e/product-home-refresh.spec.ts"],
+    "affectedLegacyBrowser": "product-todos.spec.ts and navigation.spec.ts, only public homepage / Android QR / public product anchor cases",
+    "production": "scripts/verify-product-web.mjs: read-only desktop, mobile and 320px narrow mobile; no provider calls or user accounts"
+  },
   "nativeAcceptance": [
     "Windows isolated native acceptance: recovery confirmation and metadata-only admin panels, controlled synthetic data and fake upstream. Formal cover install only after saved/closed confirmation.",
     "Android 0.1.13 build 18: scripts/android-account-operations-acceptance.py --phase before/after; 5 exact signed formal APK cases passed for original login/0-0 queue, mail state, AI usage, new guidance and process reopening. No business mutations, mail or paid calls.",
