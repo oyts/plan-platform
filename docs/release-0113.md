@@ -14,6 +14,8 @@
 
 本次是兼容 0.1.13 的服务端邮件修订，使用带源码修订号的独立 API 镜像与发布目录；不覆盖原 API 镜像、不重发原生包。三端无需重新安装即可使用服务端抄送能力。部署入口为 `scripts/deploy-invitation-mail-copy.ps1`，只接受通过上述测试的 JAR；升级前备份、等待已知 AI 请求结束，保留旧发布目录和数据库。
 
+2026 年 10 月 17 日 23:51（北京时间）已上线服务端修订 `c2099dc`。当前业务发布目录为 `/home/oyts/plan-platform/releases/0.1.13-mailcopy-c2099dccc194`，独立 API 镜像同名，已验证源码修订标签与健康状态。JAR SHA256 为 `4173d17387047a89fd5cfeeb6e11a9385b0f5fb24e0a6779c86768290b60cf05`；原 0.1.13 发布目录及镜像保留，升级前备份保存在原目录的 `backups/plan_platform-mysql-20261017-155048.sql.gz`。官网与 MySQL 容器身份未变化，未修改原生下载或更新源。公网仍为邀请制，找回密码开启、邮箱验证关闭。证据为 `acceptance-results/invitation-mail-copy/20261017-235121.json`。没有自动向真实收件人发送邀请；管理员副本的实际收信仍由本人在下一次主动邀请后确认。
+
 成员页新增邮件状态面板，只有管理员可查看和发测试邮件，收件人固定为当前管理员账号邮箱。测试成功仅表示 SMTP 接受，必须由本人检查实际收件箱和垃圾箱。授权码不通过网页输入，不进入客户端、仓库、聊天或日志。
 
 ## AI 试用引导
@@ -93,7 +95,7 @@ sh /home/oyts/plan-platform/client-public/releases/windows-0113-okvlJY/publish.s
 
 ## 生产升级和回退
 
-业务部署目录为 `/home/oyts/plan-platform/releases/0.1.13-932e951cce35`，当前指针已切换。升级前备份 `backups/plan_platform-mysql-20261016-225411.sql.gz` 及 SHA256 校验文件已通过检查，并使用原 ECS 角色上传私有 OSS。生产迁移版本为 18，默认额度仍为 20，AI 密钥保持原 100:101、0600、只读挂载，值未被读取。
+0.1.13 最初业务部署目录为 `/home/oyts/plan-platform/releases/0.1.13-932e951cce35`；后续邀请抄送修订的当前目录见上方上线记录。最初升级前备份 `backups/plan_platform-mysql-20261016-225411.sql.gz` 及 SHA256 校验文件已通过检查，并使用原 ECS 角色上传私有 OSS。生产迁移版本为 18，默认额度仍为 20，AI 密钥保持原 100:101、0600、只读挂载，值未被读取。
 
 上一版本 `/home/oyts/plan-platform/releases/0.1.12-561c16635f1b`、旧镜像、MySQL 卷和旧 Node 服务均保留。需要回退时，在新的服务器终端执行以下应用镜像回退，不导入旧备份覆盖新数据库：
 
