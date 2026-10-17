@@ -5,6 +5,15 @@
   "browser": ["e2e/account-ai-operations.spec.ts", "e2e/ai-planning.spec.ts", "e2e/ai-foundation.spec.ts", "e2e/members-layout.spec.ts", "e2e/registration.spec.ts"],
   "backend": ["AccountRecoveryIntegrationTest", "AiUsageIntegrationTest", "AiConversationIntegrationTest", "AiQuotaIntegrationTest#adminChangesAreHotVersionedAuditedAndDoNotResetUsage"],
   "android": [],
+  "learningDateGuidance": {
+    "status": "local-verified-unreleased",
+    "reason": "Teaching-only date validation feedback for the reported inclusive 32-day range. Preserve the 31-day teaching limit, real plan rules, stored input/progress and offline queues. No backend, paid AI, mail or unrelated business changes.",
+    "frontendUnit": ["src/learningModel.test.ts"],
+    "browser": ["e2e/learning-dates.spec.ts", "e2e/learning.spec.ts"],
+    "builds": ["web", "desktop-web", "android-web"],
+    "localResults": {"unitPassed": 12, "browserPassed": 12, "evidence": "acceptance-results/learning-dates-20261018-verified/"},
+    "nativeAcceptance": "Pending next signed native release: only affected teaching setup, correction, save/reopen and upgrade data preservation; browser viewport tests are not device acceptance."
+  },
   "invitationMailCopy": {
     "reason": "Server-only invitation CC to the authenticated inviting administrator. No password reset/verification CC, user-supplied copy recipient, business/native change or unrelated regression.",
     "backend": ["InvitationMailCopyIntegrationTest", "AccountRecoveryIntegrationTest"],

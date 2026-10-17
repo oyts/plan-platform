@@ -26,10 +26,29 @@ export function freshPractice(): Practice { return { name: '', start: '', end: '
 export function freshProgress(): LearningProgress { return Object.fromEntries(lessons.map(item => [item.id, { step: 0, completed: false, dismissed: false, practice: freshPractice() }])) as LearningProgress; }
 export function learningKey(server: string, owner: string): string { return `learning:v1:${encodeURIComponent(server)}:${encodeURIComponent(owner)}`; }
 function validDate(value: string): boolean { const date = new Date(`${value}T12:00:00Z`); return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value; }
+export const MAX_PRACTICE_DAYS = 31;
+export function planPracticeValidation(p: Pick<Practice, 'name' | 'start' | 'end'>) {
+  const errors: { name?: string; start?: string; end?: string } = {};
+  const startValid = validDate(p.start), endValid = validDate(p.end);
+  const latestEnd = startValid
+    ? new Date(Math.min(Date.parse(`${p.start}T12:00:00Z`) + (MAX_PRACTICE_DAYS - 1) * 86400000, Date.parse('9999-12-31T12:00:00Z'))).toISOString().slice(0, 10)
+    : null;
+  const days = startValid && endValid && p.end >= p.start
+    ? Math.round((Date.parse(`${p.end}T12:00:00Z`) - Date.parse(`${p.start}T12:00:00Z`)) / 86400000) + 1
+    : null;
+  if (!p.name.trim()) errors.name = '请填写练习计划名称。';
+  if (!p.start) errors.start = '请选择练习开始日期。';
+  else if (!startValid) errors.start = '请输入有效的练习开始日期。';
+  if (!p.end) errors.end = '请选择练习结束日期。';
+  else if (!endValid) errors.end = '请输入有效的练习结束日期。';
+  else if (startValid && p.end < p.start) errors.end = '结束日期不能早于开始日期。';
+  else if (days !== null && days > MAX_PRACTICE_DAYS) errors.end = `当前选择 ${days} 天，最多 ${MAX_PRACTICE_DAYS} 天（包含开始和结束当天）。请将结束日期调整至 ${latestEnd} 或之前。`;
+  return { errors, days, latestEnd, ready: Object.keys(errors).length === 0, reason: Object.values(errors).join('') };
+}
 export function stepReady(id: LessonId, step: number, practice: Practice): boolean {
   const p = practice;
   if (id === 'plan') {
-    if (step === 0) return !!p.name.trim() && validDate(p.start) && validDate(p.end) && p.end >= p.start && (Date.parse(p.end) - Date.parse(p.start)) / 86400000 <= 30;
+    if (step === 0) return planPracticeValidation(p).ready;
     if (step === 1) return p.rest.length > 0 && p.rest.length < 7;
     if (step === 2) return !!p.task.trim() && validDate(p.taskDate) && p.taskDate >= p.start && p.taskDate <= p.end && !p.rest.includes(new Date(`${p.taskDate}T12:00:00Z`).getUTCDay() || 7);
     return p.done;

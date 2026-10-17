@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router';
 import { advanceLesson, bindLearning, dismissLesson, learning, practiceLesson, previousLesson, restartLesson } from '@/learning';
-import { freshPractice, isLesson, lessons, stepReady, type LessonId, type Practice } from '@/learningModel';
+import { freshPractice, isLesson, lessons, planPracticeValidation, stepReady, type LessonId, type Practice } from '@/learningModel';
 import RestDaysPicker from '@/components/RestDaysPicker.vue';
 import AiLearningPractice from '@/components/AiLearningPractice.vue';
 const route = useRoute(); const busy = ref(false); const title = ref<HTMLElement>(); const draft = ref<Practice>(freshPractice());
@@ -10,6 +10,8 @@ const lesson = computed(() => lessons.find(item => item.id === route.params.less
 const progress = computed(() => lesson.value ? learning.progress[lesson.value.id] : null);
 const step = computed(() => progress.value?.step ?? 0);
 const ready = computed(() => lesson.value && stepReady(lesson.value.id, step.value, draft.value));
+const planSetup = computed(() => lesson.value?.id === 'plan' && step.value === 0);
+const periodValidation = computed(() => planPracticeValidation(draft.value));
 const saved = ref('');
 // Prevent internal navigation from tearing down the editor while IndexedDB commits.
 onBeforeRouteLeave(() => !busy.value);
@@ -52,7 +54,29 @@ const hints = computed(() => {
           <form class="lesson-practice" @submit.prevent="next">
             <h3>动手试一试</h3>
             <template v-if="lesson.id === 'plan'">
-              <template v-if="step === 0"><label>练习计划名称<input v-model="draft.name" maxlength="120" placeholder="七天阅读练习" required/></label><div class="form-grid"><label>练习开始日期<input v-model="draft.start" type="date" required/></label><label>练习结束日期<input v-model="draft.end" type="date" :min="draft.start" required/></label></div><p class="helper-text">请选不超过 31 天的练习周期。</p></template>
+              <template v-if="step === 0">
+                <div class="practice-field">
+                  <label for="practice-plan-name">练习计划名称</label>
+                  <input id="practice-plan-name" v-model="draft.name" maxlength="120" placeholder="七天阅读练习" required :aria-invalid="!!periodValidation.errors.name" :aria-describedby="periodValidation.errors.name ? 'practice-name-error' : undefined"/>
+                  <p v-if="periodValidation.errors.name" id="practice-name-error" class="helper-text">{{ periodValidation.errors.name }}</p>
+                </div>
+                <div class="form-grid">
+                  <div class="practice-field">
+                    <label for="practice-plan-start">练习开始日期</label>
+                    <input id="practice-plan-start" v-model="draft.start" type="date" required :aria-invalid="!!periodValidation.errors.start" :aria-describedby="periodValidation.errors.start ? 'practice-start-error' : 'practice-period-help'"/>
+                    <p v-if="periodValidation.errors.start" id="practice-start-error" class="helper-text">{{ periodValidation.errors.start }}</p>
+                  </div>
+                  <div class="practice-field">
+                    <label for="practice-plan-end">练习结束日期</label>
+                    <input id="practice-plan-end" v-model="draft.end" type="date" :min="draft.start" required :aria-invalid="!!periodValidation.errors.end" :aria-describedby="periodValidation.errors.end ? 'practice-end-error practice-period-help' : 'practice-period-help'"/>
+                    <p v-if="periodValidation.errors.end" id="practice-end-error" :class="draft.end ? 'error-text' : 'helper-text'">{{ periodValidation.errors.end }}</p>
+                  </div>
+                </div>
+                <div id="practice-period-help" class="practice-period helper-text">
+                  <p>教学练习最多 31 天，包含开始和结束当天；正式周期计划可以更长。</p>
+                  <p v-if="periodValidation.days !== null">当前选择 {{ periodValidation.days }} 天<span v-if="periodValidation.latestEnd">，结束日期最晚可选 {{ periodValidation.latestEnd }}</span>。</p>
+                </div>
+              </template>
               <template v-else-if="step === 1"><RestDaysPicker v-model="draft.rest"/><p class="helper-text">练习需要至少一天休息和一天计划日；正式计划没有此限制。</p></template>
               <template v-else-if="step === 2"><label>练习任务标题<input v-model="draft.task" maxlength="120" placeholder="读书 20 分钟" required/></label><label>练习任务日期<input v-model="draft.taskDate" type="date" :min="draft.start" :max="draft.end" required/></label><p class="helper-text">任务日期必须在周期内，而且不是刚才选的休息日。</p></template>
               <template v-else><div class="practice-record"><strong>{{ draft.name }}</strong><p>{{ draft.taskDate }} · {{ draft.task }}</p><label class="check"><input v-model="draft.done" type="checkbox"/>完成练习任务</label><p aria-live="polite">进度：{{ draft.done ? '1 / 1 已完成' : '0 / 1 已完成' }}</p></div></template>
@@ -76,8 +100,11 @@ const hints = computed(() => {
               <template v-else-if="step === 2"><p>模拟恢复网络，发现另一台设备修改了同一条任务。</p><p>1 项本地操作 · 1 项待处理冲突</p><button type="button" class="btn" @click="draft.resolution = 'review'">查看两份内容</button><div v-if="draft.resolution === 'review'" class="practice-record"><p>本地：阅读 20 分钟</p><p>云端：阅读 30 分钟</p></div></template>
               <template v-else><div class="practice-record"><p>本地：阅读 20 分钟</p><p>云端：阅读 30 分钟</p><label class="check"><input v-model="draft.resolution" type="radio" value="cloud" name="resolution"/>保留云端版本（练习）</label><label class="check"><input v-model="draft.resolution" type="radio" value="local" name="resolution"/>保留本地版本（练习）</label><p v-if="['cloud','local'].includes(draft.resolution)" aria-live="polite">练习结果：{{ draft.resolution === 'cloud' ? '阅读 30 分钟' : '阅读 20 分钟' }} · 0 项本地操作、0 项冲突</p></div></template>
             </template>
-            <p v-if="!ready" class="helper-text">完成上面的操作后，才能继续下一步。</p><p v-if="busy" role="status">正在保存练习，请稍候…</p><p v-else-if="saved" role="status">{{ saved }}</p>
-            <div class="lesson-actions"><button type="button" class="btn" :disabled="busy || step === 0" @click="back">上一步</button><button type="button" class="btn" :disabled="busy" @click="saveDraft">保存练习</button><button class="btn primary" :disabled="busy || !ready">{{ step === 3 ? '完成教学' : '下一步' }}</button></div>
+            <p v-if="planSetup" id="practice-next-help" class="helper-text" aria-live="polite" aria-atomic="true">{{ periodValidation.ready ? '填写完整，可以直接点击“下一步”，无需先保存练习。' : `暂不能继续：${periodValidation.reason}` }}</p>
+            <p v-else-if="!ready" class="helper-text">完成上面的操作后，才能继续下一步。</p>
+            <p v-if="planSetup" id="practice-save-help" class="helper-text">“保存练习”仅保留当前输入，不会解除日期限制或生成真实计划。</p>
+            <p v-if="busy" role="status">正在保存练习，请稍候…</p><p v-else-if="saved" role="status">{{ saved }}</p>
+            <div class="lesson-actions"><button type="button" class="btn" :disabled="busy || step === 0" @click="back">上一步</button><button type="button" class="btn" :disabled="busy" :aria-describedby="planSetup ? 'practice-save-help' : undefined" @click="saveDraft">保存练习</button><button class="btn primary" :disabled="busy || !ready" :aria-describedby="planSetup ? 'practice-next-help' : undefined">{{ step === 3 ? '完成教学' : '下一步' }}</button></div>
           </form>
         </div>
       </template>
@@ -86,6 +113,7 @@ const hints = computed(() => {
   </div>
 </template>
 <style scoped>
+.practice-field{display:grid;align-content:start;gap:10px;min-width:0}.practice-field p,.practice-period p{margin:0}.practice-period{display:grid;gap:6px;line-height:1.7}.practice-field .error-text{line-height:1.7;overflow-wrap:anywhere}
 .lesson-tabs{display:flex;gap:0;border-bottom:1px solid #ddd;flex-wrap:wrap;margin-bottom:28px}.lesson-tabs a{padding:14px 18px;text-decoration:none;color:#555;border-bottom:3px solid transparent}.lesson-tabs a[aria-current=page]{color:#002fa7;border-color:#002fa7;font-weight:700}.lesson-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid #ddd;border-left:1px solid #ddd}.lesson-card{padding:28px;border-right:1px solid #ddd;border-bottom:1px solid #ddd;display:flex;align-items:start;flex-direction:column;gap:12px}.lesson-card p,.lesson-card h2{margin:0}.lesson-card .btn{margin-top:auto}.lesson-context{display:flex;justify-content:space-between;align-items:center;gap:20px;background:#f1f4fb;padding:16px 20px;margin-bottom:24px}.lesson-context p{margin:0}.lesson-context a{flex-shrink:0}.lesson-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);border:1px solid #ddd}.lesson-instructions{padding:28px;background:#f7f7f8;border-right:1px solid #ddd}.lesson-instructions>p{line-height:1.8}.lesson-steps{padding:0;list-style:none;margin:28px 0 0}.lesson-steps li{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #ddd;padding:12px 0;color:#666}.lesson-steps span{font-size:12px;flex-shrink:0}.lesson-steps li[aria-current=step]{color:#002fa7;font-weight:700}.lesson-practice{display:flex;flex-direction:column;gap:20px;padding:28px;min-width:0}.lesson-practice h3{margin:0}.lesson-practice>label:not(.check),.lesson-practice>.form-grid>label{display:grid;gap:10px}.lesson-practice input:not([type=checkbox]):not([type=radio]),.lesson-practice textarea{min-width:0;width:100%}.lesson-practice .check{align-items:center}.lesson-practice .check input{width:20px;min-height:20px;flex-shrink:0}.practice-record{border:1px solid #ddd;padding:20px;overflow-wrap:anywhere}.lesson-actions{display:flex;gap:10px;flex-wrap:wrap;border-top:1px solid #ddd;padding-top:20px;margin-top:auto}.lesson-finished{padding:32px;border:1px solid #ddd}.lesson-finished .button-row{flex-wrap:wrap}.learning-footer{margin-top:28px;color:#666;font-size:13px;line-height:1.8}.learning-page h2:focus{outline:2px solid #002fa7;outline-offset:6px}
 @media(max-width:700px){.lesson-tabs a{padding:12px 10px;font-size:14px}.lesson-grid,.lesson-layout{grid-template-columns:minmax(0,1fr)}.lesson-card{padding:20px}.lesson-context{align-items:start;flex-direction:column;gap:12px}.lesson-instructions{padding:20px;border-right:0;border-bottom:1px solid #ddd}.lesson-instructions .panel-number{font-size:36px}.lesson-steps{margin:16px 0 0}.lesson-practice{padding:20px}.lesson-actions .btn{flex:1;padding-left:10px;padding-right:10px;white-space:nowrap}.lesson-finished{padding:20px}.lesson-finished .btn{width:100%}.learning-page .form-grid{grid-template-columns:minmax(0,1fr)}}
 </style>
