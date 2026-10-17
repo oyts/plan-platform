@@ -1,6 +1,6 @@
 # 计划舱 0.1.13 账号恢复与 AI 运行管理
 
-本版完成账号恢复与邀请闭环、朋友试用时的 AI 状态引导，以及管理员用量面板。2026 年 10 月 17 日正式 Web/API 已升级到 0.1.13，公网定向检查通过。SMTP 尚未配置，找回密码仍关闭。Windows 已在原目录保留数据覆盖到 0.1.13，正式客户端定向验收通过；公开发布待维护者确认，Windows 和 Android 更新源暂保留 0.1.12。Android 0.1.13 构建号 18 待 USB 真机验收后发布。
+本版完成账号恢复与邀请闭环、朋友试用时的 AI 状态引导，以及管理员用量面板。2026 年 10 月 17 日正式 Web/API、Windows 官网下载与可选更新源均已发布 0.1.13，公网与正式 Windows 定向验收通过。SMTP 尚未配置，找回密码仍关闭。Android 受限更新源保留 0.1.12 构建 17，0.1.13 构建 18 待 USB 真机验收后发布。
 
 ## 账号恢复与邀请
 
@@ -39,7 +39,7 @@ V18 仅为额度账本添加可空运行元数据和索引，不存对话、草�
 
 目录：`production-artifacts/client-release/0.1.13/20261016T224235Z-d87422e1`。
 
-- Windows：`windows/Plan Cabin_0.1.13_x64-setup.exe`，3488144 字节，SHA256 `0c83ee0a19753b06030b8d7f34f17fa69913f364fd8b89161e71d65606ffebf3`。由原长期更新密钥签名，尚未发布到官网或更新源。
+- Windows：`windows/Plan Cabin_0.1.13_x64-setup.exe`，3488144 字节，SHA256 `0c83ee0a19753b06030b8d7f34f17fa69913f364fd8b89161e71d65606ffebf3`。由原长期更新密钥签名，已发布到官网和可选更新源。
 - Android：`android/PlanCabin-0.1.13-release.apk`，构建 18，SHA256 `a5fbf315047f5e5dfbd1c82a839f9de60c73cfec4fa61198b94b0b9178614ded`。保留原包名、正式证书，不公开上传；待 USB 真机验收后才能提供给朋友或推送受限更新。
 
 ## 邮件启用步骤
@@ -69,7 +69,21 @@ sudo sh scripts/activate-mail.sh enable-reset --received-test-email
 
 正式客户端只读验收通过：原账号仍登录；邮件面板显示未配置／未启用；管理员用量与原每日 20 次额度正常加载；AI 新增操作帮助可展开；同步中心为 0 项本地操作、0 项冲突；客户端页显示 0.1.13、原云端 HTTPS 地址和自动下载未勾选。正常关闭并重开后仍保持原账号登录。未修改真实计划、邀请、额度或队列，未提交付费 AI 请求。验收记录为 `acceptance-results/formal-windows-0113/20261017-acceptance.json`，不公开附带成员资料或账户截图。
 
-Windows 发布文件已本地准备：`production-artifacts/windows-public-release/0.1.13/20261017T084125151Z-EG0tUD`。仅包含已验收的原 EXE、签名与清单，不重建或替换候选。公开上传与更新清单切换等待本版确认。
+Windows 发布文件：`production-artifacts/windows-public-release/0.1.13/20261017T084125151Z-EG0tUD`。仅包含已验收的原 EXE、签名与清单，不重建或替换候选。维护者明确批准本版 Windows 公开发布后，已完成上传、切换与外网检查。
+
+## Windows 官网下载与可选更新
+
+官网为 <https://plan.zijun701.cn/>，更新源为 `https://plan.zijun701.cn/client-updates/windows/latest.json`，当前版本 0.1.13，`minimumSupportedVersion` 为 `0.0.0`。只提供可选更新，不改变自动下载默认关闭的设置，不公开 APK、二维码或注册入口。
+
+静态目录指针为 `/home/oyts/plan-platform/client-public/releases/windows-0113-okvlJY`，旧 EXE 和签名已逐字节保留。此次仅重建网页容器的只读挂载，不修改后端、数据库或宿主机 Nginx。公网 5 项通过：HTTPS 健康及注册关闭，两条 EXE 地址哈希和原长期签名、清单不缓存及版本文件不可变缓存，公开 Android 地址拒绝，以及桌面／手机网页视口官网下载和关闭二维码。证据为 `acceptance-results/windows-public-cloud/2026-10-17T09-07-20-817Z-f32da857/report.json`。
+
+发布后已在正式 Windows 0.1.13 点击“检查新版本”，完成后显示“当前已是最新版本”，原账号仍登录，自动下载未勾选。本版实际安装是原目录 `/UPDATE` 覆盖；不把本次检查最新版本写成从旧版应用内下载安装重新验收。
+
+如需回退下载清单，在服务器执行以下命令。仅恢复上一份静态入口，已上传的安装文件和用户业务数据保留，不强制降级已安装客户端：
+
+```sh
+sh /home/oyts/plan-platform/client-public/releases/windows-0113-okvlJY/publish.sh rollback windows-0113-okvlJY
+```
 
 ## 生产升级和回退
 
@@ -95,4 +109,4 @@ mv -Tf /home/oyts/plan-platform/current.rollback-0113 /home/oyts/plan-platform/c
 
 ## 剩余发布门槛
 
-Windows 等待本版公开发布确认，再完成 HTTPS 下载／签名／缓存及正式客户端更新检查，无需重复覆盖安装。真实 SMTP 收发等待管理员配置；Android 真机等待用户连接手机。Android 未验收前不更新受限源或提供新版给朋友。
+Windows 官网与更新源已发布。真实 SMTP 收发等待管理员配置；Android 真机等待用户连接手机。Android 未验收前不更新受限源或提供新版给朋友。
