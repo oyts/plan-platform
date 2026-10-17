@@ -46,7 +46,7 @@ try {
         await page.goto(origin+'/welcome',{waitUntil:'networkidle'});await expect(page.getByRole('heading',{level:1})).toContainText('把今天安排好');
         const link=page.getByRole('link',{name:'下载 Windows 安装包',exact:true});await expect(link).toBeVisible();
         const pending=page.waitForEvent('download');await link.click();const download=await pending;assert.equal(download.suggestedFilename(),plan.windows.file);assert.equal(sha256(readFileSync(await download.path())),plan.windows.sha256);
-        await page.getByRole('button',{name:'查看 Android 发布状态',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('正式签名包尚未发布');await expect(page.getByRole('img',{name:'Android 安装包下载二维码'})).toHaveCount(0);
+        await page.getByRole('button',{name:'查看 Android 发布状态',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('暂不提供公开下载及二维码');await expect(page.getByRole('img',{name:'Android 安装包下载二维码'})).toHaveCount(0);
         await page.screenshot({path:join(output,name+'-download.png'),fullPage:true});await page.getByRole('button',{name:'关闭面板',exact:true}).click();
         await page.getByRole('button',{name:'开始使用网页版',exact:true}).click();await expect(page).toHaveURL(origin+'/login');await expect(page.getByText('当前未开放公开注册。',{exact:true})).toBeVisible();assert.deepEqual(errors,[]);
       } finally {await context.close();}

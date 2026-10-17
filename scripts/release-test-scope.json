@@ -6,23 +6,25 @@
   "backend": ["DailyExperienceIntegrationTest", "TodoIntegrationTest"],
   "android": [],
   "dailyExperience": {
-    "status": "local-verified-unreleased",
+    "status": "released-0.1.14",
     "results": {"frontendUnitPassed": 32, "backendPassed": 12, "browserDistinctPassed": 20},
     "evidence": ["acceptance-results/daily-experience-0114-final/", "acceptance-results/daily-experience-0114-workspace-recheck/", "acceptance-results/daily-experience-0114-draft-recheck/"],
     "draftAndSavedSnapshotRecheckPassed": 4,
     "browserNote": "Final batch 18 passed / 2 failed on missing asynchronous fixture preconditions; exact two workspace cases passed after waiting for online cached data and empty list readiness. Failures retained, no retries.",
-    "mysqlProductionMigration": "pending isolated MySQL rehearsal before production",
+    "mysqlProductionMigration": "MySQL 8.4 restored snapshot V18 to V19 and actual prior 0.1.13 image rollback passed; original Todo columns and other table checksums unchanged; fresh production backup and healthy 0.1.14 upgrade completed",
+    "productionAcceptance": {"httpsDailyCasesPassed": 6, "windowsPublicationCasesPassed": 5, "protectedAndroidSourceCasesPassed": 4, "formalAndroidReadOnlyCasesPassed": 4},
+    "productionEvidence": ["acceptance-results/public-web/20261017-185540-3f7af3/report.json", "acceptance-results/native-daily-0114/windows-formal.json", "acceptance-results/android-daily/20261017T190235Z/report.json", "acceptance-results/windows-public-cloud/2026-10-17T19-00-15-533Z-4cdae8e7/report.json", "acceptance-results/invited-android/2026-10-17T21-23-53-659Z-f93e599a/report.json"],
     "realEmailSent": 0,
     "paidAiCalls": 0
   },
   "learningDateGuidance": {
-    "status": "local-verified-unreleased",
+    "status": "released-shared-source-0.1.14",
     "reason": "Teaching-only date validation feedback for the reported inclusive 32-day range. Preserve the 31-day teaching limit, real plan rules, stored input/progress and offline queues. No backend, paid AI, mail or unrelated business changes.",
     "frontendUnit": ["src/learningModel.test.ts"],
     "browser": ["e2e/learning-dates.spec.ts", "e2e/learning.spec.ts"],
     "builds": ["web", "desktop-web", "android-web"],
     "localResults": {"unitPassed": 12, "browserPassed": 12, "evidence": "acceptance-results/learning-dates-20261018-verified/"},
-    "nativeAcceptance": "Pending next signed native release: only affected teaching setup, correction, save/reopen and upgrade data preservation; browser viewport tests are not device acceptance."
+    "nativeAcceptance": "Merged into exact signed 0.1.14 resources. Date correction and draft behavior verified in shared-source browser tests; formal native read-only daily pages and upgrade retention checked separately, not reported as device interaction tests for teaching dates."
   },
   "invitationMailCopy": {
     "reason": "Server-only invitation CC to the authenticated inviting administrator. No password reset/verification CC, user-supplied copy recipient, business/native change or unrelated regression.",
@@ -38,7 +40,7 @@
     "production": "scripts/verify-product-web.mjs: read-only desktop, mobile and 320px narrow mobile; no provider calls or user accounts"
   },
   "nativeAcceptance": [
-    "Pending 0.1.14 same-identity signed candidates: overview, reminder opt-in/off, weekly review save/reopen/conflict, teaching date correction. Preserve original account/data/queue and update defaults.",
-    "Do not treat shared web builds or mobile browser viewports as formal Windows/Android device acceptance. No public Android download or anonymous update window."
+    "0.1.14 same-identity Windows /UPDATE and Android -r installed. Formal accounts read-only: overview, reminder preferences, weekly metrics/editor and reopen login. Android 0/0 queue before/after upgrade and reopen; Windows 441 original app files unchanged before launch and initial 0/0, last post-reopen queue navigation stopped on unavailable window geometry. No nonempty-queue upgrade claim.",
+    "Reminder writes, weekly save/conflict/draft/offline and teaching correction covered in shared-source browser and production synthetic-account HTTPS tests, not falsely reported as native writes. Windows optional public source and Android login-protected optional source published; public APK/QR and registration remain closed. No claim of a fresh application-internal cross-version install test."
   ]
 }

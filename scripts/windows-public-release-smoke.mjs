@@ -79,7 +79,7 @@ try {
         const downloadPromise=page.waitForEvent('download');await link.click();const download=await downloadPromise;
         assert.equal(download.suggestedFilename(),plan.windows.file);const bytes=readFileSync(await download.path());assert.equal(sha256(bytes),plan.windows.sha256);assert.equal(bytes.length,plan.windows.bytes);
         await page.getByRole('button',{name:'查看 Android 发布状态',exact:true}).click();
-        await expect(page.getByRole('dialog')).toContainText('Android 正式签名包尚未发布');await expect(page.getByRole('img',{name:'Android 安装包下载二维码'})).toHaveCount(0);
+        await expect(page.getByRole('dialog')).toContainText('暂不提供公开下载及二维码');await expect(page.getByRole('img',{name:'Android 安装包下载二维码'})).toHaveCount(0);
         await page.screenshot({path:join(output,name+'-android-held.png'),fullPage:true});await page.getByRole('button',{name:'关闭面板',exact:true}).click();
         await page.getByRole('button',{name:'开始使用网页版',exact:true}).click();await expect(page).toHaveURL(/\/login$/);await expect(page.getByText('当前未开放公开注册。')).toBeVisible();
         assert.deepEqual(errors,[]);

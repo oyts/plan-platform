@@ -101,7 +101,7 @@ def public_checks(browser, run, profiles=PROFILES):
                     assert windows['bytes'] > 0 and windows['url'].startswith('/downloads/') and windows['url'].endswith('.exe')
                     expect(page.get_by_role('link', name='下载 Windows 安装包', exact=True)).to_have_attribute('href', ORIGIN + windows['url'])
                 page.get_by_role('button', name='查看 Android 发布状态').click()
-                expect(page.get_by_role('dialog')).to_contain_text('正式签名包尚未发布')
+                expect(page.get_by_role('dialog')).to_contain_text('暂不提供公开下载及二维码')
                 page.get_by_role('button', name='关闭面板').click()
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
                 page.screenshot(path=str(run.out / f'{name}-homepage.png'), full_page=True)

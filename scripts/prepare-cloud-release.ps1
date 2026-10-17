@@ -52,7 +52,7 @@ Copy-Item -LiteralPath web/package.json -Destination "$output/web/package.json" 
 Copy-Item -LiteralPath web/dist -Destination "$output/web" -Recurse -Force
 Copy-Item -LiteralPath docker-compose.production.yml -Destination $output -Force
 Copy-Item -LiteralPath docker-compose.ai-secrets.yml -Destination $output -Force
-foreach ($name in @('initialize-production.sh','mysql-backup.sh','mysql-restore-drill.sh','mysql-oss-upload.sh','daily-mysql-backup.sh','switch-public-entry.sh','rollback-public-entry.sh','production-compose.sh','configure-ai-secret.sh','verify-ai-secret-mount.sh','ai-candidate.sh','ai-migration-drill.sh','ai-mysql-acceptance.py','ai-adjustment-acceptance.py','configure-mail-secret.sh','prepare-mail-overlay.sh','activate-mail.sh')) {
+foreach ($name in @('initialize-production.sh','mysql-backup.sh','mysql-restore-drill.sh','mysql-oss-upload.sh','daily-mysql-backup.sh','daily-migration-drill.sh','switch-public-entry.sh','rollback-public-entry.sh','production-compose.sh','configure-ai-secret.sh','verify-ai-secret-mount.sh','ai-candidate.sh','ai-migration-drill.sh','ai-mysql-acceptance.py','ai-adjustment-acceptance.py','configure-mail-secret.sh','prepare-mail-overlay.sh','activate-mail.sh')) {
     Copy-Item -LiteralPath "scripts/$name" -Destination "$output/scripts/$name" -Force
 }
 Copy-Item -LiteralPath scripts/operations-cloud-acceptance.py -Destination "$output/scripts/operations-cloud-acceptance.py" -Force
