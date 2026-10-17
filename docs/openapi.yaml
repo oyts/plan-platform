@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Plan Platform API
-  version: 0.1.4
+  version: 0.1.14
   description: 多用户周期计划、目标路线、今日待办、计时与统计 API。除认证入口外，所有接口均需 Bearer Access Token。客户端可为写操作提供 X-Idempotency-Key；相同用户、键和请求内容在 24 小时内会重放已完成响应。
 servers:
   - url: /api
@@ -203,6 +203,71 @@ paths:
       responses: { '204': { description: 已删除 }, '404': { description: 不存在或不属于当前用户 }, '409': { description: 版本过期 } }
   /time-entries:
     get: { summary: 分页查询计时流水, security: [{ bearerAuth: [] }], responses: { '200': { description: 计时分页 } } }
+  /daily/summary:
+    get:
+      summary: 当前用户的今日、逾期与即将到期数量；目标路线只计未归档条数，不设逾期
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 14, default: 3 } }
+      responses: { '200': { description: 私有不缓存汇总，包含 date、through、plan 和 todo 的 today/overdue/upcoming、activeRoutes } }
+  /daily/items:
+    get:
+      summary: 按实际安排日分页列出未完成事项；改期使用 deferTo，排除已完成、跳过、删除与已归档计划
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 14, default: 3 } }
+        - { name: bucket, in: query, schema: { type: string, enum: [TODAY, OVERDUE, UPCOMING], default: TODAY } }
+        - { name: mode, in: query, schema: { type: string, enum: [ALL, PLAN, TODO], default: ALL } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 100000, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses: { '200': { description: 私有不缓存 PageResponse，content 每项包含 kind、id、parentId、title、parentName、dueDate、status }, '400': { description: 日期或分页无效 } }
+  /daily/routes:
+    get:
+      summary: 分页列出当前用户未归档路线，content 包含 id、name、total、completed，无截止日期
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 100000, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+      responses: { '200': { description: 私有不缓存 PageResponse } }
+  /daily/reminders:
+    get:
+      summary: 读取本人站内提醒设置，默认关闭且 version 为 null；不创建记录
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: 私有不缓存设置, content: { application/json: { schema: { $ref: '#/components/schemas/ReminderPreference' } } } } }
+    put:
+      summary: 保存本人设置，启用时至少选一种事项；首次 version 为 null，之后必须匹配
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReminderPreference' } } } }
+      responses: { '200': { description: 保存后设置及版本 }, '400': { description: 设置无效 }, '409': { description: 已在其他设备更新，不覆盖 } }
+  /weekly/summary:
+    get:
+      summary: 北京时间周一至周日的当前云端统计；完成按已记录完成时间，流水按开始或补录时间归属，不推测旧待办完成日期
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: start, in: query, required: true, description: 必须为周一, schema: { type: string, format: date } }]
+      responses: { '200': { description: 私有不缓存，字段定义见日常使用体验说明；不是冻结的历史快照 }, '400': { description: 日期无效或不是周一 } }
+  /weekly/reviews:
+    get:
+      summary: 分页读取本人的已保存周复盘，按 weekStart 降序
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 100000, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+      responses: { '200': { description: 私有不缓存 PageResponse，content 为 WeeklyReview } }
+  /weekly/reviews/{start}:
+    parameters: [{ name: start, in: path, required: true, description: 必须为周一, schema: { type: string, format: date } }]
+    get:
+      summary: 读取本人某周复盘；未保存时返回空文字及 null 版本，不创建记录
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: 私有不缓存复盘, content: { application/json: { schema: { $ref: '#/components/schemas/WeeklyReview' } } } } }
+    put:
+      summary: 保存本人的周复盘，不生成或修改业务任务；首次 version 为 null，后续必须匹配
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/WeeklyReview' } } } }
+      responses: { '200': { description: 保存后复盘 }, '400': { description: 日期或长度无效 }, '409': { description: 其他设备已修改，保留用户草稿 } }
 components:
   securitySchemes: { bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT } }
   parameters:
@@ -332,6 +397,25 @@ components:
             deleted: { type: boolean }
             version: { type: integer, format: int64 }
             updatedAt: { type: string, format: date-time }
+    ReminderPreference:
+      type: object
+      required: [enabled, includePlans, includeTodos, showOverdue, lookAheadDays]
+      properties:
+        enabled: { type: boolean, default: false }
+        includePlans: { type: boolean, default: true }
+        includeTodos: { type: boolean, default: true }
+        showOverdue: { type: boolean, default: true }
+        lookAheadDays: { type: integer, minimum: 1, maximum: 14, default: 3 }
+        version: { type: integer, format: int64, minimum: 0, nullable: true }
+    WeeklyReview:
+      type: object
+      properties:
+        weekStart: { type: string, format: date, readOnly: true }
+        wins: { type: string, maxLength: 4000 }
+        blockers: { type: string, maxLength: 4000 }
+        nextFocus: { type: string, maxLength: 4000 }
+        version: { type: integer, format: int64, minimum: 0, nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true, readOnly: true }
     RegisterRequest: { type: object, required: [email, password, displayName], properties: { email: { type: string, format: email }, password: { type: string, minLength: 10 }, displayName: { type: string, maxLength: 80 } } }
     LoginRequest: { type: object, required: [email, password], properties: { email: { type: string, format: email }, password: { type: string } } }
     EmailRequest: { type: object, required: [email], properties: { email: { type: string, format: email } } }

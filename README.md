@@ -10,6 +10,8 @@
 
 首次使用可从“使用教学”练习五节小案例，AI 教学使用本地模拟，不扣调用次数。已有规划的节奏示例只填写要求，发送和应用仍由用户确认；原四节教学进度保留。
 
+`0.1.14` 日常体验阶段已完成开发与本机定向验收：共享今日与逾期汇总、默认关闭的站内提醒、三模式周复盘，并合入教学日期提示修复。尚未上线或发布新安装包，正式版仍以以上 `0.1.13` 记录为准。见 [阶段记录](docs/release-0114.md) 和 [功能边界](docs/daily-experience.md)。
+
 日常小版本仅验证新增和受影响功能，大版本才执行全面回归；签名、版本、升级数据保留、生产备份与云端健康仍为发布门槛。见 [发布流程](docs/release-process.md) 与 [导航体验优化](docs/navigation-experience.md)。
 
 0.1.4 已完成 HTTPS 新版部署、MySQL 备份恢复、加密签名备份、Windows 官网下载及更新源发布，见 [Windows 发布记录](docs/windows-public-release.md)。Android 继续只提供受邀测试 APK，官网下载等待 APP 备案，公开注册保持关闭，见 [受邀客户端测试](docs/invited-client-testing.md)。成员页手机卡片与底部编辑面板已进入共享源码，桌面保留表格，详见 [成员邀请手机验收](docs/mobile-members.md)。

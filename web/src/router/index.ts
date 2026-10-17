@@ -15,6 +15,8 @@ const router = createRouter({ history: isDesktop() ? createWebHashHistory() : cr
   { path: '/welcome', component: ProductHomeView, meta: { public: true, allowAuthenticated: true, landing: true } },
   { path: '/todos', component: () => import('@/views/TodosView.vue') },
   { path: '/ai', component: () => import('@/views/AiPlanningView.vue') },
+  { path: '/overview', component: () => import('@/views/DailyOverviewView.vue') },
+  { path: '/weekly-review', component: () => import('@/views/WeeklyReviewView.vue') },
   { path: '/schedule', component: () => import('@/views/ScheduleView.vue') },
   { path: '/plans', component: () => import('@/views/PlansView.vue') },
   { path: '/plans/:id', component: () => import('@/views/PlanDetailView.vue') },

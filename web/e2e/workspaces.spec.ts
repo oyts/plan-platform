@@ -33,6 +33,8 @@ test('workspaces replace navigation, preserve each position and keep plan totals
   await expect(page.getByLabel('工作模式')).toHaveValue('plan'); await page.goto(`/plans/${plan.id}`);
   const before = await call(request,user,'GET','/dashboard/today');
   await page.getByLabel('工作模式').selectOption('route'); await expect(page.getByRole('heading',{name:'继续路线',exact:true})).toBeVisible();
+  // The heading renders before the API/cache commit; finish the online precondition before cutting the network.
+  await expect(page.getByRole('heading',{name:'吉他目标路线验收',exact:true})).toBeVisible();
   const nav = page.getByRole('navigation',{name:isMobile?'手机主导航':'主导航',exact:true});
   for(const label of ['继续','路线','进展']) await expect(nav.getByRole('link',{name:label,exact:true})).toBeVisible();
   await expect(nav.getByRole('link',{name:'日程',exact:true})).toHaveCount(0); await expect(page.getByRole('heading',{name:'只属于周期计划的任务',exact:true})).toHaveCount(0);
@@ -52,11 +54,12 @@ test('workspaces replace navigation, preserve each position and keep plan totals
 test('mode preferences are per account and cached routes reopen offline',async({page,request})=>{
   const owner=await account(request); const friend=await account(request); await seed(request,owner); await login(page,owner);
   await page.getByLabel('工作模式').selectOption('route'); await expect(page.getByRole('heading',{name:'继续路线',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'吉他目标路线验收',exact:true})).toBeVisible();
   // Keep shell delivery online; native reopen is tested separately with a real TCP outage.
   await page.route('**/api/**', route => route.abort('failed')); await page.reload(); await expect(page.getByLabel('工作模式')).toHaveValue('route');
   await expect(page.getByRole('heading',{name:'吉他目标路线验收',exact:true})).toBeVisible(); await expect(page.getByLabel('连接状态')).toContainText('离线工作区');
   await page.unroute('**/api/**'); await page.reload(); await expect(page.getByLabel('工作模式')).toHaveValue('route'); await logout(page); await login(page,friend); await expect(page.getByLabel('工作模式')).toHaveValue('plan');
-  await page.getByLabel('工作模式').selectOption('route'); await expect(page.getByRole('heading',{name:'吉他目标路线验收',exact:true})).toHaveCount(0);
+  await page.getByLabel('工作模式').selectOption('route'); await expect(page.getByText('还没有目标路线。可以先创建一条，再逐步添加学习或项目步骤。',{exact:true})).toBeVisible(); await expect(page.getByRole('heading',{name:'吉他目标路线验收',exact:true})).toHaveCount(0);
   await logout(page); await login(page,owner); await expect(page.getByLabel('工作模式')).toHaveValue('route'); await expect(page.getByRole('heading',{name:'继续路线',exact:true})).toBeVisible();
 });
 test('each recovery page filters its own mode and keeps the old URLs usable',async({page,request})=>{

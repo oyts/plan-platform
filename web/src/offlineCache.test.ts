@@ -14,6 +14,11 @@ describe('isolated offline cache', () => {
     expect(await cachedIdentity('s')).toBeNull(); expect(await isSignedOut('s')).toBe(true);
     await rememberIdentity('s', 'one', user); expect(await isSignedOut('s')).toBe(false);
   });
+  it('allows dated experience snapshots but not arbitrary private weekly URLs', () => {
+    for (const path of ['/daily/summary','/daily/items','/daily/routes','/daily/reminders','/weekly/summary','/weekly/reviews','/weekly/reviews/2026-10-12']) expect(cacheable(path)).toBe(true);
+    expect(cacheable('/weekly/reviews/export')).toBe(false);
+    expect(responseKey('s','one','/weekly/summary',{start:'2026-10-12'})).not.toBe(responseKey('s','one','/weekly/summary',{start:'2026-10-19'}));
+  });
   it('partitions by server, account and stable query parameters', async () => {
     await rememberIdentity('s1', 'one', user); await rememberIdentity('s2', 'one', user);
     await cacheResponse('s1', 'one', '/plans', { size: 5, page: 1 }, ['private']);

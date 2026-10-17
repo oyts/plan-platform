@@ -4,6 +4,7 @@ import com.oyts.planplatform.auth.UserAccount;
 import com.oyts.planplatform.common.BaseEntity;
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.Instant;
 
 @Entity
 @Table(name = "todos")
@@ -16,6 +17,7 @@ public class Todo extends BaseEntity {
     @Column(name = "due_date", nullable = false) private LocalDate dueDate;
     @Column(nullable = false) private boolean done;
     @Column(nullable = false) private boolean deleted;
+    @Column(name = "completed_at") private Instant completedAt;
 
     protected Todo() {}
     Todo(UserAccount owner, String title, String note, LocalDate dueDate) {
@@ -23,6 +25,8 @@ public class Todo extends BaseEntity {
         update(title, note, dueDate, false, false);
     }
     void update(String title, String note, LocalDate dueDate, boolean done, boolean deleted) {
+        if (done && !this.done) completedAt = Instant.now();
+        if (!done) completedAt = null;
         this.title = title.trim();
         this.note = note == null ? "" : note.trim();
         this.dueDate = dueDate;

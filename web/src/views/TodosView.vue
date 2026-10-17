@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { api, apiMessage, OfflineQueuedError } from '@/api/client';
 import { localDate, shiftDate } from '@/todos';
 import type { Todo } from '@/types';
 import AppSheet from '@/components/AppSheet.vue';
 import LocalBadge from '@/components/LocalBadge.vue';
 
-const date = ref(localDate()); const range = ref('DAY'); const filter = ref('OPEN'); const query = ref('');
+const route=useRoute();
+const date = ref(typeof route.query.date==='string' && /^\d{4}-\d{2}-\d{2}$/.test(route.query.date) ? route.query.date : localDate()); const range = ref('DAY'); const filter = ref('OPEN'); const query = ref('');
 const rows = ref<Todo[]>([]); const loading = ref(false); const busy = ref(false); const error = ref('');
 const quickTitle = ref(''); const page = ref(0); const pageSize = 10;
 const editorOpen = ref(false); const editing = ref<Todo | null>(null);
 const draft = reactive({ title: '', note: '', dueDate: localDate(), done: false });
 let requestNumber = 0;
+let pendingFocus = typeof route.query.focus==='string' ? route.query.focus : '';
 const params = computed(() => ({ from: range.value === 'DAY' ? date.value : shiftDate(date.value, -30), to: date.value, deleted: range.value === 'TRASH' }));
 const filtered = computed(() => rows.value.filter(row =>
   (filter.value === 'ALL' || (filter.value === 'DONE' ? row.done : !row.done)) &&
@@ -22,7 +25,7 @@ watch([filter, query], () => { page.value = 0; });
 watch(pages, count => { page.value = Math.min(page.value, count - 1); });
 async function load() {
   const request = ++requestNumber; loading.value = true; error.value = '';
-  try { const data = (await api.get<Todo[]>('/todos', { params: params.value })).data; if (request === requestNumber) rows.value = data; }
+  try { const data = (await api.get<Todo[]>('/todos', { params: params.value })).data; if (request === requestNumber) { rows.value = data; const focus=data.find(item=>item.id===pendingFocus); if(focus && !editorOpen.value){pendingFocus='';openEditor(focus);} } }
   catch (e) { if (request === requestNumber) error.value = apiMessage(e); }
   finally { if (request === requestNumber) loading.value = false; }
 }

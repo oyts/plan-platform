@@ -14,13 +14,14 @@ const mobile = useMobileLayout();
 const router = useRouter();
 const plans = ref<Plan[]>([]);
 const planId = ref(typeof route.query.plan === 'string' ? route.query.plan : '');
-const anchor = ref(new Date().toLocaleDateString('sv-SE'));
+const anchor = ref(typeof route.query.date==='string' && /^\d{4}-\d{2}-\d{2}$/.test(route.query.date) ? route.query.date : new Date().toLocaleDateString('sv-SE'));
 const tasks = ref<Task[]>([]);
 const milestones = ref<Milestone[]>([]);
 const error = ref('');
 const loading = ref(false);
 const busy = ref(false);
 const selected = ref<Task | null>(null);
+let pendingFocus = typeof route.query.task==='string' ? route.query.task : '';
 const draft = reactive({ status: 'PENDING', note: '', deferTo: '', manualMinutes: 0, acceptanceChecks: [] as boolean[] });
 
 function dateFrom(value: string) { return new Date(`${value}T00:00:00`); }
@@ -67,6 +68,8 @@ async function loadSchedule() {
     tasks.value = Array.from(new Map([...planned.data.content, ...carryover.data].map(task => [task.id, task])).values());
     milestones.value = milestoneRows.data;
     if (selected.value) selected.value = tasks.value.find(task => task.id === selected.value?.id) ?? null;
+    const focused = tasks.value.find(task => task.id===pendingFocus);
+    if (focused) { pendingFocus=''; select(focused); }
   } catch (exception) { error.value = apiMessage(exception); }
   finally { loading.value = false; }
 }

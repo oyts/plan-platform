@@ -19,6 +19,8 @@ const secondary = computed(() => [
   { path: '/records', label: '记录', description: '计时流水与回收站' },
   { path: '/exports', label: '导出', description: '保存数据到文件' },
   ] : workspace.mode === 'route' ? [{ path: '/route-records', label: '记录', description: '已删除的路线与步骤' }] : []),
+  { path: '/overview', label: '今日与提醒', description: '今日、逾期与即将到期' },
+  { path: '/weekly-review', label: '周复盘', description: '本周推进与下周重点' },
   { path: '/sync', label: '同步', description: '待同步操作与冲突' },
   { path: '/ai', label: 'AI 规划', description: '对话、草稿与确认生成' },
   { path: '/learn', label: '使用教学', description: '分步练习与随时回顾' },

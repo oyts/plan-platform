@@ -1,10 +1,19 @@
 {
-  "version": "0.1.13",
-  "reason": "Account recovery confirmation, SMTP readiness and invitation renewal; clearer AI failures and quota guidance; private administrator usage metadata retained independently of conversations. Only new and directly affected authentication/AI/admin flows. No paid API calls or unrelated business full regression. Exact signed Android build 18 USB acceptance completed after owner connected phone; administrator confirmed real SMTP delivery and password recovery.",
-  "frontendUnit": ["src/aiExperience.test.ts", "src/registration.test.ts", "src/aiPlanning.test.ts"],
-  "browser": ["e2e/account-ai-operations.spec.ts", "e2e/ai-planning.spec.ts", "e2e/ai-foundation.spec.ts", "e2e/members-layout.spec.ts", "e2e/registration.spec.ts"],
-  "backend": ["AccountRecoveryIntegrationTest", "AiUsageIntegrationTest", "AiConversationIntegrationTest", "AiQuotaIntegrationTest#adminChangesAreHotVersionedAuditedAndDoNotResetUsage"],
+  "version": "0.1.14",
+  "reason": "Complete daily-use phase: cross-mode dated overview, opt-in in-app reminders, private weekly review and merged teaching date feedback. Run consolidated tests only after the whole phase is implemented. V19 adds private settings/reviews and nullable todo completion timestamps without fabricating old dates. No paid AI, SMTP, background/system push or unrelated regression.",
+  "frontendUnit": ["src/dailyExperience.test.ts", "src/learningModel.test.ts", "src/offlineCache.test.ts", "src/workspaceModel.test.ts"],
+  "browser": ["e2e/daily-experience.spec.ts", "e2e/learning-dates.spec.ts", "e2e/workspaces.spec.ts"],
+  "backend": ["DailyExperienceIntegrationTest", "TodoIntegrationTest"],
   "android": [],
+  "dailyExperience": {
+    "status": "local-verified-unreleased",
+    "results": {"frontendUnitPassed": 32, "backendPassed": 12, "browserDistinctPassed": 20},
+    "evidence": ["acceptance-results/daily-experience-0114-final/", "acceptance-results/daily-experience-0114-workspace-recheck/"],
+    "browserNote": "Final batch 18 passed / 2 failed on missing asynchronous fixture preconditions; exact two workspace cases passed after waiting for online cached data and empty list readiness. Failures retained, no retries.",
+    "mysqlProductionMigration": "pending isolated MySQL rehearsal before production",
+    "realEmailSent": 0,
+    "paidAiCalls": 0
+  },
   "learningDateGuidance": {
     "status": "local-verified-unreleased",
     "reason": "Teaching-only date validation feedback for the reported inclusive 32-day range. Preserve the 31-day teaching limit, real plan rules, stored input/progress and offline queues. No backend, paid AI, mail or unrelated business changes.",
@@ -28,8 +37,7 @@
     "production": "scripts/verify-product-web.mjs: read-only desktop, mobile and 320px narrow mobile; no provider calls or user accounts"
   },
   "nativeAcceptance": [
-    "Windows isolated native acceptance: recovery confirmation and metadata-only admin panels, controlled synthetic data and fake upstream. Formal cover install only after saved/closed confirmation.",
-    "Android 0.1.13 build 18: scripts/android-account-operations-acceptance.py --phase before/after; 5 exact signed formal APK cases passed for original login/0-0 queue, mail state, AI usage, new guidance and process reopening. No business mutations, mail or paid calls.",
-    "Android driver safety only: scripts/test-android-account-operations.py, 6 tests passed. Post-publication authenticated update check uses scripts/android-ai-formal-acceptance.py --update-only; do not rerun unrelated workspace scenarios."
+    "Pending 0.1.14 same-identity signed candidates: overview, reminder opt-in/off, weekly review save/reopen/conflict, teaching date correction. Preserve original account/data/queue and update defaults.",
+    "Do not treat shared web builds or mobile browser viewports as formal Windows/Android device acceptance. No public Android download or anonymous update window."
   ]
 }
