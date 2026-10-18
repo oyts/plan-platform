@@ -103,6 +103,8 @@ watch(() => route.query.line, id => { selectedId.value = typeof id === 'string' 
 onMounted(() => load().catch(showError));
 </script>
 <template><div class="page">
+  <router-link class="btn" to="/organize">结构复制、暂停与分页历史</router-link>
+  <p v-if="selected?.paused" class="helper-text" role="status">此路线已暂停。阶段、依赖和历史仍保留，恢复路线后可继续开始或完成步骤。</p>
   <section class="page-head"><div><p class="eyebrow">ROUTE / STEPS</p><h1>目标路线</h1><p>不设结束日期，按自己的节奏逐步推进。</p></div></section>
   <p v-if="error && !sheet" class="error-text" role="alert">{{ error }}</p><p v-if="notice" class="helper-text" role="status">{{ notice }}</p>
   <div class="mainline-layout"><aside class="line-list" aria-label="路线列表">

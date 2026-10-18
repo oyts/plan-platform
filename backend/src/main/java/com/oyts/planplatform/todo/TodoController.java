@@ -25,6 +25,7 @@ class TodoController {
     TodoDtos.Response create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody TodoDtos.Create request) {
         return service.create(jwt.getSubject(), request);
     }
+    @GetMapping("/page") Object page(@AuthenticationPrincipal Jwt jwt,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate from,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate to,@RequestParam(defaultValue="false") boolean deleted,@RequestParam(defaultValue="ALL") String status,@RequestParam(defaultValue="") String search,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size){return service.page(jwt.getSubject(),from,to,deleted,status,search,page,size);}
     // Deletion is a versioned tombstone, so offline retries never silently destroy newer changes.
     @PutMapping("/{id}")
     TodoDtos.Response update(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @Valid @RequestBody TodoDtos.Update request) {

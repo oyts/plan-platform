@@ -17,6 +17,12 @@ beforeEach(async () => {
   connectionState.cacheAvailable = true;
 });
 describe('offline API safety', () => {
+  it('never queues route lifecycle transitions or orchestration confirmations',async()=>{
+    await expect(api.put('/mainlines/l/paused',{paused:true,version:0},{adapter:disconnected})).rejects.not.toBeInstanceOf(OfflineQueuedError);
+    connectionState.reachable=true;
+    await expect(api.post('/organize/copy/apply',{confirmed:true},{adapter:disconnected})).rejects.not.toBeInstanceOf(OfflineQueuedError);
+    expect(await listOperations('one')).toHaveLength(0);
+  });
   it('queues standalone todo completion and deletion with a retained version', async () => {
     const params = {from:'2026-10-12',to:'2026-10-12',deleted:false};
     const todoCache:AxiosAdapter = async config => ({data:[{id:'todo',title:'临时事项',dueDate:'2026-10-12',done:false,deleted:false,version:3}],status:200,statusText:'OK',headers:{},config});

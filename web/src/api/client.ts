@@ -161,7 +161,7 @@ function isQueueable(config: { method?: string; url?: string; data?: unknown; of
   if (url.startsWith('/mainlines')) {
     // Topology needs an authoritative graph. Never queue linked creations or
     // prerequisite/stage changes after an ambiguous network failure.
-    if (method === 'POST' || /\/stages(\/|$)/.test(url)) return false;
+    if (method === 'POST' || /\/(stages|paused)(\/|$)/.test(url)) return false;
     const data = clone(config.data);
     if (data && typeof data === 'object' && ('routing' in data || 'executionMode' in data)) return false;
   }

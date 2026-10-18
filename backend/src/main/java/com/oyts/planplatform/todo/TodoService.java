@@ -33,6 +33,18 @@ public class TodoService {
         em.flush();
         return response(item);
     }
+    @Transactional(readOnly=true)
+    public com.oyts.planplatform.plan.PlanDtos.PageResponse<TodoDtos.Response> page(String owner,LocalDate from,LocalDate to,boolean deleted,String status,String search,int page,int size){
+        if(from.isAfter(to)||ChronoUnit.DAYS.between(from,to)>3660||page<0||page>100000||size<1||size>100||search.length()>180||!java.util.Set.of("ALL","OPEN","DONE").contains(status))throw new IllegalArgumentException("历史范围最多 3661 天，每页 1—100 项，请检查查询条件。");
+        org.springframework.data.jpa.domain.Specification<Todo> specification=(root,query,b)->{
+            var predicates=new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();predicates.add(b.equal(root.get("owner").get("id"),owner));predicates.add(b.equal(root.get("deleted"),deleted));predicates.add(b.between(root.get("dueDate"),from,to));
+            if(!status.equals("ALL"))predicates.add(b.equal(root.get("done"),status.equals("DONE")));
+            if(!search.isBlank()){String pattern="%"+search.trim().toLowerCase(java.util.Locale.ROOT).replace("!","!!").replace("%","!%").replace("_","!_")+"%";predicates.add(b.or(b.like(b.lower(root.get("title")),pattern,'!'),b.like(b.lower(root.get("note")),pattern,'!')));}
+            return b.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
+        var result=todos.findAll(specification,org.springframework.data.domain.PageRequest.of(page,size,org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,"dueDate","createdAt","id")));
+        return new com.oyts.planplatform.plan.PlanDtos.PageResponse<>(result.getContent().stream().map(this::response).toList(),page,size,result.getTotalElements(),result.getTotalPages());
+    }
     @Transactional
     public TodoDtos.Response update(String owner, String id, TodoDtos.Update request) {
         var item = todos.findByIdAndOwnerId(id, owner).orElseThrow(() -> new NotFoundException("待办不存在。"));

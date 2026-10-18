@@ -66,6 +66,7 @@ async function toggle(row: Todo, event: Event) {
 async function remove(row: Todo) { if (confirm(`将“${row.title}”移入待办回收站？`)) await update(row, { deleted: true }); }
 </script>
 <template><div class="page todos-page">
+  <router-link class="btn" to="/organize">查询更早的待办历史</router-link>
   <router-link class="btn" to="/ai?mode=TODO">使用 AI 构建今日待办</router-link>
   <header class="page-head"><div><h1>今日待办</h1><p>临时想到的事，记下来就可以开始。不需要创建计划或路线。</p></div><button class="btn primary" :disabled="busy || range === 'TRASH'" @click="openEditor()">添加待办</button></header>
   <section class="section">

@@ -3,7 +3,7 @@ import com.oyts.planplatform.mainline.domain.MainlineItem;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-public interface MainlineItemRepository extends JpaRepository<MainlineItem, String> {
+public interface MainlineItemRepository extends JpaRepository<MainlineItem, String>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<MainlineItem> {
     List<MainlineItem> findByMainlineIdOrderBySortOrderAsc(String mainlineId);
     List<MainlineItem> findByMainlineIdAndDeletedAtIsNullOrderBySortOrderAsc(String mainlineId);
     List<MainlineItem> findByMainlineOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(String ownerId);

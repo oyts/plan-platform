@@ -21,6 +21,7 @@ const secondary = computed(() => [
   { path: '/overview', label: '今日与提醒', description: '今日、逾期与即将到期' },
   { path: '/weekly-review', label: '周复盘', description: '本周推进与下周重点' },
   { path: '/exports', label: '数据中心', description: '三模式导出与私有备份恢复' },
+  { path: '/organize', label: '编排与历史', description: '整套复制、未来调整与分页查询' },
   { path: '/sync', label: '同步', description: '待同步操作与冲突' },
   { path: '/ai', label: 'AI 规划', description: '对话、草稿与确认生成' },
   { path: '/feedback', label: '反馈与诊断', description: '本机草稿与处理回复' },

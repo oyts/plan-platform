@@ -40,6 +40,24 @@ class MainlineService {
         flush(line); return response(line);
     }
     @Transactional void archive(String userId, String id) { lock(userId, id).trash(); }
+    @Transactional MainlineDtos.MainlineResponse setPaused(String owner,String id,MainlineDtos.PauseRequest request){
+        Mainline line=lock(owner,id);check(line.getVersion(),request.version());
+        if(request.paused()&&active(line).stream().anyMatch(item->item.getStatus()==MainlineItem.Status.RUNNING))throw new ConflictException("有步骤正在计时，请先暂停该步骤，结算用时后再暂停整条路线。");
+        line.setPaused(request.paused());flush(line);return response(line);
+    }
+    @Transactional(readOnly=true) Object itemPage(String owner,String id,int page,int size,String search,String status,boolean deleted){
+        Mainline line=mainlines.findByIdAndOwnerIdAndDeletedAtIsNull(id,owner).orElseThrow(()->new NotFoundException("目标路线不存在。"));
+        if(page<0||page>100000||size<1||size>100||search.length()>180||!Set.of("ALL","OPEN","COMPLETED").contains(status))throw new IllegalArgumentException("分页或搜索条件无效。");
+        org.springframework.data.jpa.domain.Specification<MainlineItem> specification=(root,query,b)->{
+            var predicates=new ArrayList<jakarta.persistence.criteria.Predicate>();predicates.add(b.equal(root.get("mainline").get("id"),id));
+            predicates.add(deleted?b.isNotNull(root.get("deletedAt")):b.isNull(root.get("deletedAt")));
+            if(!status.equals("ALL"))predicates.add(status.equals("COMPLETED")?b.equal(root.get("status"),MainlineItem.Status.COMPLETED):b.notEqual(root.get("status"),MainlineItem.Status.COMPLETED));
+            if(!search.isBlank()){String pattern="%"+search.trim().toLowerCase(Locale.ROOT).replace("!","!!").replace("%","!%").replace("_","!_")+"%";predicates.add(b.or(b.like(b.lower(root.get("title")),pattern,'!'),b.like(b.lower(root.get("description")),pattern,'!')));}
+            return b.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
+        var result=items.findAll(specification,org.springframework.data.domain.PageRequest.of(page,size,org.springframework.data.domain.Sort.by("sortOrder","id")));
+        var graph=active(line);return new com.oyts.planplatform.plan.PlanDtos.PageResponse<>(result.getContent().stream().map(item->itemResponse(item,graph)).toList(),page,size,result.getTotalElements(),result.getTotalPages());
+    }
     @Transactional MainlineDtos.ItemResponse addItem(String userId, String lineId, MainlineDtos.ItemRequest r) {
         Mainline line = lock(userId, lineId); MainlineItem item = new MainlineItem(line);
         apply(item, r, line); items.saveAndFlush(item); validateGraph(all(line)); rejectLockedRunning(line);
@@ -126,7 +144,7 @@ class MainlineService {
         Set<String> completedIds = new HashSet<>(rows.stream().filter(row -> row.getStatus() == MainlineItem.Status.COMPLETED).map(MainlineItem::getId).toList());
         return prerequisites(item, rows).stream().filter(id -> !completedIds.contains(id)).toList();
     }
-    private void requireUnlocked(MainlineItem item) { if (!blockers(item, active(item.getMainline())).isEmpty()) throw new ConflictException("请先完成此步骤的前置条件。"); }
+    private void requireUnlocked(MainlineItem item) { if(item.getMainline().isPaused())throw new ConflictException("此路线已暂停，请先恢复路线再开始或完成步骤。"); if (!blockers(item, active(item.getMainline())).isEmpty()) throw new ConflictException("请先完成此步骤的前置条件。"); }
     private void rejectLockedRunning(Mainline line) {
         List<MainlineItem> rows = active(line);
         if (rows.stream().anyMatch(row -> row.getStatus() == MainlineItem.Status.RUNNING && !blockers(row, rows).isEmpty())) throw new ConflictException("调整会锁定正在进行的步骤，请先暂停该步骤。");
@@ -147,11 +165,11 @@ class MainlineService {
     private MainlineDtos.MainlineResponse response(Mainline line) {
         List<MainlineItem> rows = active(line);
         int next = all(line).stream().mapToInt(MainlineItem::getSortOrder).max().orElse(-1) + 1;
-        return new MainlineDtos.MainlineResponse(line.getId(), line.getName(), line.getDescription(), line.getColor(), line.getVersion(), rows.stream().filter(item -> item.getStatus() == MainlineItem.Status.COMPLETED).count(), rows.size(), rows.stream().map(item -> itemResponse(item, rows)).toList(), line.getExecutionMode(), stages.findByMainlineIdOrderBySortOrderAscCreatedAtAsc(line.getId()).stream().map(this::stageResponse).toList(), next);
+        return new MainlineDtos.MainlineResponse(line.getId(), line.getName(), line.getDescription(), line.getColor(), line.getVersion(), rows.stream().filter(item -> item.getStatus() == MainlineItem.Status.COMPLETED).count(), rows.size(), rows.stream().map(item -> itemResponse(item, rows)).toList(), line.getExecutionMode(), stages.findByMainlineIdOrderBySortOrderAscCreatedAtAsc(line.getId()).stream().map(this::stageResponse).toList(), next, line.isPaused());
     }
     private MainlineDtos.ItemResponse itemResponse(MainlineItem item, List<MainlineItem> rows) {
         List<String> blockers = blockers(item, rows);
-        return new MainlineDtos.ItemResponse(item.getId(), item.getTitle(), item.getDescription(), read(item.getAcceptanceJson()), item.getPlannedMinutes(), item.getSortOrder(), item.getStatus().name(), blockers.isEmpty(), item.getAccumulatedSeconds(), item.getNote(), item.getStartedAt(), item.getCompletedAt(), item.getVersion(), item.getStageId(), item.getDependencyMode(), read(item.getPrerequisiteIdsJson()), blockers);
+        return new MainlineDtos.ItemResponse(item.getId(), item.getTitle(), item.getDescription(), read(item.getAcceptanceJson()), item.getPlannedMinutes(), item.getSortOrder(), item.getStatus().name(), blockers.isEmpty()&&!item.getMainline().isPaused(), item.getAccumulatedSeconds(), item.getNote(), item.getStartedAt(), item.getCompletedAt(), item.getVersion(), item.getStageId(), item.getDependencyMode(), read(item.getPrerequisiteIdsJson()), blockers);
     }
     private MainlineDtos.StageResponse stageResponse(MainlineStage s) { return new MainlineDtos.StageResponse(s.getId(), s.getName(), s.getDescription(), s.getSortOrder(), s.getVersion()); }
     private void check(long current, Long requested) { if (requested != null && requested != current) throw new ConflictException("数据已经被其他设备修改，请刷新后重试。"); }

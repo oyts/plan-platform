@@ -4,6 +4,7 @@ import type { Mainline, MainlineItem } from './types';
 const item = (id: string, status: string, sortOrder: number, unlocked = true): MainlineItem => ({id,status,sortOrder,unlocked,accumulatedSeconds:60,title:id,description:'',acceptance:[],plannedMinutes:30,note:'',startedAt:null,completedAt:null,version:0});
 const line = (items:MainlineItem[]):Mainline => ({id:'one',name:'路线',description:'',color:'#002FA7',version:0,completed:0,total:items.length,items});
 describe('route-only continuation and progress', () => {
+  it('never recommends a paused route even with an older unlocked snapshot',()=>{expect(nextRouteItem({...line([item('next','PENDING',0)]),paused:true})).toBeUndefined();});
   it('prioritizes running then paused steps without starting a timer', () => {
     expect(nextRouteItem(line([item('next','PENDING',0),item('paused','PAUSED',1),item('running','RUNNING',2)]))?.id).toBe('running');
     expect(nextRouteItem(line([item('next','PENDING',0),item('paused','PAUSED',1)]))?.id).toBe('paused');

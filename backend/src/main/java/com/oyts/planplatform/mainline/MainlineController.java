@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 class MainlineController {
     private final MainlineService service; MainlineController(MainlineService service) { this.service = service; }
     @GetMapping List<MainlineDtos.MainlineResponse> list(@AuthenticationPrincipal Jwt jwt) { return service.list(jwt.getSubject()); }
+    @GetMapping("/{id}/steps/page") Object page(@AuthenticationPrincipal Jwt jwt,@PathVariable String id,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size,@RequestParam(defaultValue="") String search,@RequestParam(defaultValue="ALL") String status,@RequestParam(defaultValue="false") boolean deleted){return service.itemPage(jwt.getSubject(),id,page,size,search,status,deleted);}
+    @PutMapping("/{id}/paused") MainlineDtos.MainlineResponse paused(@AuthenticationPrincipal Jwt jwt,@PathVariable String id,@Valid @RequestBody MainlineDtos.PauseRequest request){return service.setPaused(jwt.getSubject(),id,request);}
     @PostMapping @ResponseStatus(HttpStatus.CREATED) MainlineDtos.MainlineResponse create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody MainlineDtos.MainlineRequest r) { return service.create(jwt.getSubject(), r); }
     @PutMapping("/{id}") MainlineDtos.MainlineResponse update(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @Valid @RequestBody MainlineDtos.MainlineRequest r) { return service.update(jwt.getSubject(), id, r); }
     @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) void archive(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) { service.archive(jwt.getSubject(), id); }

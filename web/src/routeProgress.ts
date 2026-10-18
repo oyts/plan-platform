@@ -1,5 +1,6 @@
 import type { Mainline, MainlineItem } from './types';
 export function nextRouteItem(line: Mainline): MainlineItem | undefined {
+  if(line.paused)return undefined;
   const available = [...line.items].filter(item => item.unlocked && item.status !== 'COMPLETED').sort((a, b) => a.sortOrder - b.sortOrder);
   return available.find(item => item.status === 'RUNNING') ?? available.find(item => item.status === 'PAUSED') ?? available[0];
 }

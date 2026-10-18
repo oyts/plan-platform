@@ -21,6 +21,7 @@ const navigation = computed(() => [
   ...(workspace.mode === 'plan' ? planNavigation : workspace.mode === 'route' ? routeNavigation : todoNavigation),
   ...(workspace.mode === 'plan' ? [{path:'/stats',label:'统计'},{path:'/reviews',label:'复盘'},{path:'/records',label:'记录'}] : workspace.mode === 'route' ? [{path:'/route-records',label:'记录'}] : []),
   {path:'/exports',label:'数据中心'},
+  {path:'/organize',label:'编排与历史'},
   {path:'/overview',label:'今日与提醒'}, {path:'/weekly-review',label:'周复盘'}, {path:'/ai',label:'AI 规划'}, {path:'/sync',label:'同步'}, ...(auth.user?.role === 'ADMIN' ? [{path:'/members',label:'成员'}] : []), {path:'/feedback',label:'反馈与诊断'}, {path:'/learn',label:'使用教学'}, {path:'/settings',label:'设置'},
 ]);
 watch(() => auth.user?.id, id => { if (id) bindWorkspaceContext(); else { resetWorkspaceContext(); resetLearning(); } }, { immediate: true });

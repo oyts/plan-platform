@@ -1,34 +1,134 @@
 {
   "version": "0.1.14",
   "roadmapPersonalData": {
-    "status":"local-accepted-final-mysql-stream-check-and-native-ui-pending",
-    "reason":"Stage 2: private versioned backup, read-only preview, atomic restore-as-new with remapped relations and stopped timers, isolated weekly copies, three-mode CSV and shared navigation. V21 adds restore metadata/copies only. CSV helper also hardens affected legacy exports. No real user files, AI, mail or production writes.",
-    "backend":["PersonalDataIntegrationTest"],
-    "frontendUnit":["src/personalData.test.ts","src/workspaceModel.test.ts","src/download.test.ts"],
-    "browser":["e2e/personal-data.spec.ts"],
-    "android":["cn.zijun701.plan.mobile.TransportRulesTest"],
-    "results":{"backendPassed":9,"frontendUnitPassed":19,"browserPassed":9,"browserDesignedSkipped":1,"affectedFeedbackBrowserPassed":2,"androidTransportPassed":6,"paidAiCalls":0,"realEmailsSent":0},
-    "evidence":["acceptance-results/roadmap-personal-data-final/","acceptance-results/roadmap-personal-data-verified/","backend/target-acceptance/surefire-reports/","remote roadmap-candidates/20261018-0625-feedback-data/report.json"],
-    "mysql":"V20/V21 migration, synthetic restore/dump checksums and actual prior image compatibility passed on b5a6dab4 JAR; final streaming/byte-cap JAR still needs --verify-final-jar",
-    "pending":["final JAR MySQL streaming read check","independent Windows UI acceptance","Android device acceptance after user authorization"]
+    "status": "shared-source-and-final-mysql-accepted-native-ui-pending",
+    "reason": "Stage 2: private versioned backup, read-only preview, atomic restore-as-new with remapped relations and stopped timers, isolated weekly copies, three-mode CSV and shared navigation. V21 adds restore metadata/copies only. CSV helper also hardens affected legacy exports. No real user files, AI, mail or production writes.",
+    "backend": [
+      "PersonalDataIntegrationTest"
+    ],
+    "frontendUnit": [
+      "src/personalData.test.ts",
+      "src/workspaceModel.test.ts",
+      "src/download.test.ts"
+    ],
+    "browser": [
+      "e2e/personal-data.spec.ts"
+    ],
+    "android": [
+      "cn.zijun701.plan.mobile.TransportRulesTest"
+    ],
+    "results": {
+      "backendPassed": 9,
+      "frontendUnitPassed": 19,
+      "browserPassed": 9,
+      "browserDesignedSkipped": 1,
+      "affectedFeedbackBrowserPassed": 2,
+      "androidTransportPassed": 6,
+      "paidAiCalls": 0,
+      "realEmailsSent": 0
+    },
+    "evidence": [
+      "acceptance-results/roadmap-personal-data-final/",
+      "acceptance-results/roadmap-personal-data-verified/",
+      "backend/target-acceptance/surefire-reports/",
+      "remote roadmap-candidates/20261018-0625-feedback-data/report.json"
+    ],
+    "mysql": "V20/V21 migration, synthetic restore/dump checksums and prior image passed; final 857e06fd streaming JAR backup/CSV and 32 unchanged table checksums passed.",
+    "pending": [
+      "independent Windows UI acceptance",
+      "Android device acceptance after user authorization"
+    ]
   },
   "roadmapFeedback": {
     "status": "shared-source-and-transport-accepted-native-ui-pending",
     "reason": "Stage 1 complete implementation: private feedback, administrator replies, manually saved offline draft, explicit diagnostic preview/consent, durable creation replay and opaque request correlation. No AI calls, mail, attachments, production cutover or Android device work.",
-    "backend": ["FeedbackIntegrationTest"],
-    "frontendUnit": ["src/feedbackModel.test.ts", "src/api/client.test.ts"],
-    "browser": ["e2e/feedback.spec.ts"],
-    "nativeTransport": ["transport::tests", "TransportRulesTest"],
-    "results": {"backendPassed":7,"frontendUnitPassed":19,"browserPassed":8,"rustTransportPassed":1,"androidTransportPassed":6,"paidAiCalls":0,"realEmailsSent":0},
-    "evidence": ["backend/target-acceptance/surefire-reports/TEST-com.oyts.planplatform.FeedbackIntegrationTest.xml","acceptance-results/roadmap-feedback-accepted/","%TEMP%/plan-cabin-feedback-android/app/test-results/testDebugUnitTest/"],
-    "pending": ["fresh MySQL V20 migration rehearsal before release", "independent Windows candidate acceptance", "Android device acceptance after user authorization"],
+    "backend": [
+      "FeedbackIntegrationTest"
+    ],
+    "frontendUnit": [
+      "src/feedbackModel.test.ts",
+      "src/api/client.test.ts"
+    ],
+    "browser": [
+      "e2e/feedback.spec.ts"
+    ],
+    "nativeTransport": [
+      "transport::tests",
+      "TransportRulesTest"
+    ],
+    "results": {
+      "backendPassed": 7,
+      "frontendUnitPassed": 19,
+      "browserPassed": 8,
+      "rustTransportPassed": 1,
+      "androidTransportPassed": 6,
+      "paidAiCalls": 0,
+      "realEmailsSent": 0
+    },
+    "evidence": [
+      "backend/target-acceptance/surefire-reports/TEST-com.oyts.planplatform.FeedbackIntegrationTest.xml",
+      "acceptance-results/roadmap-feedback-accepted/",
+      "%TEMP%/plan-cabin-feedback-android/app/test-results/testDebugUnitTest/"
+    ],
+    "pending": [
+      "independent Windows candidate acceptance",
+      "Android device acceptance after user authorization"
+    ],
     "productionVersionUnchanged": "0.1.14"
   },
-  "reason": "Unreleased roadmap stages 1 and 2: private feedback/diagnostics, private data export/atomic new-copy restore and shared navigation. Version remains the 0.1.14 source baseline until a real candidate release is selected. Only new and directly affected tests; production and formal clients are unchanged.",
-  "frontendUnit": ["src/feedbackModel.test.ts", "src/api/client.test.ts", "src/personalData.test.ts", "src/workspaceModel.test.ts", "src/download.test.ts"],
-  "browser": ["e2e/feedback.spec.ts", "e2e/personal-data.spec.ts"],
-  "backend": ["FeedbackIntegrationTest", "PersonalDataIntegrationTest"],
-  "android": ["cn.zijun701.plan.mobile.TransportRulesTest"],
+  "roadmapOrchestration": {
+    "status": "shared-source-and-mysql-accepted-native-ui-pending",
+    "reason": "Stage 3 structural copies without execution history, previewed future recurrence edits, atomic durable replay, route pause, real server pagination/history; V22. No production cutover.",
+    "backend": [
+      "OrchestrationIntegrationTest",
+      "PersonalDataIntegrationTest"
+    ],
+    "frontendUnit": [
+      "src/privateDrafts.test.ts",
+      "src/api/offlineClient.test.ts",
+      "src/workspaceModel.test.ts",
+      "src/routeProgress.test.ts"
+    ],
+    "browser": [
+      "e2e/organize.spec.ts"
+    ],
+    "results": {
+      "backendPassed": 8,
+      "affectedPersonalDataPassed": 9,
+      "frontendUnitPassed": 24,
+      "browserPassed": 8,
+      "paidAiCalls": 0,
+      "realEmailsSent": 0
+    },
+    "evidence": [
+      "acceptance-results/roadmap-organize-final/",
+      "backend/target-acceptance/surefire-reports/",
+      "remote roadmap-candidates/20261018-1045-orchestration/report.json"
+    ],
+    "mysql": "V1-V22, copies/dependencies/pause/pages/409/replay, synthetic dump restore table checksums and actual prior 0.1.14 image compatibility passed on 724d7fe2 JAR.",
+    "pending": [
+      "independent Windows UI acceptance",
+      "Android device acceptance after user authorization",
+      "signed release and production confirmation"
+    ]
+  },
+  "reason": "Unreleased roadmap stages 1-3; current stage 3 validates only orchestration and directly affected backup, queue and route continuation. Production/formal clients stay 0.1.14; stages 4-6 remain.",
+  "frontendUnit": [
+    "src/privateDrafts.test.ts",
+    "src/api/offlineClient.test.ts",
+    "src/workspaceModel.test.ts",
+    "src/routeProgress.test.ts"
+  ],
+  "browser": [
+    "e2e/organize.spec.ts"
+  ],
+  "backend": [
+    "OrchestrationIntegrationTest",
+    "PersonalDataIntegrationTest"
+  ],
+  "android": [
+    "cn.zijun701.plan.mobile.TransportRulesTest"
+  ],
   "dailyExperience": {
     "status": "released-0.1.14",
     "results": {"frontendUnitPassed": 32, "backendPassed": 12, "browserDistinctPassed": 20},
