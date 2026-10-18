@@ -1,5 +1,16 @@
 {
-  "version": "0.1.14",
+  "version": "0.1.15",
+  "roadmapStable": {
+    "status":"shared-source-baseline-and-independent-pc-help-accepted-release-gates-pending",
+    "reason":"Stage 6 shared help/version boundaries, local synthetic no-provider demo, grouped navigation and keyboard access, truthful architecture/API/showcase, bounded read-only baseline and candidate handover. No backend business edits, production release or Android device testing.",
+    "frontendUnit":["src/helpModel.test.ts","src/workspaceModel.test.ts","src/clientUpdates.test.ts"],
+    "browser":["e2e/help-and-navigation.spec.ts","e2e/navigation.spec.ts:three-directly-affected-navigation-cases"],
+    "scripts":["scripts/roadmap-performance.py"],
+    "results":{"frontendUnitPassed":11,"affectedUpdatePolicyPassed":13,"newBrowserPassed":10,"directlyAffectedNavigationPassed":6,"desktopWidthRecheckPassed":1,"desktopWidthDesignedSkipped":1,"signatureGuardPassed":7,"overlayGuardPassed":4,"baselineMeasuredRequests":90,"baselineErrors":0,"paidAiCalls":0,"realEmailsSent":0},
+    "evidence":["acceptance-results/roadmap-stable-first/","acceptance-results/roadmap-stable-final/","acceptance-results/roadmap-stable-widths/","acceptance-results/roadmap-stable-pc/","remote roadmap-candidates/20261018-1555-final/report.json"],
+    "baseline":"Final 6a68b763 JAR, 0.6 CPU/480 MiB, 2-user tiny synthetic MySQL schema, loopback concurrency 1/2; all 37 table checksums and formal health/closed registration unchanged. Not a capacity or internet latency claim.",
+    "pending":["authenticated independent Windows UI for stages 1-5","formal overwrite after save/close confirmation","Android device after user authorization","production release authorization"]
+  },
   "roadmapGovernance": {
     "status":"shared-source-and-mysql-accepted-native-ui-pending",
     "reason":"Stage 5 bounded evidence-only operations, cleanup preview, deduplicated site alerts, guarded member disable/restore and generation-aware access. Defaults off; no real alerts or cleanup. Authentication locking/claims directly affect login, refresh and recovery.",
@@ -137,13 +148,12 @@
   },
   "reason": "Unreleased roadmap stages 1-5. Stage 5 validates only operations/governance and directly affected authentication, refresh and recovery; no paid calls, mail or unrelated regression. Production/formal clients stay 0.1.14; stage 6 remains.",
   "frontendUnit": [
-    "src/privateDrafts.test.ts",
-    "src/api/offlineClient.test.ts",
+    "src/helpModel.test.ts",
     "src/workspaceModel.test.ts",
-    "src/routeProgress.test.ts"
+    "src/clientUpdates.test.ts"
   ],
   "browser": [
-    "e2e/organize.spec.ts"
+    "e2e/help-and-navigation.spec.ts"
   ],
   "backend": [
     "OrchestrationIntegrationTest",

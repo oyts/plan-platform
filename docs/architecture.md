@@ -1,54 +1,99 @@
-# 架构说明
+# 计划舱架构与一致性设计
 
-## 1. 总体结构
+计划舱采用模块化单体：Vue 3 共享业务页面运行在 Web/PWA、Tauri Windows 和 Capacitor Android 中，通过同一 Spring Boot API 使用 MySQL。正式版本为 0.1.14；六阶段新增能力处于候选源码，验收与发布状态见 [续做记录](roadmap-progress.md)。微信小程序、iOS、微服务与本地大模型没有实现。
+
+## 运行结构
 
 ```mermaid
 flowchart LR
-  WEB[Vue 3 Web] --> API[Spring Boot REST API]
-  EXE[Tauri EXE] --> API
-  APK[Android APK] --> API
-  WX[微信小程序] --> API
-  API --> AUTH[Spring Security / JWT]
-  API --> DOMAIN[计划与主线领域服务]
-  DOMAIN --> JPA[Spring Data JPA]
-  JPA --> DB[(MySQL 8.4)]
+  Web[Web 与 PWA] -->|HTTPS| Nginx[Nginx 入口]
+  Win[Windows 共享页面] --> Rust[Rust 受限请求与会话桥]
+  Android[Android 共享页面] --> Java[Java 请求与 Keystore 会话桥]
+  Rust -->|HTTPS| Nginx
+  Java -->|HTTPS| Nginx
+  Nginx --> API[Spring Boot 模块化单体]
+  API --> DB[(MySQL 8.4)]
+  API --> Worker[有界 AI 异步任务]
+  Worker --> DeepSeek[DeepSeek 官方 API]
+  API --> SMTP[已配置的 SMTP 服务]
+  DB --> Backup[宿主机 MySQL 备份与独立恢复]
+  Backup --> OSS[私有 OSS 备份]
 ```
 
-当前采用模块化单体，而不是一开始拆微服务。原因是计划、任务、计时和统计存在紧密事务边界；单体更容易保证一致性、测试和部署，也更适合个人项目的运维成本。模块边界稳定后，再按真实压力拆分通知、文件或统计服务。
+三端只是不同交付壳，不是三套业务后端。Windows/Android 原生层限制请求目标、保护刷新会话、处理签名更新；JS 业务数据与离线队列按账号和服务器隔离。Service Worker 缓存页面壳，不缓存私有 API；业务快照通过受控 IndexedDB 单独保存。
 
-## 2. 数据一致性
+生产是 2 核、约 2GB 内存 ECS 上的 Nginx、一个 Spring Boot 进程和 MySQL，并保留旧 Node 服务用于回退材料。没有部署 Redis、Kafka、Prometheus 或 Grafana。OSS 保存私有备份，不作为任意用户附件或公开导出存储。
 
-- 所有业务实体使用 UUID 字符串作为公开 ID，避免暴露数据库自增规模。
-- 可编辑实体使用 JPA `@Version`。客户端提交自己读取到的版本，版本过期时后端返回 `409 Conflict`。
-- 计时暂停与时间流水写入同一事务。
-- 用户所有权在 Repository 查询条件中验证，避免只依靠前端隐藏数据。
-- 表结构全部由 Flyway 管理，禁止生产环境使用 `ddl-auto=update`。
+## 为什么不拆微服务
 
-## 3. 认证
+任务进度、计时流水、路线依赖、批量调整和应用记录存在紧密事务边界。单体可以在一个数据库事务内校验所有权、锁住必要记录并提交；当前小范围受邀试用也不值得承担分布式事务与额外进程的成本。只有测得真实瓶颈后再讨论分离任务处理或统计，不把框架数量当作项目规模。
 
-- Access Token：JWT HS256，默认 15 分钟，仅保存在 Web 客户端内存中。
-- Refresh Token：随机不可预测字符串，数据库只存 SHA-256 摘要，通过 `HttpOnly + SameSite=Strict` Cookie 传输，可撤销并轮换。
-- 密码：BCrypt cost 12。
-- Web 刷新页面时使用同站点 Cookie 静默换取新的 Access Token；Refresh Token 不暴露给 JavaScript。
-- 公开注册默认关闭；登录失败执行账号与来源地址双维度限流，单账号最多 5 个活跃刷新会话。
+## 所有权与数据库关系
 
-## 4. 离线与多端
+公开 ID 使用 UUID，但 UUID 不是权限控制。普通业务查询必须通过本人 `owner_id` 或所属计划／路线验证所有权；管理员角色不自动获得读取他人私人业务的能力。
 
-浏览器客户端已实现服务器权威数据、乐观锁和 IndexedDB 操作队列：
+```mermaid
+erDiagram
+  users ||--o{ plans : owns
+  plans ||--o{ plan_tags : contains
+  plans ||--o{ plan_tasks : contains
+  plan_tags o|--o{ plan_tasks : classifies
+  plan_tasks ||--o| task_progress : tracks
+  task_progress ||--o{ time_entries : records
+  plans ||--o{ daily_reflections : reviews
+  users ||--o{ mainlines : owns
+  mainlines ||--o{ mainline_stages : groups
+  mainlines ||--o{ mainline_items : contains
+  mainline_stages o|--o{ mainline_items : groups
+  users ||--o{ todos : owns
+  users ||--o{ weekly_reviews : owns
+  users ||--o{ feedback_tickets : submits
+  feedback_tickets ||--o{ feedback_messages : contains
+  users ||--o{ personal_restore_batches : restores
+  personal_restore_batches ||--o{ restored_weekly_reviews : retains
+  users ||--o{ orchestration_operations : confirms
+  users ||--o{ ai_sessions : owns
+  ai_sessions ||--o{ ai_jobs : queues
+  ai_quota_requests ||--o| ai_jobs : reserves
+```
 
-1. 支持离线的普通业务写入 IndexedDB；认证令牌不进入队列。
-2. 每条操作携带基础版本和随机幂等键，服务端按用户保存 24 小时响应。
-3. 相同键、相同请求可安全重放；相同键但请求指纹不同会返回 `409 Conflict`。
-4. 恢复联网后在同步中心按顺序提交；乐观锁冲突停靠等待人工处理，不自动覆盖服务器。
-5. 计时、完成、延期和重复任务生成必须在线执行，以服务器时间与事务为准。
+图只显示主要关系，不是完整建表 DDL。路线前置 ID 存于 `prerequisite_ids_json`，不是图中另造的关系表；服务层根据完整路线检查同路线所有权、缺失依赖和循环。全部结构以 Flyway 迁移为准，候选已到 V23；生产仍在 V19，禁止用 `ddl-auto=update` 替代迁移。
 
-当前冲突处理采用“服务器版本优先 + 本地操作停靠”，而不是伪装成字段级自动合并。字段级三方合并需要保存共同基础快照，可在桌面端 SQLite 同步协议阶段继续演进。
+## 三类一致性边界
 
-## 5. 云端演进
+### 版本冲突不是重试指令
 
-- Nginx/SLB：HTTPS 与反向代理。
-- Spring Boot：先单实例，后续无状态横向扩容。
-- MySQL：每日备份、时间点恢复和独立数据盘。
-- Redis：刷新令牌黑名单、限流、热点统计缓存。
-- 对象存储 OSS：用户附件与导出文件。
-- 可观测性：Actuator、Prometheus、Grafana、结构化日志和异常告警。
+可编辑实体使用 JPA `@Version`。客户端携带读到的版本，设备 A 保存成功后设备 B 用旧版本提交得到 409。客户端保留 B 的草稿／原队列，不自动覆盖，不清空后续操作。可编辑快照接口只返回本人白名单字段；有可靠共同基础才显示三方差异，没有时明确是双方比较。
+
+用户选择字段、载入云端最新版本并确认后，生成新的修改和新操作 ID。队列原操作历史仍保留，再由用户同步。比较不是自动合并，也不开放删除、计时或 AI 的离线重放。
+
+### 防重分为传输与业务两层
+
+普通可排队写入使用用户范围的 `X-Idempotency-Key`，相同键与指纹重放已完成响应，保留窗口为 24 小时；同键不同请求返回 409。它不能保证第三方 AI 永不重复付费。
+
+备份恢复、结构复制、批量修改和 AI 应用另有持久业务操作键／应用记录与事务约束，避免传输缓存到期后重复创建。复制和批量调整使用拥有者锁及明确隔离级别，解决并发重放等待后仍读到旧事务快照的问题。
+
+### 预览不持有数据库事务
+
+预览读取必要结构、进度与关系，生成差异和摘要。用户确认时重新读取并锁定必要数据，核对所有权、版本和摘要，再在同一事务写入业务与应用记录。预览后任何关键记录变化都拒绝整批应用。复制重映射 ID，不复制执行历史；恢复为新记录，不覆盖旧数据，运行中计时不会被恢复为运行中。
+
+## AI 付费边界
+
+对话任务持久化为 QUEUED、RUNNING、SUCCEEDED、FAILED 或 UNKNOWN。服务端先按业务操作键预占每日次数，再通过有界工作池调用固定官方模型；密钥来自服务器只读受限文件，不传给前端。现有正式环境默认每日 20 次及个人覆盖由管理员修改并热生效；全新库的初始额度仍应按部署步骤确认，不以本段代替初始化。
+
+模型只生成结构化草稿／变更建议。服务端校验模式、日期、数量、引用和已有内容保护；用户预览、手改并确认后才应用到业务表。已有对象调整须明确选择对象并同意发送必要内容，不扫描整个账号。
+
+请求超时且结果未知时不自动退款、不自动再次调用，避免一次用户操作重复付费。手工编辑、已有草稿与外部 AI JSON 导入继续可用；没有自动切换付费供应商、个人 PC 中转或客户端本地模型。
+
+## 账号治理与回退
+
+Web Access Token 默认 15 分钟，仅在内存；随机刷新令牌只保存摘要，通过 HttpOnly Cookie 轮换。原生客户端另由平台安全存储处理刷新会话。登录失败限流，公开注册关闭，邀请和邮件能力由服务器开关控制。
+
+候选成员治理使用持久会话代次；停用撤销刷新会话并在后续联网请求检查状态，恢复不复活旧令牌。关闭管理开关不能取消已经发生的撤销。治理后回退必须保留代次校验，不能直接换回不识别它的旧二进制。断网缓存仍受原有 24 小时离线身份限制，不承诺远程抹除设备。
+
+## 可验证的项目材料
+
+- [核心接口与失败语义](core-api.md)：实际控制器、请求参数、409 和确认流程。
+- [演示路线与项目讲解](project-showcase.md)：合成案例、3—5 分钟路线和面试问题。
+- [候选部署与验收交接](stable-candidate.md)：版本、构建、回退和待确认门槛。
+- [轻量性能基线](performance-baseline.md)：真实条件和数据规模，不推导商业承载量。

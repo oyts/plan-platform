@@ -30,10 +30,11 @@ async function enterLearning(page: Page, isMobile: boolean) {
     await page.getByRole('dialog').getByRole('link', { name: '使用教学', exact: true }).click();
     await expect(page.getByRole('dialog')).not.toBeVisible();
   } else {
-    await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('link', { name: '使用教学', exact: true }).click();
+    await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '更多', exact: true }).click();
+    await page.getByRole('dialog').getByRole('link', { name: '使用教学', exact: true }).click();
   }
   await expect(page).toHaveURL(/\/learn$/);
-  await expect(page.locator('.lesson-card')).toHaveCount(4);
+  await expect(page.locator('.lesson-card')).toHaveCount(5);
 }
 
 test('new page opens at the top with content focus from a scrolled workspace', async ({ page, request, isMobile }, info) => {

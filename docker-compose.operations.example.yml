@@ -1,0 +1,13 @@
+# Explicitly approved overlay only. Do not copy into production until host evidence and policy are confirmed.
+# Mount the directory, not status.json: the collector uses atomic replacement.
+services:
+  backend:
+    environment:
+      OPERATIONS_ENABLED: "true"
+      OPERATIONS_STATUS_FILE: /run/plan-operations/status.json
+      MEMBER_GOVERNANCE_ENABLED: "false"
+    volumes:
+      - type: bind
+        source: ${PLAN_OPERATIONS_HOST_DIRECTORY:?Verified private operations directory required}
+        target: /run/plan-operations
+        read_only: true

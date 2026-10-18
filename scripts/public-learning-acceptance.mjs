@@ -44,7 +44,11 @@ try {
       await check(profile + ': teaching leaves business data unchanged', async () => { assert.deepEqual(await snapshots(), before); });
       await check(profile + ': replay is available from the actual navigation', async () => {
         if (profile === 'mobile-web') { await page.getByRole('button', { name: '更多', exact: true }).click(); await page.getByRole('dialog').getByRole('link', { name: '使用教学', exact: true }).click(); }
-        else await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('link', { name: '使用教学', exact: true }).click();
+        else {
+          const navigation=page.getByRole('navigation',{name:'主导航',exact:true});
+          if(await navigation.getByRole('link',{name:'使用教学',exact:true}).count())await navigation.getByRole('link',{name:'使用教学',exact:true}).click();
+          else {await navigation.getByRole('button',{name:'更多',exact:true}).click();await page.getByRole('dialog').getByRole('link',{name:'使用教学',exact:true}).click();}
+        }
         await expect(page.getByRole('heading', { name: '使用教学', exact: true })).toBeVisible();
       });
     } finally { await context.request.post(origin + '/api/auth/logout').catch(() => undefined); await context.close(); }

@@ -42,9 +42,11 @@ try {
           await page.getByRole('button', { name: '更多', exact: true }).click();
           await page.getByRole('dialog').getByRole('link', { name: '使用教学', exact: true }).click();
         } else {
-          await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('link', { name: '使用教学', exact: true }).click();
+          const navigation=page.getByRole('navigation',{name:'主导航',exact:true});
+          if(await navigation.getByRole('link',{name:'使用教学',exact:true}).count())await navigation.getByRole('link',{name:'使用教学',exact:true}).click();
+          else {await navigation.getByRole('button',{name:'更多',exact:true}).click();await page.getByRole('dialog').getByRole('link',{name:'使用教学',exact:true}).click();}
         }
-        await expect(page.locator('.lesson-card')).toHaveCount(4);
+        await expect(page.locator('.lesson-card')).toHaveCount(5);
         await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
         await expect(page.locator('main')).toBeFocused();
         await page.screenshot({ path: join(out, profile + '-teaching-top.png') });

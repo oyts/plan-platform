@@ -22,6 +22,8 @@
 
 外网检查 `/api/health`、`/api/auth/config`、官网与核心业务；失败时保留新数据，按该次部署的回滚记录恢复已验证入口。不要直接覆盖或降级数据库。
 
+从 0.1.15 候选开始，回退还需执行 `scripts/check-governance-rollback.py`。发生过成员治理的账号不能回退到缺少会话代次校验的旧二进制，关闭管理开关也不取消这项限制。见 [运行证据与成员治理](operations-and-governance.md)。新增运维叠加文件只是模板，采集权限、真实策略未经确认不得复制成 `production-operations.yml`；站内告警不代表邮件告警已开启。
+
 ## Windows 下载与更新源
 
 实际 Windows 验收及签名备份验证通过后，使用 `scripts/prepare-windows-public-release.ps1` 准备 Windows-only 文件，再由 `scripts/prepare-client-static-deployment.mjs` 打包。远端核对上传 SHA-256，使用打包后的 `publish.sh activate <run>` 切换。源文件含版本占位符，不能直接拿未渲染的脚本执行。

@@ -1,7 +1,8 @@
 openapi: 3.0.3
 info:
   title: Plan Platform API
-  version: 0.1.14
+  version: 0.1.15
+  x-roadmap-contract: ./core-api.md
   description: 多用户周期计划、目标路线、今日待办、计时与统计 API。除认证入口外，所有接口均需 Bearer Access Token。客户端可为写操作提供 X-Idempotency-Key；相同用户、键和请求内容在 24 小时内会重放已完成响应。
 servers:
   - url: /api

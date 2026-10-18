@@ -13,6 +13,8 @@ const router = createRouter({ history: isDesktop() ? createWebHashHistory() : cr
   { path: '/reset-password', component: () => import('@/views/ResetPasswordView.vue'), meta: { public: true } },
   { path: '/', component: HomeEntryView, meta: { public: true, allowAuthenticated: true } },
   { path: '/welcome', component: ProductHomeView, meta: { public: true, allowAuthenticated: true, landing: true } },
+  { path: '/help', component: () => import('@/views/HelpView.vue'), meta:{public:true,allowAuthenticated:true} },
+  { path: '/help/demo', component: () => import('@/views/DemoView.vue'), meta:{public:true,allowAuthenticated:true} },
   { path: '/todos', component: () => import('@/views/TodosView.vue') },
   { path: '/ai', component: () => import('@/views/AiPlanningView.vue') },
   { path: '/overview', component: () => import('@/views/DailyOverviewView.vue') },

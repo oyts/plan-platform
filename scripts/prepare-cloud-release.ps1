@@ -52,12 +52,16 @@ Copy-Item -LiteralPath web/package.json -Destination "$output/web/package.json" 
 Copy-Item -LiteralPath web/dist -Destination "$output/web" -Recurse -Force
 Copy-Item -LiteralPath docker-compose.production.yml -Destination $output -Force
 Copy-Item -LiteralPath docker-compose.ai-secrets.yml -Destination $output -Force
+Copy-Item -LiteralPath docker-compose.operations.example.yml -Destination $output -Force
 foreach ($name in @('initialize-production.sh','mysql-backup.sh','mysql-restore-drill.sh','mysql-oss-upload.sh','daily-mysql-backup.sh','daily-migration-drill.sh','switch-public-entry.sh','rollback-public-entry.sh','production-compose.sh','configure-ai-secret.sh','verify-ai-secret-mount.sh','ai-candidate.sh','ai-migration-drill.sh','ai-mysql-acceptance.py','ai-adjustment-acceptance.py','configure-mail-secret.sh','prepare-mail-overlay.sh','activate-mail.sh')) {
     Copy-Item -LiteralPath "scripts/$name" -Destination "$output/scripts/$name" -Force
 }
 Copy-Item -LiteralPath scripts/operations-cloud-acceptance.py -Destination "$output/scripts/operations-cloud-acceptance.py" -Force
+foreach ($name in @('operations-status.py','check-governance-rollback.py')) {
+    Copy-Item -LiteralPath "scripts/$name" -Destination "$output/scripts/$name" -Force
+}
 $archive = Join-Path $projectRoot "production-artifacts/plan-platform-$version.tar.gz"
-& tar -czf $archive -C $output backend web scripts docker-compose.production.yml docker-compose.ai-secrets.yml
+& tar -czf $archive -C $output backend web scripts docker-compose.production.yml docker-compose.ai-secrets.yml docker-compose.operations.example.yml
 if ($LASTEXITCODE -ne 0) { throw 'Release archive failed.' }
 Get-FileHash -LiteralPath $archive -Algorithm SHA256 | Format-List
 Write-Host "Prepared: $archive. No upload, install or public cutover performed."
