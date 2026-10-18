@@ -2,12 +2,13 @@ import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile, mkdir, open, unlink, copyFile } from 'node:fs/promises';
 import { createWriteStream, existsSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
 import { chromium, expect as baseExpect } from '../web/node_modules/@playwright/test/index.mjs';
 import { PORTS, ANDROID_PACKAGE, selectDevice, validateManifest, verifyHash, sourceFingerprint, assertPortsFree, createFaultProxy, reportHtml, junitXml } from './native-regression-support.mjs';
 import { exerciseLearning } from './learning-acceptance.mjs';
+import { exerciseAndroidRoadmap } from './roadmap-android-acceptance.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const artifactDir = join(root, '.desktop-tools/native-regression');
@@ -15,15 +16,19 @@ const exe = join(artifactDir, 'plan-regression.exe');
 const adbPath = join(process.env.ANDROID_HOME || join(root, '.desktop-tools/android-sdk'), 'platform-tools/adb.exe');
 const java = join(process.env.JAVA_HOME || '', 'bin/java.exe');
 const exec = promisify(execFile);
-const options = { platform: 'both', check: false, serial: '' };
+const options = { platform: 'both', check: false, serial: '', roadmap: false, roadmapSection: 'all' };
 for (let i = 2; i < process.argv.length; i++) {
   const arg = process.argv[i];
   if (arg === '--platform') options.platform = process.argv[++i];
   else if (arg === '--serial') options.serial = process.argv[++i];
   else if (arg === '--check') options.check = true;
+  else if (arg === '--roadmap') options.roadmap = true;
+  else if (arg === '--roadmap-section') options.roadmapSection = process.argv[++i];
   else throw new Error(`Unknown argument: ${arg}`);
 }
 if (!['both', 'windows', 'android'].includes(options.platform)) throw new Error('Invalid --platform.');
+if (options.roadmap && options.platform !== 'android') throw new Error('--roadmap is Android-only; it does not authorize Windows UI automation.');
+if (!['all','help'].includes(options.roadmapSection) || (!options.roadmap && options.roadmapSection !== 'all')) throw new Error('Invalid --roadmap-section.');
 const runId = new Date().toISOString().replace(/[:.]/g, '-') + '-' + randomUUID().slice(0, 8);
 const resultsRoot = join(root, 'acceptance-results/native');
 const runDir = join(resultsRoot, runId);
@@ -32,6 +37,9 @@ const clients = [];
 const expect = baseExpect.configure({ timeout: 20_000 });
 const PASSWORD = 'NativeRegression123!'; // Synthetic local account only; never used on a public server.
 const secrets = [PASSWORD];
+const bootstrapToken = randomUUID() + randomUUID();
+const bootstrapEmail = `native-admin-${randomUUID()}@example.test`;
+secrets.push(bootstrapToken);
 const redact = value => secrets.reduce((text, secret) => text.replaceAll(secret, '[redacted]'), String(value));
 let apiProcess, lock, apiLog;
 let reverseOwned = false, forwardOwned = false, serial;
@@ -59,10 +67,11 @@ async function api(path, data, token, method = data === undefined ? 'GET' : 'POS
   expect(response.status, `${method} ${path}`).toBe(status);
   return status === 204 ? null : response.json();
 }
-async function account(name) {
-  const email = `native-${randomUUID()}@example.test`;
-  const data = await api('/auth/register', { email, password: PASSWORD, displayName: name }, undefined, 'POST', 201);
+async function account(name, admin = false) {
+  const email = admin ? bootstrapEmail : `native-${randomUUID()}@example.test`;
+  const data = await api('/auth/register', { email, password: PASSWORD, displayName: name, ...(admin ? { invitationToken: bootstrapToken } : {}) }, undefined, 'POST', 201);
   secrets.push(data.accessToken);
+  if (admin) expect(data.user.role).toBe('ADMIN');
   return { email, token: data.accessToken, name };
 }
 async function route(client, path) {
@@ -152,6 +161,13 @@ async function editTask(client, before, after) {
 async function capture(row, suffix = '') {
   for (const client of clients) {
     if (!client.page || client.page.isClosed()) continue;
+    try {
+      if (await client.page.locator('input[type=password]').count()) continue;
+      if (options.roadmap) {
+        const activity = await adb('shell', 'dumpsys', 'activity', 'activities');
+        if (!activity.split(/\r?\n/).some(line => /mResumedActivity|topResumedActivity/.test(line) && line.includes(`${ANDROID_PACKAGE}/`))) continue;
+      }
+    } catch { continue; } // Lost diagnostics must not mask the original assertion.
     const file = `${String(report.cases.length).padStart(2, '0')}-${client.kind}-${row.status.toLowerCase()}${suffix}.png`;
     try { await client.page.screenshot({ path: join(runDir, file), timeout: 5000 }); row.screenshots.push(`${runId}/${file}`); }
     catch {
@@ -170,7 +186,14 @@ async function capture(row, suffix = '') {
 async function scenario(name, action) {
   const started = Date.now(); const row = { name, status: 'PASS', durationMs: 0, screenshots: [] };
   report.cases.push(row);
-  try { await action(); }
+  try {
+    if (options.roadmap) {
+      const activity = await adb('shell', 'dumpsys', 'activity', 'activities');
+      if (!activity.split(/\r?\n/).some(line => /mResumedActivity|topResumedActivity/.test(line) && line.includes(`${ANDROID_PACKAGE}/`)))
+        throw new Error('Independent Android test app is no longer foreground; UI automation stopped.');
+    }
+    await action();
+  }
   catch (error) { row.status = 'FAIL'; row.error = redact(error.stack || error.message); throw error; }
   finally { row.durationMs = Date.now() - started; await capture(row); console.log(`[${row.status}] ${name} (${row.durationMs} ms)`); }
 }
@@ -188,7 +211,7 @@ async function preflight() {
     if (forwards.split(/\r?\n/).some(line => line.split(/\s+/)[1] === `tcp:${PORTS.androidCdp}`) || reverses.includes(`tcp:${PORTS.androidProxy}`)) throw new Error('A regression ADB port is already mapped. No existing mapping was changed.');
     const badging = (await exec(join(process.env.ANDROID_HOME || join(root, '.desktop-tools/android-sdk'), 'build-tools/36.0.0/aapt.exe'), ['dump', 'badging', manifest.apkName], { cwd: artifactDir, windowsHide: true })).stdout;
     if (!badging.includes(`package: name='${ANDROID_PACKAGE}'`)) throw new Error('Refusing to install a non-regression APK.');
-    formalAndroidBefore = await adb('shell', 'dumpsys', 'package', 'cn.zijun701.plan.mobile');
+    formalAndroidBefore = await adb('shell', 'dumpsys', 'package', 'cn.zijun701.plan.app');
     formalAndroidBefore = formalAndroidBefore.match(/versionCode=\d+[^\r\n]*|versionName=[^\r\n]+/g)?.join('\n') || 'not installed';
     report.environment.android = { model: await adb('shell', 'getprop', 'ro.product.model'), release: await adb('shell', 'getprop', 'ro.build.version.release'), package: ANDROID_PACKAGE, installedMainVersionBefore: formalAndroidBefore };
   }
@@ -208,8 +231,15 @@ async function startApi() {
     '--spring.datasource.driver-class-name=org.h2.Driver', '--spring.datasource.username=sa', '--spring.datasource.password=',
     '--app.security.registration-enabled=true', '--app.security.email-verification-enabled=false', '--app.security.invitation-enabled=false',
     '--app.security.refresh-cookie-secure=false', '--app.security.refresh-cookie-name=plan_refresh', '--app.security.max-sessions=40',
-    '--app.security.password-reset-enabled=false', '--app.security.bootstrap-admin-email=', '--spring.h2.console.enabled=false',
-    '--app.jwt.secret=native-regression-not-production-at-least-32-bytes', '--app.jwt.issuer=plan-platform-native-regression'];
+    '--app.security.password-reset-enabled=false', `--app.security.bootstrap-admin-email=${options.roadmap ? bootstrapEmail : ''}`, '--spring.h2.console.enabled=false',
+    '--app.jwt.secret=native-regression-not-production-at-least-32-bytes', '--app.jwt.issuer=plan-platform-native-regression',
+    '--app.ai.enabled=false', '--app.mail-from=', '--management.health.mail.enabled=false',
+    '--spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration',
+    '--app.operations.mail-alerts-enabled=false', '--app.operations.scheduler-enabled=false'];
+  if (options.roadmap) args.push(
+    `--app.bootstrap.token-hash=${createHash('sha256').update(bootstrapToken).digest('hex')}`,
+    `--app.bootstrap.expires-at=${new Date(Date.now() + 3600_000).toISOString()}`,
+    '--app.operations.enabled=true', '--app.governance.enabled=true');
   apiProcess = spawn(java, args, { cwd: join(root, 'backend'), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   apiProcess.stdout.pipe(apiLog); apiProcess.stderr.pipe(apiLog);
   let startup = '';
@@ -226,14 +256,34 @@ async function run() {
   await startApi();
   if (options.platform !== 'android') clients.push({ kind: 'windows', proxyPort: PORTS.windowsProxy, cdp: PORTS.desktopCdp, browser: null });
   if (options.platform !== 'windows') {
-    const install = await adb('install', '-r', apk);
-    if (!install.includes('Success')) throw new Error('Regression APK installation failed; do not uninstall the main app.');
+    let identicalInstalled = false;
+    if (options.roadmap) {
+      const location = (await adb('shell', 'pm', 'path', ANDROID_PACKAGE)).match(/^package:(\/data\/app\/[^\r\n]+\/base\.apk)$/m)?.[1];
+      if (location) {
+        const hash = (await adb('shell', 'sha256sum', location)).split(/\s+/)[0];
+        identicalInstalled = hash.toLowerCase() === report.environment.artifacts.apkSha256.toLowerCase();
+      }
+    }
+    if (!identicalInstalled) {
+      const install = await adb('install', '-r', apk);
+      if (!install.includes('Success')) throw new Error('Regression APK installation failed; do not uninstall the main app.');
+    }
+    report.environment.android.installPerformed = !identicalInstalled;
     await adb('reverse', `tcp:${PORTS.androidProxy}`, `tcp:${PORTS.androidProxy}`); reverseOwned = true;
     clients.push({ kind: 'android', proxyPort: PORTS.androidProxy, cdp: PORTS.androidCdp, browser: null });
   }
   for (const client of clients) { client.proxy = await createFaultProxy(client.proxyPort, PORTS.api); await launch(client); }
   const owner = await account('原生回归账号'); const other = await account('隔离回归账号');
   const first = clients[0]; const editor = clients.at(-1);
+  if (options.roadmap) {
+    report.title = 'Android 0.1.15 六阶段定向验收';
+    report.scope = '独立 Android 真机包、真实 Java 网络桥、隔离内存 API 与合成账号。仅本轮新增功能；无付费 AI、真实邮件、生产写入。文件恢复使用合成文件注入，不代表系统文件选择器或正式升级已验收。';
+    const admin = await account('合成治理管理员', true);
+    report.environment.roadmapSection = options.roadmapSection;
+    await exerciseAndroidRoadmap({ client: first, owner, other, admin, api, expect, route, restart, configure, scenario, section: options.roadmapSection });
+    report.status = 'PASS';
+    return;
+  }
   let currentPlan, tasks;
   const date = (await api('/dashboard/today', undefined, owner.token)).date;
   const end = new Date(`${date}T12:00:00+08:00`); end.setUTCDate(end.getUTCDate() + 6);
@@ -496,7 +546,7 @@ async function cleanup() {
   if (apiProcess) await attempt(async () => { await unlink(join(runDir, 'api.jar')); });
   apiLog?.end();
   if (formalAndroidBefore !== undefined) await attempt(async () => {
-    const after = (await adb('shell', 'dumpsys', 'package', 'cn.zijun701.plan.mobile')).match(/versionCode=\d+[^\r\n]*|versionName=[^\r\n]+/g)?.join('\n') || 'not installed';
+    const after = (await adb('shell', 'dumpsys', 'package', 'cn.zijun701.plan.app')).match(/versionCode=\d+[^\r\n]*|versionName=[^\r\n]+/g)?.join('\n') || 'not installed';
     report.environment.android.installedMainVersionAfter = after;
     expect(after).toBe(formalAndroidBefore);
   });

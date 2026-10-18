@@ -1,11 +1,15 @@
 param(
     [ValidateSet('check','build','run','test')][string]$Action = 'check',
     [ValidateSet('both','windows','android')][string]$Platform = 'both',
-    [string]$Serial = ''
+    [string]$Serial = '',
+    [switch]$Roadmap,
+    [ValidateSet('all','help')][string]$RoadmapSection = 'all'
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
+if ($Roadmap -and ($Platform -ne 'android' -or $Action -notin @('run','check'))) { throw '-Roadmap requires -Platform android and -Action run/check.' }
+if (-not $Roadmap -and $RoadmapSection -ne 'all') { throw '-RoadmapSection requires -Roadmap.' }
 $node = Join-Path $projectRoot '.desktop-tools/node22/node-v22.23.3-win-x64/node.exe'
 if (-not (Test-Path -LiteralPath $node)) { $node = (Get-Command node -ErrorAction Stop).Source }
 if (-not $env:JAVA_HOME -and (Test-Path -LiteralPath 'E:/biancheng/JDK21/bin/java.exe')) { $env:JAVA_HOME = 'E:/biancheng/JDK21' }
@@ -56,6 +60,7 @@ if ($Action -eq 'build') {
     exit 0
 }
 $arguments = @('scripts/native-regression.mjs', '--platform', $Platform)
+if ($Roadmap) { $arguments += @('--roadmap','--roadmap-section',$RoadmapSection) }
 if ($Serial) { $arguments += @('--serial', $Serial) }
 if ($Action -eq 'check') { $arguments += '--check' }
 & $node @arguments

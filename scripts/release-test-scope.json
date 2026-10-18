@@ -1,5 +1,14 @@
 {
   "version": "0.1.15",
+  "roadmapAndroid": {
+    "status":"independent-device-new-business-accepted-formal-upgrade-pending",
+    "reason":"User-authorized Android 15 device acceptance for the six new stages only. Real Java bridge and isolated final H2 API; no old full suite, paid AI, actual mail or production writes.",
+    "scripts":["scripts/native-regression.mjs --platform android --roadmap","scripts/native-regression.mjs --platform android --roadmap --roadmap-section help","scripts/native-regression.test.mjs"],
+    "results":{"distinctBusinessScenariosPassed":11,"mainRunPassed":10,"helpFollowupPassed":2,"harnessGuardsPassed":8,"paidAiCalls":0,"realEmailsSent":0},
+    "evidence":["acceptance-results/native/2026-10-18T08-58-26-271Z-9134f788/report.json:first-ten-PASS-help-selector-FAIL","acceptance-results/native/2026-10-18T09-00-48-297Z-d0c9b393/report.json:help-followup-PASS"],
+    "limits":"Not one all-green run: help selector was corrected and rechecked separately; synthetic login is setup, not duplicate business coverage. Backup input uses synthetic File injection, not the system picker/share chooser. Formal package remains 0.1.14 build19.",
+    "pending":["formal same-signature upgrade with saved-user confirmation and data/queue retention","system file picker/share target","authenticated Windows stages 1-5","authorized production migration and native publication"]
+  },
   "roadmapStable": {
     "status":"shared-source-baseline-and-independent-pc-help-accepted-release-gates-pending",
     "reason":"Stage 6 shared help/version boundaries, local synthetic no-provider demo, grouped navigation and keyboard access, truthful architecture/API/showcase, bounded read-only baseline and candidate handover. No backend business edits, production release or Android device testing.",

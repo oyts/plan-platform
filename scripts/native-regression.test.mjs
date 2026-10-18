@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import { PORTS, selectDevice, validateManifest, createFaultProxy, assertPortsFree, reportHtml, junitXml } from './native-regression-support.mjs';
+import { exerciseAndroidRoadmap } from './roadmap-android-acceptance.mjs';
 
 test('only exactly one authorized phone or an explicit authorized serial is selected', () => {
   assert.equal(selectDevice('List of devices attached\nabc\tdevice\n'), 'abc');
@@ -9,6 +10,10 @@ test('only exactly one authorized phone or an explicit authorized serial is sele
   assert.throws(() => selectDevice('a\tdevice\nb\tdevice\n'));
   assert.equal(selectDevice('a\tdevice\nb\tdevice\n', 'b'), 'b');
   assert.throws(() => selectDevice('a\tdevice\n', 'c'));
+});
+
+test('roadmap device suite refuses a Windows client before any UI or API operation', async () => {
+  await assert.rejects(exerciseAndroidRoadmap({ client: { kind: 'windows' } }), /only authorizes the independent Android package/);
 });
 test('manifest refuses main package, traversal and malformed checksums', () => {
   const manifest = { schema: 1, sourceSha256: 'c'.repeat(64), apiSha256: 'd'.repeat(64), androidPackage: 'cn.zijun701.plan.mobile.regression', desktopIdentifier: 'cn.zijun701.plan.desktop.regression', apkName: 'PlanCabin-0.1.1-debug.apk', apkSha256: 'a'.repeat(64), desktopSha256: 'b'.repeat(64) };

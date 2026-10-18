@@ -25,6 +25,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/native-regression.ps
 
 默认是 `both`，没有授权手机或存在多台未指定的手机会失败退出，不会自动跳过 Android 后宣称双端通过。单平台结果只代表该平台；单平台冲突测试由另一个真实 API 会话提交远端版本，不称为 PC 与手机互通。
 
+## 六阶段 Android 新增业务集合
+
+0.1.15 候选只补六阶段新增业务，不执行下方旧13项全量集合。用户明确连接并授权后运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/native-regression.ps1 -Action check -Platform android -Roadmap
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/native-regression.ps1 -Action run -Platform android -Roadmap
+```
+
+包括反馈、个人恢复、编排／分页／暂停、草稿／冲突／预加载、管理员治理以及帮助演示11个业务场景。仅帮助续验可加 `-RoadmapSection help`，不会把前10项当作再次执行。仅支持独立 Android 包，拒绝 Windows；合成管理员通过隔离启动授权创建，AI、SMTP和定时告警关闭，不使用生产账号。原正式包保护核对 `cn.zijun701.plan.app` 的前后版本；不会覆盖或清数据。已安装的独立 APK 只有 SHA-256 与候选字节相同时才跳过重复安装。
+
+2026年10月18日已完成前10项及帮助单项续验；具体通过与脚本失败记录见 `roadmap-progress.md`。文件恢复用合成 `File` 进入真实页面读取处理器，不声称系统文件选择器／分享／正式升级已验收。候选包仍未发布。
+
 ## 自动化场景
 
 1. 真实原生桥接、服务器测试与配置、两端登录。
