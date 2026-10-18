@@ -1,5 +1,13 @@
 {
   "version": "0.1.15",
+  "roadmapProduction": {
+    "status":"web-api-released-native-upgrade-and-publication-pending",
+    "reason":"Fresh real V19 backup restored separately and migrated to V23, actual previous image rehearsal, original business projections/checksums, new pre-cutover backup and private OSS roundtrip. Only new/directly affected HTTPS behavior with existing invited synthetic USER accounts; no paid AI, real email, admin credential or real plan writes.",
+    "scripts":["scripts/roadmap-release-drill.py","scripts/activate-roadmap-release.sh","scripts/public-roadmap-acceptance.py"],
+    "results":{"httpsTargetedPassed":8,"httpsFailed":0,"originalBusinessTablesChecked":27,"paidAiCalls":0,"realEmailsSent":0},
+    "evidence":["remote release-drills/roadmap-20261018130806-fcd62765/report.json","remote releases/0.1.15-50bc92a/activation-completed","remote releases/0.1.15-50bc92a/backup-download-check/result.txt","acceptance-results/public-web/20261018-131334-1a605a/report.json"],
+    "pending":["formal Windows saved-close confirmation, upgrade and data/queue retention","formal Android connection/confirmation, same-signature upgrade and data/queue retention","Windows public optional and Android protected-source activation after native acceptance","v0.1.15 GitHub release after actual publication"]
+  },
   "roadmapWindows": {
     "status":"independent-targeted-ui-accepted-formal-upgrade-pending",
     "reason":"User manually authenticated in the independent Windows 0.1.15 client. Real Rust transport and isolated final API, Sky UI only; no formal account operations, paid AI, real mail, production release or old full regression.",
@@ -165,7 +173,7 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Six roadmap stages implemented for candidate 0.1.15. Shared-source, independent Android new-business and targeted Windows UI results are recorded separately above. No paid calls, real mail or unrelated full regression. Production/formal clients stay 0.1.14; formal upgrade/data retention and production release remain gated.",
+  "reason": "Six roadmap stages implemented for 0.1.15; Web/API now released after fresh snapshot rehearsal and eight targeted HTTPS checks. Shared-source, independent Android and Windows UI results remain separate. No paid calls, real mail or unrelated full regression. Native sources stay 0.1.14 until formal upgrade/data retention and publication gates pass.",
   "frontendUnit": [
     "src/helpModel.test.ts",
     "src/workspaceModel.test.ts",
