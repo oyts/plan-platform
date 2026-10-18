@@ -1,7 +1,7 @@
 import axios from 'axios';
 export interface ServerConfig {
   registrationEnabled: boolean; passwordResetEnabled: boolean; invitationEnabled: boolean;
-  emailVerificationEnabled: boolean; planRestDaysEnabled?: boolean; todoEnabled?: boolean;
+  emailVerificationEnabled: boolean; planRestDaysEnabled?: boolean; todoEnabled?: boolean;operationsAvailable?:boolean;
 }
 export function validateServerConfig(value: unknown): ServerConfig {
   if (!value || typeof value !== 'object' || typeof (value as ServerConfig).registrationEnabled !== 'boolean')

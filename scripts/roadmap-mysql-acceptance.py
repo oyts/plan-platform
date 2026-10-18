@@ -19,6 +19,8 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
+import urllib.parse
+from http.cookies import SimpleCookie
 
 BASE='http://127.0.0.1:43145/api'
 
@@ -39,10 +41,11 @@ def private_write(path,value):
     with os.fdopen(descriptor,'wb' if isinstance(value,bytes) else 'w') as handle:
         handle.write(value)
 
-def request(path,*,token=None,data=None,method=None,expected=200,base=BASE):
+def request(path,*,token=None,data=None,method=None,expected=200,base=BASE,extra_headers=None):
     headers={'Content-Type':'application/json'}
     if token:
         headers['Authorization']='Bearer '+token
+    if extra_headers:headers.update(extra_headers)
     body=None if data is None else json.dumps(data,ensure_ascii=False).encode()
     req=urllib.request.Request(base+path,data=body,headers=headers,method=method or ('GET' if data is None else 'POST'))
     try:
@@ -94,6 +97,28 @@ def verify_orchestration(token,other,plan,line,passed):
     require(apply('batch',batch,fresh)['changed']==2,'Unexpected changed batch count.')
     require(request('/todos/page?from=2026-10-01&to=2026-11-30&page=0&size=1',token=token)['totalElements']==1,'Todo database page failed.')
     passed('MySQL structural copies, remapped dependencies, route pause, server pages, protected history, 409 and durable replay')
+
+def verify_governance(a,b,password,sql,database,folder,passed):
+    sql("update "+database+".users set role='ADMIN' where id='"+a['user']['id']+"'")
+    admin=request('/auth/login',data={'email':a['user']['email'],'password':password})['accessToken']
+    req=urllib.request.Request(BASE+'/auth/login',data=json.dumps({'email':b['user']['email'],'password':password}).encode(),headers={'Content-Type':'application/json'})
+    with urllib.request.urlopen(req,timeout=120) as response:
+        member=json.loads(response.read());cookies=SimpleCookie();cookies.load(response.headers.get('Set-Cookie',''))
+        require('plan_roadmap_refresh' in cookies,'Synthetic refresh cookie missing.');cookie='plan_roadmap_refresh='+cookies['plan_roadmap_refresh'].value
+    rows=request('/admin/governance/members?'+urllib.parse.urlencode({'search':b['user']['email']}),token=admin)['content'];require(len(rows)==1,'Synthetic member query failed.');row=rows[0]
+    request('/admin/governance/audit',token=member['accessToken'],expected=403)
+    disabled=request('/admin/governance/members/'+row['id'],token=admin,method='PUT',data={'enabled':False,'version':row['version'],'reason':'MySQL synthetic disable verification'})
+    request('/plans',token=member['accessToken'],expected=401);request('/auth/refresh',method='POST',extra_headers={'Cookie':cookie},expected=401)
+    request('/admin/governance/members/'+row['id'],token=admin,method='PUT',data={'enabled':True,'version':row['version'],'reason':'stale synthetic verification'},expected=409)
+    request('/admin/governance/members/'+row['id'],token=admin,method='PUT',data={'enabled':True,'version':disabled['version'],'reason':'MySQL synthetic restore verification'})
+    request('/plans',token=member['accessToken'],expected=401);request('/auth/refresh',method='POST',extra_headers={'Cookie':cookie},expected=401)
+    fresh=request('/auth/login',data={'email':b['user']['email'],'password':password})['accessToken'];request('/plans',token=fresh)
+    require(request('/admin/governance/audit',token=admin)['totalElements']==2,'Governance audit did not atomically record both changes.')
+    require(request('/admin/operations/status',token=admin)['enabled'] is False,'Operations must remain disabled in this isolated governance fixture.')
+    guarded=subprocess.run(['python3',str(folder/'check-governance-rollback.py'),'--database',database,'--target-supports-generation','no'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    require(guarded.returncode!=0 and b'Rollback refused:' in guarded.stderr,'Unsafe rollback was not refused.')
+    command(['python3',str(folder/'check-governance-rollback.py'),'--database',database,'--target-supports-generation','yes'])
+    passed('MySQL member disable/restore, old access and refresh rejection, version guards, audit and rollback security floor')
 
 
 def resume_rollback(folder,final_jar=False):
@@ -195,6 +220,7 @@ def main():
     parser.add_argument('--resume-rollback',action='store_true')
     parser.add_argument('--verify-final-jar',action='store_true')
     parser.add_argument('--stage3',action='store_true')
+    parser.add_argument('--stage5',action='store_true')
     args=parser.parse_args()
     folder=Path(args.directory).resolve()
     require(str(folder).startswith('/home/oyts/plan-platform/roadmap-candidates/'),'Refusing a directory outside roadmap-candidates.')
@@ -223,7 +249,7 @@ def main():
         return command(['docker','exec','-i','-e','MYSQL_PWD','plan-platform-mysql-1','mysql','-uroot','--batch','--skip-column-names'],data=statement.encode(),env=mysql_environment).decode().strip()
     def candidate_env(db):
         require(re.fullmatch(r'plan_acceptance_[0-9a-f_]+(?:_restore)?',db),'Unexpected isolated database name.')
-        return '\n'.join(['DB_URL=jdbc:mysql://plan-platform-mysql-1:3306/'+db+'?serverTimezone=Asia/Shanghai','DB_USERNAME='+username,'DB_PASSWORD='+password,'JWT_SECRET='+jwt,'SPRING_PROFILES_ACTIVE=mysql','REGISTRATION_ENABLED=true','REFRESH_COOKIE_SECURE=false','REFRESH_COOKIE_NAME=plan_roadmap_refresh','BOOTSTRAP_ADMIN_EMAIL=','AI_ENABLED=false','PASSWORD_RESET_ENABLED=false','EMAIL_VERIFICATION_ENABLED=false','SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=3','CORS_ALLOWED_ORIGINS=http://127.0.0.1:43145','APP_PUBLIC_URL=http://127.0.0.1:43145'])+'\n'
+        return '\n'.join(['DB_URL=jdbc:mysql://plan-platform-mysql-1:3306/'+db+'?serverTimezone=Asia/Shanghai','DB_USERNAME='+username,'DB_PASSWORD='+password,'JWT_SECRET='+jwt,'SPRING_PROFILES_ACTIVE=mysql','REGISTRATION_ENABLED=true','REFRESH_COOKIE_SECURE=false','REFRESH_COOKIE_NAME=plan_roadmap_refresh','BOOTSTRAP_ADMIN_EMAIL=','AI_ENABLED=false','PASSWORD_RESET_ENABLED=false','EMAIL_VERIFICATION_ENABLED=false','MEMBER_GOVERNANCE_ENABLED='+('true' if args.stage5 else 'false'),'OPERATIONS_ENABLED=false','SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=3','CORS_ALLOWED_ORIGINS=http://127.0.0.1:43145','APP_PUBLIC_URL=http://127.0.0.1:43145'])+'\n'
     def start(name,env_file,jar=False):
         require(not command(['docker','ps','-aq','--filter','name=^'+name+'$']).strip(),'Candidate container name already exists; nothing was replaced.')
         command_args=['docker','run','-d','--name',name,'--network',network,'--memory','480m','--cpus','0.6','--pids-limit','256','--env-file',str(env_file),'-p','127.0.0.1:43145:8080']
@@ -266,19 +292,19 @@ def main():
     try:
         report['productionBefore']=request('/health',base='https://plan.zijun701.cn/api')
         report['jarSha256']=hashlib.sha256((folder/'api.jar').read_bytes()).hexdigest()
-        private_write(folder/'candidate-private.json',json.dumps({'database':database,'restoredDatabase':restored,'username':username,'password':password,'jwt':jwt,'image':image,'network':network}))
+        private_write(folder/'candidate-private.json',json.dumps({'database':database,'restoredDatabase':restored,'username':username,'password':password,'jwt':jwt,'image':image,'network':network,'accountPassword':account_password}))
         sql('CREATE DATABASE '+database+' CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; CREATE USER \''+username+"'@'%' IDENTIFIED BY '"+password+"'; GRANT ALL ON "+database+".* TO '"+username+"'@'%';")
         private_write(folder/'candidate.env',candidate_env(database))
         current='plan-roadmap-'+run.replace('_','-')
         report['candidateHealth']=start(current,folder/'candidate.env',True)
-        expected_version='22' if args.stage3 else '21'
+        expected_version='23' if args.stage5 else '22' if args.stage3 else '21'
         require(sql('SELECT max(version+0) FROM '+database+'.flyway_schema_history WHERE success=1')==expected_version,'Unexpected migration version.')
         passed('fresh MySQL 8.4 V1-V'+expected_version+' migration')
         a,b=account(),account()
         token=a['accessToken']
         other=b['accessToken']
         body={'operationKey':str(__import__('uuid').uuid4())}
-        if not args.stage3:
+        if not (args.stage3 or args.stage5):
             body={'operationKey':secrets.token_hex(4)+'-'+secrets.token_hex(2)+'-'+secrets.token_hex(2)+'-'+secrets.token_hex(2)+'-'+secrets.token_hex(6),'category':'USABILITY','title':'合成 MySQL 反馈','steps':'打开合成教学。','expectedResult':'提示清楚。','actualResult':'需要补充说明。','diagnostic':{'schemaVersion':1,'clientVersion':'0.1.14','platform':'WINDOWS','occurredAt':'2026-10-18T00:00:00Z','errorKind':'NONE','queueCount':0,'conflictCount':0}}
             feedback=request('/feedback',token=token,data=body,expected=201)
             require(request('/feedback',token=token,data=body,expected=201)['ticket']['id']==feedback['ticket']['id'],'Feedback replay created a duplicate.')
@@ -332,6 +358,19 @@ def main():
         stop(old)
         require(before==checksum(restored),'Old image startup changed restored data.')
         passed('actual previous 0.1.14 image reads upgraded isolated database without changing it')
+        if args.stage5:
+            report['governanceHealth']=start(current+'-governance',folder/'candidate.env',True)
+            verify_governance(a,b,account_password,sql,database,folder,passed)
+            governed_before=checksum(database);governed_restored=database+'_a_restore'
+            governed_dump=command(['docker','exec','-e','MYSQL_PWD','plan-platform-mysql-1','mysqldump','-uroot','--single-transaction','--no-tablespaces','--set-gtid-purged=OFF',database],env=mysql_environment)
+            require(not re.search(rb'(?im)^\s*(USE\s|CREATE\s+DATABASE|DROP\s+DATABASE)',governed_dump),'Database-switching SQL refused.')
+            private_write(folder/'governed-mysql.sql.gz',gzip.compress(governed_dump))
+            sql('CREATE DATABASE '+governed_restored+' CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;')
+            command(['docker','exec','-i','-e','MYSQL_PWD','plan-platform-mysql-1','mysql','-uroot',governed_restored],data=governed_dump,env=mysql_environment)
+            require(governed_before==checksum(governed_restored),'Governed backup restoration differs.')
+            passed('full synthetic restore retains governed generations, revoked refresh credentials and audit with all-table checksums')
+            report['governedRestoredDatabase']=governed_restored
+            stop(current+'-governance')
         report['productionAfter']=request('/health',base='https://plan.zijun701.cn/api')
         require(report['productionBefore']==report['productionAfter'],'Public health changed during isolated verification.')
         require(request('/auth/config',base='https://plan.zijun701.cn/api')['registrationEnabled'] is False,'Public registration policy changed.')

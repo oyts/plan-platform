@@ -31,6 +31,11 @@ management:
 
 app:
   version: 0.1.14
+  governance:
+    enabled: ${MEMBER_GOVERNANCE_ENABLED:false}
+  operations:
+    enabled: ${OPERATIONS_ENABLED:false}
+    status-file: ${OPERATIONS_STATUS_FILE:}
   ai:
     enabled: ${AI_ENABLED:false}
     model: ${AI_MODEL:deepseek-flash}

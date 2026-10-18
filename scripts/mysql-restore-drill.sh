@@ -27,3 +27,7 @@ for table in $tables; do
   [ "$original" != NULL ] && [ "$original" = "$restored" ] || { echo "Restore checksum mismatch: $table; drill database retained"; exit 1; }
 done
 echo "Restore validated in isolated database $database; live database unchanged. Drill database retained for inspection."
+if [ -n "${PLAN_OPERATIONS_DIRECTORY:-}" ]; then
+  # Evidence is recorded only after every table comparison above succeeded.
+  python3 scripts/operations-status.py record-drill --backup "$(readlink -f "$backup")" --output "$PLAN_OPERATIONS_DIRECTORY/drill.json" --group-readable
+fi

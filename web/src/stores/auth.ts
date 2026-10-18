@@ -11,6 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null); const ready = ref(false); const registrationEnabled = ref(false); const passwordResetEnabled = ref(false); const invitationEnabled = ref(false); const emailVerificationEnabled = ref(false);
   let sessionAttempt = 0;
   const planRestDaysEnabled = ref(false);
+  const operationsAvailable=ref(false);
   const connectionError = ref('');
   async function accept(data: TokenResponse) { saveTokens(data); user.value = data.user; await rememberIdentity(serverScope(), currentQueueOwner()!, data.user); }
   async function bootstrap() {
@@ -22,11 +23,13 @@ export const useAuthStore = defineStore('auth', () => {
       registrationEnabled.value = config.registrationEnabled; passwordResetEnabled.value = config.passwordResetEnabled;
       invitationEnabled.value = config.invitationEnabled; emailVerificationEnabled.value = config.emailVerificationEnabled;
       planRestDaysEnabled.value = config.planRestDaysEnabled === true;
+      operationsAvailable.value=config.operationsAvailable===true;
     } catch (error) {
       if (attempt !== sessionAttempt || scope !== serverScope()) return;
       connectionError.value = serverConnectionIssue(error);
       registrationEnabled.value = false; passwordResetEnabled.value = false; invitationEnabled.value = false;
       emailVerificationEnabled.value = false; planRestDaysEnabled.value = false;
+      operationsAvailable.value=false;
     }
     if (await isSignedOut(scope)) { clearTokens(); user.value = null; ready.value = true; return; }
     try {
@@ -51,5 +54,5 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout() { try { if (!requiresConnection()) await api.post('/auth/logout'); } finally { await forgetSession(); } }
   async function logoutAll() { try { if (requiresConnection()) throw new Error('当前设备已退出；全设备会话撤销需要联网后重新执行。'); await api.post('/auth/logout-all'); } finally { await forgetSession(); } }
   function updateProfile(profile: User) { user.value = profile; }
-  return { user, ready, connectionError, registrationEnabled, passwordResetEnabled, invitationEnabled, emailVerificationEnabled, planRestDaysEnabled, bootstrap, login, register, logout, logoutAll, updateProfile };
+  return { user, ready, connectionError, registrationEnabled, passwordResetEnabled, invitationEnabled, emailVerificationEnabled, planRestDaysEnabled, operationsAvailable,bootstrap, login, register, logout, logoutAll, updateProfile };
 });

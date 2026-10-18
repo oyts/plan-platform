@@ -38,12 +38,13 @@ public class AuthService {
     private final LoginAttemptService loginAttempts;
     private final BootstrapProperties bootstrap;
     private final MailRequestLimiter mailLimiter;
+    private final jakarta.persistence.EntityManager em;
 
     public AuthService(UserAccountRepository users, RefreshTokenRepository refreshTokens, PasswordResetTokenRepository passwordResetTokens,
                        InvitationRepository invitations, EmailVerificationTokenRepository emailVerificationTokens,
                        PasswordResetMailService passwordResetMail, PasswordEncoder passwordEncoder,
                        JwtEncoder jwtEncoder, JwtProperties jwtProperties, SecurityProperties securityProperties,
-                       LoginAttemptService loginAttempts, BootstrapProperties bootstrap, MailRequestLimiter mailLimiter) {
+                       LoginAttemptService loginAttempts, BootstrapProperties bootstrap, MailRequestLimiter mailLimiter,jakarta.persistence.EntityManager em) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.passwordResetTokens = passwordResetTokens;
@@ -57,6 +58,7 @@ public class AuthService {
         this.loginAttempts = loginAttempts;
         this.bootstrap = bootstrap;
         this.mailLimiter = mailLimiter;
+        this.em=em;
     }
 
     @Transactional
@@ -98,6 +100,9 @@ public class AuthService {
         RefreshToken stored = refreshTokens.findByTokenHash(hash(rawToken))
             .filter(token -> token.getRevokedAt() == null && token.getExpiresAt().isAfter(Instant.now()))
             .orElseThrow(() -> new UnauthorizedException("刷新凭证无效或已经过期。"));
+        // Same lock order as governance: account first, then refresh rows. Recheck after waiting.
+        em.lock(stored.getUser(),jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);em.refresh(stored.getUser());em.refresh(stored);
+        if(stored.getRevokedAt()!=null||!stored.getExpiresAt().isAfter(Instant.now()))throw new UnauthorizedException("刷新凭证无效或已经过期。");
         stored.revoke();
         return issueTokens(stored.getUser());
     }
@@ -195,11 +200,13 @@ public class AuthService {
     }
 
     private IssuedTokens issueTokens(UserAccount user) {
+        em.flush();em.lock(user,jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);em.refresh(user);
+        if(!user.isEnabled())throw new UnauthorizedException("此账号已停用，请联系管理员。");
         Instant now = Instant.now();
         Instant expiresAt = now.plus(jwtProperties.accessTokenMinutes(), ChronoUnit.MINUTES);
         JwtClaimsSet claims = JwtClaimsSet.builder()
             .issuer(jwtProperties.issuer()).issuedAt(now).expiresAt(expiresAt).subject(user.getId())
-            .claim("email", user.getEmail()).claim("name", user.getDisplayName()).claim("role", user.getRole()).build();
+            .claim("email", user.getEmail()).claim("name", user.getDisplayName()).claim("role", user.getRole()).claim("accountGeneration",user.getAuthGeneration()).build();
         String accessToken = jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
         String rawRefresh = UUID.randomUUID() + "." + UUID.randomUUID();
         List<RefreshToken> active = refreshTokens.findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(user.getId(), now);

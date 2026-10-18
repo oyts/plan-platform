@@ -30,6 +30,7 @@ const secondary = computed(() => [
   { path: '/settings', label: '设置', description: '账号与安全' },
   ...(isNativeClient() ? [{ path: '/desktop', label: '客户端', description: '服务器连接与更新' }] : []),
   ...(auth.user?.role === 'ADMIN' ? [{ path: '/members', label: '成员', description: '邀请与账号管理' }] : []),
+  ...(auth.user?.role === 'ADMIN' ? [{ path: '/operations', label: '运行与治理', description: '备份状态、保留预览与成员审计' }] : []),
 ]);
 const moreActive = computed(() => secondary.value.some(item => item.path === route.path));
 function allowed(path: string) { return !requiredClientUpdate() || updateRouteAllowed(path); }

@@ -1,5 +1,17 @@
 {
   "version": "0.1.14",
+  "roadmapGovernance": {
+    "status":"shared-source-and-mysql-accepted-native-ui-pending",
+    "reason":"Stage 5 bounded evidence-only operations, cleanup preview, deduplicated site alerts, guarded member disable/restore and generation-aware access. Defaults off; no real alerts or cleanup. Authentication locking/claims directly affect login, refresh and recovery.",
+    "backend":["GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","AuthPlanIntegrationTest#profileAndPasswordChangesProtectTheAccountLifecycle+revokedRefreshTokenReturnsUnauthorized+refreshCookieRotatesAndOldCookieCannotBeReused+loginRateLimitAndProtectedSessionEndpointsWork","AccountRecoveryIntegrationTest#resetIsOneTimeRateLimitedAndRevokesOldRefresh+concurrentResetConsumesOneTokenExactlyOnce"],
+    "browser":["e2e/operations.spec.ts"],
+    "scripts":["scripts/operations-status.test.py"],
+    "frontendUnit":["src/api/client.test.ts","src/serverCompatibility.test.ts"],
+    "results":{"backendPassed":12,"frontendUnitPassed":18,"collectorPassed":4,"browserPassed":8,"paidAiCalls":0,"realEmailsSent":0},
+    "evidence":["acceptance-results/roadmap-governance-final/","acceptance-results/roadmap-governance-backend-first.log","remote roadmap-candidates/20261018-1130-governance/report.json"],
+    "mysql":"cc65bd68 JAR V1-V23, 37-table synthetic dump restore, old-image reads before governance, member token revocation and guarded rollback, post-governance full restore passed. All candidate containers stopped; production unchanged.",
+    "pending":["independent Windows UI","Android device after user authorization","production policy confirmation and signed release"]
+  },
   "roadmapOffline": {
     "status":"shared-source-and-mysql-readonly-accepted-native-ui-pending",
     "reason":"Stage 4 explicit cache inventory and bounded preload, reopened private weekly drafts, selected conflict snapshots, reliable base capture and user-confirmed atomic queue replacement. No auto merge, queue clearing, TTL extension or paid replay.",
@@ -123,7 +135,7 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Unreleased roadmap stages 1-3; current stage 3 validates only orchestration and directly affected backup, queue and route continuation. Production/formal clients stay 0.1.14; stages 4-6 remain.",
+  "reason": "Unreleased roadmap stages 1-5. Stage 5 validates only operations/governance and directly affected authentication, refresh and recovery; no paid calls, mail or unrelated regression. Production/formal clients stay 0.1.14; stage 6 remains.",
   "frontendUnit": [
     "src/privateDrafts.test.ts",
     "src/api/offlineClient.test.ts",

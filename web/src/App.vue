@@ -9,6 +9,7 @@ import MobileNavigation from '@/components/MobileNavigation.vue';
 import WorkspaceSwitcher from '@/components/WorkspaceSwitcher.vue';
 import LearningPrompt from '@/components/LearningPrompt.vue';
 import InAppReminder from '@/components/InAppReminder.vue';
+import OperationsNotice from '@/components/OperationsNotice.vue';
 import { serverScope } from '@/api/client';
 import { resetLearning } from '@/learning';
 import { workspace, bindWorkspaceContext, resetWorkspaceContext } from '@/workspace';
@@ -23,6 +24,7 @@ const navigation = computed(() => [
   {path:'/exports',label:'数据中心'},
   {path:'/organize',label:'编排与历史'},
   {path:'/offline',label:'离线范围'},
+  ...(auth.user?.role==='ADMIN'?[{path:'/operations',label:'运行与治理'}]:[]),
   {path:'/overview',label:'今日与提醒'}, {path:'/weekly-review',label:'周复盘'}, {path:'/ai',label:'AI 规划'}, {path:'/sync',label:'同步'}, ...(auth.user?.role === 'ADMIN' ? [{path:'/members',label:'成员'}] : []), {path:'/feedback',label:'反馈与诊断'}, {path:'/learn',label:'使用教学'}, {path:'/settings',label:'设置'},
 ]);
 watch(() => auth.user?.id, id => { if (id) bindWorkspaceContext(); else { resetWorkspaceContext(); resetLearning(); } }, { immediate: true });
@@ -60,6 +62,7 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
     <ConnectionBar v-if="auth.user && !productPage" :key="auth.user.id" :busy="reconnecting" @reconnect="reconnect" />
     <ClientUpdateNotice v-if="!productPage" />
     <InAppReminder v-if="auth.user && !productPage" :key="`${auth.user.id}:${serverScope()}`"/>
+    <OperationsNotice v-if="auth.user?.role==='ADMIN'&&auth.operationsAvailable&&!productPage" :key="`${auth.user.id}:${serverScope()}`"/>
     <LearningPrompt v-if="auth.user && !productPage"/>
     <main tabindex="-1" :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${router.currentRoute.value.path === '/ai' ? '/ai' : router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
     <MobileNavigation v-if="auth.user && !productPage" @logout="logout"/>

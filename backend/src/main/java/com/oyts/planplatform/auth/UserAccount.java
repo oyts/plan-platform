@@ -23,6 +23,7 @@ public class UserAccount extends BaseEntity {
 
     @Column(nullable = false)
     private boolean enabled = true;
+    @Column(name="auth_generation",nullable=false) private long authGeneration;
     @Column(name = "email_verified_at") private Instant emailVerifiedAt;
 
     protected UserAccount() {}
@@ -42,5 +43,7 @@ public class UserAccount extends BaseEntity {
     public String getDisplayName() { return displayName; }
     public String getRole() { return role; }
     public boolean isEnabled() { return enabled; }
+    public long getAuthGeneration() { return authGeneration; }
+    public void setMemberEnabled(boolean value) { enabled=value;authGeneration++; }
     public boolean isEmailVerified() { return emailVerifiedAt != null; }
 }

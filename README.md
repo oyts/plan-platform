@@ -14,7 +14,7 @@
 
 日常小版本仅验证新增和受影响功能，大版本才执行全面回归；签名、版本、升级数据保留、生产备份与云端健康仍为发布门槛。见 [发布流程](docs/release-process.md) 与 [导航体验优化](docs/navigation-experience.md)。
 
-后续六阶段的目标、边界、验收及开发模型建议见 [开发规划](docs/development-roadmap.md)。开发分支已实现[反馈与脱敏诊断](docs/feedback-and-diagnostics.md)、[个人数据中心](docs/personal-data-center.md)、[编排与长期历史](docs/orchestration-and-history.md)和[离线范围及冲突体验](docs/offline-experience.md)，共享源码与独立 MySQL 定向验收通过；原生 UI、真机与发布门槛见[续做记录](docs/roadmap-progress.md)。这些功能尚未部署到正式 0.1.14，阶段五、六仍待开发。
+后续六阶段的目标、边界、验收及开发模型建议见 [开发规划](docs/development-roadmap.md)。开发分支已实现[反馈与脱敏诊断](docs/feedback-and-diagnostics.md)、[个人数据中心](docs/personal-data-center.md)、[编排与长期历史](docs/orchestration-and-history.md)、[离线范围及冲突体验](docs/offline-experience.md)和[运行证据与成员治理](docs/operations-and-governance.md)。阶段一至五的共享源码及独立 MySQL 定向验收通过，原生 UI／真机与发布门槛见[续做记录](docs/roadmap-progress.md)。这些功能尚未部署到正式 0.1.14；运维与成员治理默认关闭，第六阶段尚未开始。
 
 0.1.4 已完成 HTTPS 新版部署、MySQL 备份恢复、加密签名备份、Windows 官网下载及更新源发布，见 [Windows 发布记录](docs/windows-public-release.md)。Android 继续只提供受邀测试 APK，官网下载等待 APP 备案，公开注册保持关闭，见 [受邀客户端测试](docs/invited-client-testing.md)。成员页手机卡片与底部编辑面板已进入共享源码，桌面保留表格，详见 [成员邀请手机验收](docs/mobile-members.md)。
 

@@ -34,7 +34,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 public class SecurityConfig {
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, IdempotencyService idempotencyService) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, IdempotencyService idempotencyService,org.springframework.jdbc.core.JdbcTemplate db,@Value("${app.governance.enabled:false}") boolean governanceEnabled) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
@@ -45,7 +45,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(resource -> resource.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
-            .addFilterAfter(new IdempotencyFilter(idempotencyService), BearerTokenAuthenticationFilter.class);
+            .addFilterAfter(new com.oyts.planplatform.auth.MemberAccessFilter(db,governanceEnabled),BearerTokenAuthenticationFilter.class)
+            .addFilterAfter(new IdempotencyFilter(idempotencyService),com.oyts.planplatform.auth.MemberAccessFilter.class);
         return http.build();
     }
 
