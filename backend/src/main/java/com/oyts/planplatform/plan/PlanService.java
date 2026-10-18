@@ -382,10 +382,9 @@ public class PlanService {
     @Transactional(readOnly = true)
     public List<PlanDtos.TaskResponse> carryover(String userId, LocalDate from, LocalDate to) {
         validateRange(from, to);
-        return progress.findByTaskPlanOwnerId(userId).stream()
-            .filter(item -> item.getTask().getDeletedAt() == null)
-            .filter(item -> item.getStatus() == TaskProgress.Status.DEFERRED && item.getDeferTo() != null)
-            .filter(item -> !item.getDeferTo().isBefore(from) && !item.getDeferTo().isAfter(to))
+        var rows=progress.findTop501ByTaskPlanOwnerIdAndTaskDeletedAtIsNullAndStatusAndDeferToBetweenOrderByDeferToAscTaskSortOrderAsc(userId,TaskProgress.Status.DEFERRED.name(),from,to);
+        if(rows.size()>500)throw new IllegalArgumentException("此范围的延期任务超过 500 项，请缩小日期范围；不会静默截断。");
+        return rows.stream()
             .sorted(java.util.Comparator.comparing(TaskProgress::getDeferTo)
                 .thenComparing(item -> item.getTask().getStartTime(), java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
                 .thenComparing(item -> item.getTask().getSortOrder()))

@@ -5,6 +5,7 @@ const DB = 'plan-platform-cache';
 export const PROFILE_TTL = 24 * 60 * 60 * 1000;
 const RESPONSE_TTL = 7 * PROFILE_TTL;
 const MAX_RESPONSES = 100;
+const MAX_RESPONSE_BYTES=1024*1024,MAX_CACHE_BYTES=10*1024*1024;
 export interface CachedIdentity { scope: string; owner: string; user: User; expiresAt: number; signedOut?: boolean }
 interface CachedResponse { key: string; scope: string; owner: string; savedAt: number; data: unknown }
 
@@ -89,6 +90,7 @@ export function responseKey(scope: string, owner: string, url: string, params: u
 }
 export async function cacheResponse(scope: string, owner: string, url: string, params: unknown, data: unknown): Promise<void> {
   try {
+    if(new TextEncoder().encode(JSON.stringify(data)).byteLength>MAX_RESPONSE_BYTES)return;
     const db = await database();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(['identities', 'responses'], 'readwrite');
@@ -103,7 +105,7 @@ export async function cacheResponse(scope: string, owner: string, url: string, p
         store.put({ key: responseKey(scope, owner, url, params), scope, owner, savedAt, data: structuredClone(data) });
         store.getAll().onsuccess = (event) => {
           const rows = ((event.target as IDBRequest).result as CachedResponse[]).sort((a, b) => b.savedAt - a.savedAt);
-          rows.forEach((row, index) => { if (index >= MAX_RESPONSES || savedAt - row.savedAt > RESPONSE_TTL) store.delete(row.key); });
+          let bytes=0,count=0;rows.forEach(row=>{const size=new TextEncoder().encode(JSON.stringify(row.data)).byteLength;if(count>=MAX_RESPONSES||size>MAX_RESPONSE_BYTES||bytes+size>MAX_CACHE_BYTES||savedAt-row.savedAt>RESPONSE_TTL)store.delete(row.key);else{bytes+=size;count++;}});
         };
       };
     });
@@ -116,4 +118,20 @@ export async function readResponse(scope: string, owner: string, url: string, pa
     });
     return row && Date.now() - row.savedAt <= RESPONSE_TTL ? row : null;
   } catch { connectionState.cacheAvailable = false; return null; }
+}
+
+export interface CacheEntry{key:string;url:string;params:Record<string,unknown>|null;savedAt:number;expiresAt:number;bytes:number}
+export async function cacheInventory(scope:string,owner:string):Promise<CacheEntry[]>{
+  const rows=await transaction<CachedResponse[]>('responses','readonly',(store,done)=>{store.index('scope').getAll(scope).onsuccess=event=>done((event.target as IDBRequest).result);});
+  return rows.filter(row=>row.owner===owner&&Date.now()-row.savedAt<=RESPONSE_TTL).map(row=>{const parts=JSON.parse(row.key);return{key:row.key,url:parts[2],params:Array.isArray(parts[3])?Object.fromEntries(parts[3]):null,savedAt:row.savedAt,expiresAt:row.savedAt+RESPONSE_TTL,bytes:new TextEncoder().encode(JSON.stringify(row.data)).byteLength};});
+}
+export async function cachedRecordBase(scope:string,owner:string,url:string,version:unknown):Promise<import('./syncComparison').EditableSnapshot|undefined>{
+  const {recordKind,editableRecord}=await import('./syncComparison');const kind=recordKind(url);if(!kind||!Number.isSafeInteger(version))return;
+  const id=url.slice(url.lastIndexOf('/')+1);const rows=await transaction<CachedResponse[]>('responses','readonly',(store,done)=>{store.index('scope').getAll(scope).onsuccess=event=>done((event.target as IDBRequest).result);});
+  for(const row of rows.filter(row=>row.owner===owner&&Date.now()-row.savedAt<=RESPONSE_TTL).sort((a,b)=>b.savedAt-a.savedAt)){
+    const visit=(value:unknown):Record<string,unknown>|undefined=>{if(!value||typeof value!=='object')return;if(Array.isArray(value)){for(const item of value){const match=visit(item);if(match)return match;}return;}
+      const object=value as Record<string,unknown>;if(object.id===id&&object.version===version){const fields=editableRecord(kind,object);if(fields)return fields;}for(const child of Object.values(object)){const match=visit(child);if(match)return match;}
+    };
+    const fields=visit(row.data);if(fields)return{version:version as number,fields};
+  }
 }

@@ -1,10 +1,15 @@
 import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { cacheable, cacheResponse, cachedIdentity, forgetScope, isSignedOut, signOutScope, readResponse, rememberIdentity, responseKey, PROFILE_TTL } from './offlineCache';
+import { cacheable, cacheResponse, cachedIdentity, forgetScope, isSignedOut, signOutScope, readResponse, rememberIdentity, responseKey, PROFILE_TTL,cacheInventory,cachedRecordBase } from './offlineCache';
 import type { User } from './types';
 const user = { id: 'one', email: 'one@example.test', displayName: '缓存测试', role: 'USER', emailVerified: false } as User;
 beforeEach(() => { vi.stubGlobal('indexedDB', new IDBFactory()); vi.stubGlobal('IDBKeyRange', IDBKeyRange); });
 describe('isolated offline cache', () => {
+  it('reports only this owner/server metadata and captures only a matching-version common base',async()=>{
+    await rememberIdentity('s','one',user);await rememberIdentity('other','one',user);await cacheResponse('s','one','/plans/p/tasks',undefined,[{id:'task',title:'私有标题',planId:'p',version:3,progress:{version:9}}]);await cacheResponse('other','one','/plans',undefined,['另一服务器']);
+    const inventory=await cacheInventory('s','one');expect(inventory).toHaveLength(1);expect(JSON.stringify(inventory)).not.toContain('私有标题');expect(await cacheInventory('s','other-owner')).toEqual([]);expect(await cachedRecordBase('s','one','/tasks/task',3)).toMatchObject({version:3,fields:{title:'私有标题'}});expect(await cachedRecordBase('s','one','/tasks/task',2)).toBeUndefined();expect(await cachedRecordBase('other','one','/tasks/task',3)).toBeUndefined();
+  });
+  it('does not cache an oversized response or claim it is available',async()=>{await rememberIdentity('s','one',user);await cacheResponse('s','one','/plans',undefined,['中'.repeat(400000)]);expect(await readResponse('s','one','/plans',undefined)).toBeNull();expect(await cacheInventory('s','one')).toEqual([]);});
   it('excludes account administration, exports and unknown API routes', () => {
     for (const url of ['/auth/me', '/admin/invitations', '/plans/p/tasks/export', '/plans/p/reflections/page', '/anything']) expect(cacheable(url)).toBe(false);
     expect(cacheable('/plans/p/tasks/page')).toBe(true);

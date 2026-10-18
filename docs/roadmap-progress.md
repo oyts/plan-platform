@@ -16,7 +16,9 @@ MySQL 新迁移演练已完成，见下方记录；独立 PC 界面候选验收�
 
 独立 Windows 和 Android 调试包构建通过，身份为 `cn.zijun701.plan.desktop.regression` 和 `cn.zijun701.plan.mobile.regression`，没有安装或操作真机。源资源指纹 `a9372a83262ed5f5ae3a011efde01e4905da1672b93f6a6b812ece69b7d20417`；构建清单在 `.desktop-tools/native-regression/build.json`。后端最后增加读取时的字节保护后重新构建，因此该清单的 API hash 已过期，下一次必须重新绑定最新 API 构建并验证，不能声称原生 UI 已通过。
 
-阶段三已实现并完成共享源码及 MySQL 定向验收，尚未发布。阶段四至六待开发。阶段三详见 `orchestration-and-history.md`：后端 8 项、直接受影响数据中心 9 项、前端 24 项、桌面／手机视口 8 项通过。修复并发重放的旧事务快照以及 Vue 代理写入 IndexedDB 的实际问题。证据在 `acceptance-results/roadmap-organize-final/`。独立 PC 界面与 Android 真机仍待候选节点验收。
+阶段三已实现并完成共享源码及 MySQL 定向验收，尚未发布。阶段三详见 `orchestration-and-history.md`：后端 8 项、直接受影响数据中心 9 项、前端 24 项、桌面／手机视口 8 项通过。修复并发重放的旧事务快照以及 Vue 代理写入 IndexedDB 的实际问题。证据在 `acceptance-results/roadmap-organize-final/`。独立 PC 界面与 Android 真机仍待候选节点验收。
+
+阶段四已实现并完成共享源码及 MySQL 只读验收，详见 `offline-experience.md`。后端 5 项、前端 53 项、桌面／手机视口 12 项通过，预加载防假成功保护另定向补验 2 项通过。版本仍是候选源码 0.1.14，无正式发布。独立目录 `/home/oyts/plan-platform/roadmap-candidates/20261018-1110-offline/report.json` 为 PASS：本人可编辑快照白名单、延期查询、私有备份读取、全部合成表校验和与正式健康／注册关闭不变。JAR 为 `9d6bccafcd1b04ea27a12dbab37ed9ae4e087a11604956deb371bdbeaf091a28`。测试容器已停止并保留；阶段五、六待开发。
 
 MySQL V22 的合成演练、全表 dump 恢复和实际旧 0.1.14 镜像兼容已通过，远端目录 `/home/oyts/plan-platform/roadmap-candidates/20261018-1045-orchestration`，`report.json` 为 PASS。JAR 为 `724d7fe26b91c0c8203e2693288fcaadce6f70e99818dea3b49887a0867c86f9`。没有操作真实业务库；正式站、原生包和更新源保持 0.1.14。
 

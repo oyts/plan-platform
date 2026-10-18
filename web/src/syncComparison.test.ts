@@ -1,0 +1,8 @@
+import {describe,it,expect} from 'vitest';
+import {comparisonRows,parseEditedValue,editableRecord,recordKind} from './syncComparison';
+describe('human conflict comparison',()=>{
+  it('labels reliable common base only when one was captured, never infers one',()=>{const cloud={version:2,fields:{title:'云端',note:'云端备注',dueDate:'2026-10-18',done:false,deleted:false}};const local={version:0,title:'本机',note:'',dueDate:'2026-10-18',done:false,deleted:false};expect(comparisonRows('/todos/id',local,cloud).every(row=>!row.hasBase)).toBe(true);const rows=comparisonRows('/todos/id',local,cloud,{version:0,fields:{title:'原文',note:''}});expect(rows.find(row=>row.key==='title')).toMatchObject({base:'原文',local:'本机',cloud:'云端',hasBase:true,changedLocally:true});});
+  it('rejects online-only paths and unexpected topology fields',()=>{expect(recordKind('/tasks/id/progress')).toBeNull();expect(()=>comparisonRows('/mainlines/items/id',{routing:{stageId:'other'}},{version:1,fields:{title:'步骤'}})).toThrow('拓扑');});
+  it('validates user-entered arrays and integers without changing versions',()=>{expect(parseEditedValue('[7]',[])).toEqual([7]);expect(parseEditedValue('3',0)).toBe(3);expect(parseEditedValue('true',false)).toBe(true);expect(parseEditedValue('',null)).toBeNull();expect(()=>parseEditedValue('3.5',0)).toThrow('整数');expect(()=>parseEditedValue('{"x":1}',[])).toThrow('数组');expect(()=>parseEditedValue('yes',false)).toThrow();});
+  it('does not mistake a different record type for the common base',()=>{expect(editableRecord('tasks',{id:'same',title:'待办',dueDate:'2026-10-18',done:false})).toBeNull();});
+});

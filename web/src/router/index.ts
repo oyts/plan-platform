@@ -19,6 +19,7 @@ const router = createRouter({ history: isDesktop() ? createWebHashHistory() : cr
   { path: '/weekly-review', component: () => import('@/views/WeeklyReviewView.vue') },
   { path: '/feedback', component: () => import('@/views/FeedbackView.vue') },
   { path: '/organize', component: () => import('@/views/OrganizeView.vue') },
+  { path: '/offline', component: () => import('@/views/OfflineView.vue') },
   { path: '/schedule', component: () => import('@/views/ScheduleView.vue') },
   { path: '/plans', component: () => import('@/views/PlansView.vue') },
   { path: '/plans/:id', component: () => import('@/views/PlanDetailView.vue') },

@@ -1,5 +1,16 @@
 {
   "version": "0.1.14",
+  "roadmapOffline": {
+    "status":"shared-source-and-mysql-readonly-accepted-native-ui-pending",
+    "reason":"Stage 4 explicit cache inventory and bounded preload, reopened private weekly drafts, selected conflict snapshots, reliable base capture and user-confirmed atomic queue replacement. No auto merge, queue clearing, TTL extension or paid replay.",
+    "backend":["OfflineSnapshotIntegrationTest","AuthPlanIntegrationTest#longPlanTasksCanBePagedAndDeferredIntoTheCatchUpRail"],
+    "frontendUnit":["src/privateDrafts.test.ts","src/weeklyDraft.test.ts","src/scheduleWindow.test.ts","src/syncComparison.test.ts","src/offlineCache.test.ts","src/offlineQueue.test.ts","src/queueSync.test.ts","src/api/offlineClient.test.ts","src/offlineProjection.test.ts"],
+    "browser":["e2e/offline-experience.spec.ts","e2e/daily-experience.spec.ts:weekly-and-cached-page-cases-only"],
+    "results":{"backendPassed":5,"frontendUnitPassed":53,"browserPassed":12,"preloadFinalRecheckPassed":2,"paidAiCalls":0,"realEmailsSent":0},
+    "evidence":["acceptance-results/roadmap-offline-second/","acceptance-results/roadmap-offline-preload-final/","remote roadmap-candidates/20261018-1110-offline/report.json"],
+    "mysql":"9d6bccaf JAR selected snapshot whitelist, bounded carryover and streaming backup reads passed; all synthetic table checksums and public health/registration unchanged.",
+    "pending":["independent Windows UI","Android device after user authorization"]
+  },
   "roadmapPersonalData": {
     "status": "shared-source-and-final-mysql-accepted-native-ui-pending",
     "reason": "Stage 2: private versioned backup, read-only preview, atomic restore-as-new with remapped relations and stopped timers, isolated weekly copies, three-mode CSV and shared navigation. V21 adds restore metadata/copies only. CSV helper also hardens affected legacy exports. No real user files, AI, mail or production writes.",

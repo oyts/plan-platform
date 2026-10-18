@@ -12,4 +12,6 @@ public interface TaskProgressRepository extends JpaRepository<TaskProgress, Stri
     List<TaskProgress> findByTaskPlanId(String planId);
     @EntityGraph(attributePaths = {"task", "task.plan", "task.tag"})
     List<TaskProgress> findByTaskPlanOwnerId(String ownerId);
+    @EntityGraph(attributePaths={"task","task.plan","task.tag"})
+    List<TaskProgress> findTop501ByTaskPlanOwnerIdAndTaskDeletedAtIsNullAndStatusAndDeferToBetweenOrderByDeferToAscTaskSortOrderAsc(String ownerId,String status,java.time.LocalDate from,java.time.LocalDate to);
 }

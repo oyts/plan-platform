@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { api, apiMessage } from '@/api/client';
+import { api, apiMessage, currentQueueOwner,serverScope } from '@/api/client';
+import {schedulePages,SCHEDULE_PAGE_SIZE} from '@/scheduleWindow';
 import LocalBadge from '@/components/LocalBadge.vue';
 import AppSheet from '@/components/AppSheet.vue';
 import { useMobileLayout } from '@/useMobileLayout';
@@ -21,6 +22,7 @@ const error = ref('');
 const loading = ref(false);
 const busy = ref(false);
 const selected = ref<Task | null>(null);
+let scheduleRequest=0;
 let pendingFocus = typeof route.query.task==='string' ? route.query.task : '';
 const draft = reactive({ status: 'PENDING', note: '', deferTo: '', manualMinutes: 0, acceptanceChecks: [] as boolean[] });
 
@@ -57,21 +59,24 @@ async function loadPlans() {
   if (!plans.value.some(plan => plan.id === planId.value)) planId.value = plans.value[0]?.id ?? '';
 }
 async function loadSchedule() {
+  const request=++scheduleRequest;
   if (!planId.value) { tasks.value = []; return; }
   loading.value = true; error.value = '';
+  const owner=currentQueueOwner(),scope=serverScope(),id=planId.value,from=dates.value[0],to=dates.value[dates.value.length-1];
   try {
     const [planned, carryover, milestoneRows] = await Promise.all([
-      api.get<PageResponse<Task>>(`/plans/${planId.value}/tasks/page`, { params: { from: dates.value[0], to: dates.value[dates.value.length - 1], page: 0, size: 100 } }),
-      api.get<Task[]>('/tasks/carryover', { params: { from: dates.value[0], to: dates.value[dates.value.length - 1] } }),
-      api.get<Milestone[]>(`/plans/${planId.value}/milestones`),
+      schedulePages<Task>(async page=>(await api.get<PageResponse<Task>>(`/plans/${id}/tasks/page`,{params:{from,to,page,size:SCHEDULE_PAGE_SIZE}})).data),
+      api.get<Task[]>('/tasks/carryover', { params: { from,to } }),
+      api.get<Milestone[]>(`/plans/${id}/milestones`),
     ]);
-    tasks.value = Array.from(new Map([...planned.data.content, ...carryover.data].map(task => [task.id, task])).values());
+    if(request!==scheduleRequest||owner!==currentQueueOwner()||scope!==serverScope()||id!==planId.value||from!==dates.value[0])return;
+    tasks.value = Array.from(new Map([...planned, ...carryover.data].map(task => [task.id, task])).values());
     milestones.value = milestoneRows.data;
     if (selected.value) selected.value = tasks.value.find(task => task.id === selected.value?.id) ?? null;
     const focused = tasks.value.find(task => task.id===pendingFocus);
     if (focused) { pendingFocus=''; select(focused); }
-  } catch (exception) { error.value = apiMessage(exception); }
-  finally { loading.value = false; }
+  } catch (exception) { if(request===scheduleRequest){tasks.value=[];error.value = apiMessage(exception);} }
+  finally { if(request===scheduleRequest)loading.value = false; }
 }
 function select(task: Task) {
   selected.value = task;

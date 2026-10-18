@@ -6,6 +6,7 @@ import { synchronizeQueue } from '@/queueSync';
 import { requiresConnection } from '@/connectionState';
 import { hasToken } from '@/api/client';
 import { useAuthStore } from '@/stores/auth';
+import ConflictComparison from '@/components/ConflictComparison.vue';
 const auth = useAuthStore();
 
 const rows = ref<OfflineOperation[]>([]);
@@ -13,6 +14,7 @@ const busy = ref(false);
 const online = ref(navigator.onLine);
 const notice = ref('');
 const error = ref('');
+const comparing=ref<OfflineOperation|null>(null);
 const pendingCount = computed(() => rows.value.filter((row) => row.status === 'PENDING').length);
 const conflictCount = computed(() => rows.value.filter((row) => row.status === 'CONFLICT').length);
 let stopQueueListener: (() => void) | undefined;
@@ -102,6 +104,7 @@ onUnmounted(() => {
     <p v-if="!online" class="sync-offline">当前离线。你仍可继续支持离线的编辑，联网后回到这里同步。</p>
     <p v-if="error" class="error-text">{{ error }}</p>
     <p v-if="notice" class="success-text">{{ notice }}</p>
+    <router-link class="btn" to="/offline">查看离线范围与预加载</router-link>
 
     <section class="sync-ledger">
       <header class="section-title">
@@ -119,12 +122,14 @@ onUnmounted(() => {
           <details><summary>查看本地请求内容</summary><pre>{{ payload(row) }}</pre></details>
         </div>
         <div class="sync-actions">
+          <button v-if="row.status==='CONFLICT'" class="btn primary" :disabled="busy||!online" @click="comparing=row">比较并重新提交</button>
           <router-link v-if="row.status === 'CONFLICT'" class="btn" :to="destination(row)">查看最新数据</router-link>
           <button class="btn primary" :disabled="!online || busy || rows[0]?.id !== row.id || row.status === 'CONFLICT'" @click="retryAll(1)">重试队首</button>
           <button class="btn danger" :disabled="busy" @click="discard(row)">放弃本地操作</button>
         </div>
       </article>
-      <div v-if="!rows.length" class="sync-empty"><strong>队列为空</strong><p>当前设备的操作已经全部送达服务器。</p></div>
+      <div v-if="!rows.length" class="sync-empty"><strong>队列为空</strong><p>当前设备没有待同步操作；独立保存的本机草稿仍需你主动提交，不代表已经上传。</p></div>
     </section>
+    <ConflictComparison :operation="comparing" @close="comparing=null" @replaced="notice='已保留原修改并生成新的本机操作。请核对后点击同步。';load()"/>
   </div>
 </template>

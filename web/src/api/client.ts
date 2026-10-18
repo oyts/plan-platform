@@ -1,7 +1,7 @@
 import axios, { type AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import type { TokenResponse } from '@/types';
 import { enqueueOperation, listOperations, type OfflineOperation } from '@/offlineQueue';
-import { cacheable, cachedIdentity, cacheResponse, clearResponses, forgetScope, readResponse, rememberIdentity } from '@/offlineCache';
+import { cacheable, cachedIdentity, cacheResponse, clearResponses, forgetScope, readResponse, rememberIdentity, cachedRecordBase } from '@/offlineCache';
 import { projectPending } from '@/offlineProjection';
 import { connectionState, markConnected, markDisconnected, requiresConnection } from '@/connectionState';
 import { isNativeClient as isDesktop, desktopScope } from '@/desktop';
@@ -175,7 +175,10 @@ async function queueRequest(config: InternalOfflineRequestConfig): Promise<void>
   if (!identity || identity.owner !== currentQueueOwner()) throw new OfflineUnavailableError('离线工作区已过期或不可用，请联网重新登录。');
   if (['PUT', 'PATCH'].includes(config.method?.toUpperCase() ?? '') && (await listOperations(identity.owner)).some(row => row.url === config.url)) throw new OfflineUnavailableError('此记录已有本地修改，请先同步或处理队列，再继续编辑。');
   const id = config.idempotencyKey ?? String(config.headers['X-Idempotency-Key'] ?? crypto.randomUUID());
-  await enqueueOperation({ id, ownerId: currentQueueOwner()!, method: config.method?.toUpperCase() ?? 'POST', url: config.url ?? '/', params: clone(config.params), data: clone(config.data) });
+  const data=clone(config.data);let base:OfflineOperation['base'];
+  if(data&&typeof data==='object')base=await cachedRecordBase(serverScope(),identity.owner,config.url??'',(data as Record<string,unknown>).version);
+  if(identity.owner!==currentQueueOwner()||config.sessionEpoch!==epoch)throw new OfflineUnavailableError('账号或服务器已变化，未写入操作。');
+  await enqueueOperation({ id, ownerId: identity.owner, method: config.method?.toUpperCase() ?? 'POST', url: config.url ?? '/', params: clone(config.params), data, base });
   window.dispatchEvent(new CustomEvent('plan-platform:offline-queued'));
 }
 

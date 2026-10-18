@@ -23,6 +23,7 @@ const secondary = computed(() => [
   { path: '/exports', label: '数据中心', description: '三模式导出与私有备份恢复' },
   { path: '/organize', label: '编排与历史', description: '整套复制、未来调整与分页查询' },
   { path: '/sync', label: '同步', description: '待同步操作与冲突' },
+  { path: '/offline', label: '离线范围', description: '缓存清单与有限日程预加载' },
   { path: '/ai', label: 'AI 规划', description: '对话、草稿与确认生成' },
   { path: '/feedback', label: '反馈与诊断', description: '本机草稿与处理回复' },
   { path: '/learn', label: '使用教学', description: '分步练习与随时回顾' },

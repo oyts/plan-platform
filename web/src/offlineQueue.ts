@@ -13,6 +13,8 @@ export interface OfflineOperation {
   status: OfflineOperationStatus;
   error?: string;
   sequence?: number;
+  base?: import('./syncComparison').EditableSnapshot;
+  resolution?: { originalId:string; originalData:unknown; originalBase?:import('./syncComparison').EditableSnapshot; resolvedAt:string; history?:{id:string;data:unknown;base?:import('./syncComparison').EditableSnapshot}[] };
 }
 
 const DATABASE = 'plan-platform-offline';
@@ -60,7 +62,7 @@ export function onQueueChange(listener: () => void): () => void {
   return () => window.removeEventListener(CHANGE_EVENT, listener);
 }
 
-export async function enqueueOperation(operation: Pick<OfflineOperation, 'id' | 'ownerId' | 'method' | 'url' | 'params' | 'data'>): Promise<void> {
+export async function enqueueOperation(operation: Pick<OfflineOperation, 'id' | 'ownerId' | 'method' | 'url' | 'params' | 'data' | 'base'>): Promise<void> {
   const database = await openDatabase();
   await new Promise<void>((resolve, reject) => {
     // One transaction assigns the durable order even when tabs enqueue in the same millisecond.
@@ -81,7 +83,7 @@ export async function enqueueOperation(operation: Pick<OfflineOperation, 'id' | 
         const sequence = existing?.sequence ?? next;
         if (!existing?.sequence) metadata.put({ key: 'sequence', value: next });
         const now = new Date().toISOString();
-        store.put({ ...operation, createdAt: existing?.createdAt ?? now, updatedAt: now,
+        store.put({ ...operation, base:existing?.base??operation.base, createdAt: existing?.createdAt ?? now, updatedAt: now,
           attempts: existing?.attempts ?? 0, status: 'PENDING', error: undefined, sequence } satisfies OfflineOperation);
       };
     };
@@ -116,6 +118,22 @@ export async function updateOperation(id: string, patch: Partial<Pick<OfflineOpe
 export async function deleteOperation(id: string): Promise<void> {
   await transaction('readwrite', (store) => store.delete(id));
   announceChange();
+}
+
+/** User-confirmed replacement of exactly one parked conflict; retain its original content and FIFO position. */
+export async function replaceConflict(original:OfflineOperation,data:Record<string,unknown>,base:import('./syncComparison').EditableSnapshot):Promise<string>{
+  if(original.status!=='CONFLICT'||!['PUT','PATCH'].includes(original.method))throw new Error('只能重新提交已停靠的普通编辑冲突。');
+  if(!Number.isSafeInteger(base.version)||base.version<0||data.version!==base.version)throw new Error('重新提交必须明确使用已读取的最新版本。');
+  const db=await openDatabase(),next=crypto.randomUUID();
+  await new Promise<void>((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite'),store=tx.objectStore(STORE);let failure:Error|undefined;
+    store.get(original.id).onsuccess=event=>{const current=(event.target as IDBRequest).result as OfflineOperation|undefined;
+      if(!current||current.ownerId!==original.ownerId||current.status!=='CONFLICT'||current.updatedAt!==original.updatedAt||current.url!==original.url||current.method!==original.method||JSON.stringify(current.data)!==JSON.stringify(original.data)){failure=new Error('本地操作已变化，请重新查看冲突。');tx.abort();return;}
+      const previous=current.resolution;const history=[...(previous?.history??[]),...(previous?[{id:previous.originalId,data:previous.originalData,base:previous.originalBase}]:[])];
+      if(history.length>=20){failure=new Error('此冲突已保留较多次修订，请先复制需要的内容，到原页面处理；原队列未改变。');tx.abort();return;}
+      const now=new Date().toISOString();store.put({...current,id:next,data:JSON.parse(JSON.stringify(data)),base:JSON.parse(JSON.stringify(base)),status:'PENDING',attempts:0,error:undefined,createdAt:now,updatedAt:now,resolution:{originalId:current.id,originalData:current.data,originalBase:current.base,resolvedAt:now,history}} satisfies OfflineOperation);store.delete(current.id);
+    };
+    tx.oncomplete=()=>{db.close();resolve();};tx.onabort=tx.onerror=()=>{db.close();reject(failure??tx.error??new Error('冲突草稿未替换，原操作仍保留。'));};
+  });announceChange();return next;
 }
 
 export async function queueCount(ownerId: string): Promise<number> {
