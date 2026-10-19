@@ -33,11 +33,12 @@ async function fixture(page: Page, mode: AiMode, conflict = false) {
   });
   return counts;
 }
-for (const mode of ['PLAN','ROUTE','TODO'] as const) test(`consented ${mode} adjustment preserves history, previews differences and confirms once`, async ({page},info) => {
+for (const mode of ['PLAN','ROUTE','TODO'] as const) test(`consented ${mode} adjustment preserves history, previews differences and confirms once`, async ({page,isMobile},info) => {
   const counts=await fixture(page,mode);await page.goto(`/ai?mode=${mode}&target=${target}`);
   const load=page.getByRole('button',{name:'载入所选内容（不调用 AI）',exact:true});
   await expect(load).toBeDisabled();expect(counts.adjustments).toBe(0);
   await page.getByRole('checkbox',{name:/我同意将所选对象/}).check();await load.click();
+  if(isMobile)await page.getByRole('navigation',{name:'AI 工作区'}).getByRole('button',{name:/^草稿/}).click();
   await expect(page.getByRole('region',{name:'调整前后对照'})).toContainText('目前没有改动');
   await expect(page.getByLabel('任务标题',{exact:true}).nth(0)).toBeDisabled();
   await expect(page.getByRole('button',{name:'确认应用修改',exact:true})).toBeDisabled();
@@ -46,16 +47,17 @@ for (const mode of ['PLAN','ROUTE','TODO'] as const) test(`consented ${mode} adj
   await expect(page.getByRole('region',{name:'调整前后对照'})).toContainText('未开始事项－节奏调整');
   await expect(page.getByRole('button',{name:'确认应用修改',exact:true})).toBeDisabled();
   await page.getByRole('button',{name:'保存草稿修改'}).click();
-  await page.reload();await expect(page.getByLabel('任务标题',{exact:true}).nth(1)).toHaveValue('未开始事项－节奏调整');
+  await page.reload();if(isMobile)await page.getByRole('navigation',{name:'AI 工作区'}).getByRole('button',{name:/^草稿/}).click();await expect(page.getByLabel('任务标题',{exact:true}).nth(1)).toHaveValue('未开始事项－节奏调整');
   await page.getByText('给外部 AI 的格式说明',{exact:true}).click();await expect(page.getByLabel('外部 AI 格式说明',{exact:true})).toHaveValue(/existing_1/);await page.getByText('给外部 AI 的格式说明',{exact:true}).click();
   await page.screenshot({path:info.outputPath(`ai-adjust-${mode.toLowerCase()}.png`),fullPage:true});
   await page.getByRole('checkbox',{name:/我已逐项核对前后差异/}).check();await page.getByRole('button',{name:'确认应用修改',exact:true}).click();
   await expect(page.locator('.ai-applied')).toContainText('已应用 1 处修改');expect(counts.applies).toBe(1);expect(counts.adjustments).toBe(1);expect(counts.jobs).toBe(0);
-  await page.reload();await expect(page.locator('.ai-applied')).toContainText('执行历史保留');expect(counts.applies).toBe(1);
+  await page.reload();if(isMobile)await page.getByRole('navigation',{name:'AI 工作区'}).getByRole('button',{name:/^草稿/}).click();await expect(page.locator('.ai-applied')).toContainText('执行历史保留');expect(counts.applies).toBe(1);
 });
 test('409 retains the proposed changes and never claims they were applied', async ({page,isMobile},info) => {
   const counts=await fixture(page,'PLAN',true);await page.goto(`/ai?mode=PLAN&target=${target}`);
   await page.getByRole('checkbox',{name:/我同意将所选对象/}).check();await page.getByRole('button',{name:'载入所选内容（不调用 AI）'}).click();
+  if(isMobile)await page.getByRole('navigation',{name:'AI 工作区'}).getByRole('button',{name:/^草稿/}).click();
   await page.getByLabel('任务标题',{exact:true}).nth(1).fill('必须保留的建议');await page.getByRole('button',{name:'保存草稿修改'}).click();
   await page.getByRole('checkbox',{name:/我已逐项核对前后差异/}).check();await page.getByRole('button',{name:'确认应用修改',exact:true}).click();
   await expect(page.getByRole('alert')).toContainText('其他设备');await expect(page.getByLabel('任务标题',{exact:true}).nth(1)).toHaveValue('必须保留的建议');await expect(page.locator('.ai-applied')).toHaveCount(0);

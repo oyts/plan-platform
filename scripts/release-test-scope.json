@@ -1,5 +1,16 @@
 {
   "version": "0.1.16",
+  "aiWorkbench": {
+    "status":"shared-source-and-bounded-independent-windows-accepted-not-released",
+    "reason":"Next roadmap stage 2: independent retained drafts V25, private unsent/edit/import autosave and clear races, fresh validated resume without paid replay, split mobile workspace, mode examples/switch protection, complete route effort and shared precise colors. No new production/native release or unrelated full regression.",
+    "backend":["AiWorkbenchIntegrationTest","AiConversationIntegrationTest","AiAdjustmentIntegrationTest"],
+    "frontendUnit":["src/aiWorkbench.test.ts","src/colors.test.ts","src/routeStages.test.ts","src/aiPlanning.test.ts","src/aiAdjustment.test.ts","src/privateDrafts.test.ts"],
+    "browser":["e2e/ai-workbench.spec.ts","e2e/ai-planning.spec.ts","e2e/ai-adjustment.spec.ts","e2e/precise-colors.spec.ts"],
+    "results":{"backendPassed":31,"frontendUnitPassed":20,"browserPassed":34,"browserFailedFinal":0,"independentWindowsUiGroupsPassed":7,"paidAiCalls":0,"realEmailsSent":0},
+    "evidence":["backend/target-acceptance/surefire-reports/","acceptance-results/ai-workbench/browser-final-external-preview.log","acceptance-results/ai-workbench/browser-final-external-preview/","acceptance-results/ai-workbench/pc/2026-10-19T09-15-52-614Z/pc-ui-observations.json"],
+    "limits":"Windows synthetic user manually authenticated; native cloud load/edit/autosave/reload/restore/save and full effort/paging observed. Final CSS-only padding fix rebuilt and visually rechecked separately. No native delete/privacy-confirmation/file-picker branch, formal overwrite, Android device test, real business write or provider call. Earlier browser failure and Windows teardown-hang logs retained; final external-preview run exited 0 with JSON stats 34/0.",
+    "pending":["Android device and native file/share/keyboard acceptance","independent MySQL V25 recovery and signed production release"]
+  },
   "mailAndOperations": {
     "status":"web-api-windows-protected-android-released-alerts-enabled-after-confirmed-admin-receipt",
     "reason":"Cancel invitation CC; verification status/cooldown/failure handling and native account UI; durable merged operations mail and approved member governance. User initiated and received one administrator test; production alert flag enabled only afterward. No public registration or paid AI.",
@@ -192,19 +203,18 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "0.1.16 candidate: account email verification experience and no-CC invitations; durable operations incident/recovery mail and inactive rollout preparation. Only new and directly affected authentication/governance/mail behavior; no unrelated full regression or paid calls. Historical 0.1.15 evidence below is not evidence for this candidate.",
-  "frontendUnit": ["src/api/client.test.ts"],
+  "reason": "Unreleased next-roadmap stage 2 on the 0.1.16 source baseline: AI workbench independent drafts/autosave/lifecycle, mobile layout, confirmed mode changes, reference effort and precise colors. Formal version remains 0.1.16 until a separate signed candidate node. Only new/directly affected tests, no paid AI or real mail.",
+  "frontendUnit": ["src/aiWorkbench.test.ts","src/colors.test.ts","src/routeStages.test.ts","src/aiPlanning.test.ts","src/aiAdjustment.test.ts","src/privateDrafts.test.ts"],
   "browser": [
-    "e2e/email-verification.spec.ts",
-    "e2e/operations.spec.ts"
+    "e2e/ai-workbench.spec.ts",
+    "e2e/ai-planning.spec.ts",
+    "e2e/ai-adjustment.spec.ts",
+    "e2e/precise-colors.spec.ts"
   ],
   "backend": [
-    "EmailVerificationExperienceTest",
-    "InvitationMailCopyIntegrationTest",
-    "OperationsMailDeliveryTest",
-    "GovernanceOperationsIntegrationTest",
-    "GovernanceDisabledIntegrationTest",
-    "AccountRecoveryIntegrationTest"
+    "AiWorkbenchIntegrationTest",
+    "AiConversationIntegrationTest",
+    "AiAdjustmentIntegrationTest"
   ],
   "android": [],
   "dailyExperience": {

@@ -12,9 +12,10 @@ class AiBodyLimitFilter extends OncePerRequestFilter {
     private static final int LIMIT=256000;
     @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws ServletException,IOException {
         if(!request.getRequestURI().startsWith("/api/ai/") || !java.util.Set.of("POST","PUT","PATCH").contains(request.getMethod())) { chain.doFilter(request,response);return; }
-        if(request.getContentLengthLong()>LIMIT) { response.sendError(413);return; }
-        byte[] body=request.getInputStream().readNBytes(LIMIT+1);
-        if(body.length>LIMIT) { response.sendError(413);return; }
+        int limit=request.getRequestURI().startsWith("/api/ai/saved-drafts/")?524288:LIMIT;
+        if(request.getContentLengthLong()>limit) { response.sendError(413);return; }
+        byte[] body=request.getInputStream().readNBytes(limit+1);
+        if(body.length>limit) { response.sendError(413);return; }
         chain.doFilter(new HttpServletRequestWrapper(request) {
             @Override public ServletInputStream getInputStream() {
                 var input=new ByteArrayInputStream(body);

@@ -18,7 +18,7 @@ export interface AiItem { localId: string; title: string; note: string; dueDate:
 export interface AiDraft { schemaVersion: 1; mode: AiMode; revision: number; title: string; startDate: string | null; endDate: string | null; restDays: number[]; stages: { localId: string; title: string }[]; items: AiItem[] }
 export interface AiAdjustment { original: AiDraft; protectedItems: string[]; path: string }
 export interface AiSession { id: string; mode: AiMode | null; recommendedMode: AiMode | null; version: number; draft: AiDraft | null; applied: { mode: AiMode; path: string; count: number } | null; expiresAt: string; turns: { id: string; state: string; message: string; reply: string | null; error: string | null; createdAt: string }[]; adjustment?: AiAdjustment | null }
-export interface AiSummary { id: string; mode: AiMode | null; version: number; createdAt: string; expiresAt: string; applied: boolean; adjustment?: boolean }
+export interface AiSummary { id: string; mode: AiMode | null; version: number; createdAt: string; expiresAt: string; applied: boolean; adjustment?: boolean; processing?: boolean }
 export interface AiDifference { id: string; title: string; kind: 'ADD' | 'MODIFY'; fields: { label: string; before: string; after: string }[] }
 export function aiDifferences(original: AiDraft, proposed: AiDraft): AiDifference[] {
   const result: AiDifference[] = [];

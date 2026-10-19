@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ColorPicker from '@/components/ColorPicker.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, apiMessage, OfflineQueuedError } from '@/api/client';
@@ -124,7 +125,7 @@ onMounted(() => load().then(resetTask).catch(exception => error.value = apiMessa
     </form>
     <section class="tag-strip" aria-label="计划标签">
       <span v-for="tag in tags" :key="tag.id" class="tag-tool"><span class="tag" :style="{ color: tag.color, borderColor: tag.color }">{{ tag.name }}{{ tag.overall ? ' · 总计' : '' }}</span><LocalBadge :state="tag.localState"/><button class="text-btn" type="button" :disabled="!!tag.localState" @click="editTag(tag)">编辑</button><button v-if="!tag.overall" class="text-btn danger-text" type="button" :disabled="!!tag.localState" @click="removeTag(tag)">删除</button></span>
-      <form class="inline-form tag-editor" @submit.prevent="saveTag"><input v-model="tagDraft.name" :placeholder="editingTag ? '修改标签名称' : '新标签名称'" required /><input v-model="tagDraft.color" type="color" /><button class="btn">{{ editingTag ? '保存标签' : '添加标签' }}</button><button v-if="editingTag" class="btn" type="button" @click="resetTag">取消</button></form>
+      <form class="inline-form tag-editor" @submit.prevent="saveTag"><input v-model="tagDraft.name" :placeholder="editingTag ? '修改标签名称' : '新标签名称'" required /><ColorPicker v-model="tagDraft.color" label="标签颜色" /><button class="btn">{{ editingTag ? '保存标签' : '添加标签' }}</button><button v-if="editingTag" class="btn" type="button" @click="resetTag">取消</button></form>
     </section>
     <div class="plan-task-layout">
       <section class="section">
@@ -155,3 +156,6 @@ onMounted(() => load().then(resetTask).catch(exception => error.value = apiMessa
     </AppSheet>
   </div>
 </template>
+<style scoped>
+.tag-editor{display:grid;grid-template-columns:minmax(140px,1fr) minmax(260px,340px) auto auto;gap:14px;width:100%;align-items:start}.tag-editor>.btn{grid-column:auto}.tag-editor>input{width:100%;min-width:0}@media(max-width:900px){.tag-editor{grid-template-columns:minmax(0,1fr);width:100%}.tag-editor :deep(.color-picker){grid-column:1/-1;width:100%;max-width:360px}.tag-editor>.btn{grid-column:1/-1}}
+</style>

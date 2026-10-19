@@ -31,25 +31,26 @@ async function fixture(page: Page, available = true) {
   });
   return counts;
 }
-test('conversation resumes after reload, asks for mode, supports editing and requires explicit apply', async ({ page }, info) => {
+test('conversation resumes after reload, asks for mode, supports editing and requires explicit apply', async ({ page, isMobile }, info) => {
   const counts = await fixture(page); await page.goto('/ai');
   await page.getByLabel('你的目标或修改要求').fill('我想学吉他，空闲才练习，没有固定结束日。');
-  await expect(page.getByRole('button', { name: '发送给 AI' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '发送给 AI', includeHidden:true })).toBeDisabled();
   await page.getByRole('checkbox', { name: /我同意将本次对话/ }).check(); await page.getByRole('button', { name: '发送给 AI' }).click();
   await expect(page).toHaveURL(/session=ai-session-fixture/); await page.reload();
   await expect(page.locator('.ai-mode-choice')).toContainText('AI 建议使用');
   await page.getByRole('button', { name: '选择目标路线', exact: true }).click();
   await page.getByLabel('你的目标或修改要求').fill('每次半小时，从基础开始，请分阶段。'); await page.getByRole('button', { name: '发送给 AI' }).click();
+  if(isMobile)await page.getByRole('navigation',{name:'AI 工作区'}).getByRole('button',{name:/^草稿/}).click();
   await expect(page.getByLabel('规划名称')).toHaveValue('吉他入门草稿（测试）'); expect(counts.creates).toBe(1); expect(counts.jobs).toBe(2); expect(counts.applies).toBe(0);
   await expect(page.getByRole('button', { name: '确认生成', exact: true })).toBeDisabled();
   await page.getByLabel('任务标题', { exact: true }).fill('认识吉他－手工调整');
-  await expect(page.getByRole('button', { name: '发送给 AI' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '发送给 AI', includeHidden:true })).toBeDisabled();
   await page.getByRole('button', { name: '保存草稿修改' }).click();
   await expect(page.getByLabel('任务标题', { exact: true })).toHaveValue('认识吉他－手工调整');
   await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: info.outputPath('ai-conversation-and-preview.png'), fullPage: true });
   await page.getByRole('checkbox', { name: /我已核对/ }).check(); await page.getByRole('button', { name: '确认生成', exact: true }).click();
   await expect(page.locator('.ai-applied')).toContainText('已生成 1 项内容'); expect(counts.applies).toBe(1);
-  await page.reload(); await expect(page.locator('.ai-applied')).toContainText('已生成'); expect(counts.applies).toBe(1);
+  await page.reload();if(isMobile)await page.getByRole('navigation',{name:'AI 工作区'}).getByRole('button',{name:/^草稿/}).click(); await expect(page.locator('.ai-applied')).toContainText('已生成'); expect(counts.applies).toBe(1);
 });
 test('provider unavailable still permits validated import and keeps three entry modes', async ({ page, isMobile }, info) => {
   const counts = await fixture(page, false);
@@ -58,14 +59,17 @@ test('provider unavailable still permits validated import and keeps three entry 
   }
   await expect(page.getByRole('button', { name: '发送给 AI' })).toBeDisabled();
   await page.getByText('给外部 AI 的格式说明', { exact: true }).click(); await expect(page.getByLabel('外部 AI 格式说明', { exact: true })).toHaveValue(/"mode": "TODO"/); await page.getByText('给外部 AI 的格式说明', { exact: true }).click();
+  await page.getByRole('checkbox', { name: /我同意将本次对话/ }).check();
+  if(isMobile)await page.getByRole('navigation',{name:'AI 工作区'}).getByRole('button',{name:/^草稿/}).click();
   await page.getByText('导入外部 AI 草稿', { exact: true }).click(); await page.getByLabel('草稿 JSON', { exact: true }).fill(JSON.stringify(draft('TODO')));
-  await page.getByRole('checkbox', { name: /我同意将本次对话/ }).check(); await page.getByRole('button', { name: '导入并校验草稿' }).click();
+  await page.getByRole('button', { name: '导入并校验草稿' }).click();
   await expect(page.getByLabel('规划名称')).toHaveValue('吉他入门草稿（测试）'); expect(counts.jobs).toBe(0); expect(counts.applies).toBe(0);
   if (isMobile) for (const width of [320, 390, 430, 844]) { await page.setViewportSize({ width, height: width === 844 ? 390 : 844 }); expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1); }
   await page.screenshot({ path: info.outputPath('ai-unavailable-manual-import.png'), fullPage: true });
 });
-test('stale save preserves local draft and never enables apply', async ({ page }) => {
+test('stale save preserves local draft and never enables apply', async ({ page, isMobile }) => {
   await fixture(page, false); await page.goto('/ai?mode=TODO'); await page.getByRole('checkbox', { name: /我同意将本次对话/ }).check();
+  if(isMobile)await page.getByRole('navigation',{name:'AI 工作区'}).getByRole('button',{name:/^草稿/}).click();
   await page.getByText('导入外部 AI 草稿', { exact: true }).click(); await page.getByLabel('草稿 JSON', { exact: true }).fill(JSON.stringify(draft('TODO'))); await page.getByRole('button', { name: '导入并校验草稿' }).click();
   await page.getByLabel('任务标题', { exact: true }).fill('不能丢失的手工修改');
   await page.route('**/api/ai/sessions/*/draft', route => route.fulfill({ status: 409, json: { message: '草稿已变化，请刷新。' } }));

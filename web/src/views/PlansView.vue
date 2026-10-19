@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ColorPicker from '@/components/ColorPicker.vue';
 import { computed, onMounted, reactive, ref } from 'vue'; import { useRouter } from 'vue-router'; import { api, apiMessage, OfflineQueuedError } from '@/api/client'; import type { Plan } from '@/types';
 import LocalBadge from '@/components/LocalBadge.vue';
 import RestDaysPicker from '@/components/RestDaysPicker.vue';
@@ -33,7 +34,7 @@ onMounted(()=>load().catch(e=>error.value=apiMessage(e)));
         <div class="form-grid"><label>开始日期<input v-model="draft.startDate" type="date" required /></label><label>结束日期<input v-model="draft.endDate" type="date" required /></label></div>
         <RestDaysPicker v-model="draft.restDays" :disabled="busy || !supportsRestDays" />
         <p v-if="!supportsRestDays" class="helper-text">当前服务器未确认支持休息日配置。请升级并恢复连接后使用，不会静默丢弃选择。</p>
-        <div class="form-grid"><label>总标签<input v-model="draft.overallTagName" required /></label><label>标签颜色<input v-model="draft.overallTagColor" type="color" /></label></div>
+        <div class="form-grid"><label>总标签<input v-model="draft.overallTagName" required /></label><ColorPicker v-model="draft.overallTagColor" label="标签颜色" /></div>
         <button class="btn primary" :disabled="busy">{{busy?'正在保存…':'保存计划'}}</button>
       </form>
     </div>

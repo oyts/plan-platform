@@ -19,7 +19,7 @@ public class AiConversationService {
     AiConversationService(JdbcTemplate db,AiQuotaService quotas,AiProperties config,ObjectMapper mapper,Validator validator,AiDraftApplier applier,AiAdjustmentService adjustments) {
         this.db=db;this.quotas=quotas;this.config=config;this.mapper=mapper;this.validator=validator;this.applier=applier;this.adjustments=adjustments;
     }
-    public record Summary(String id,String mode,long version,Instant createdAt,Instant expiresAt,boolean applied,boolean adjustment) {}
+    public record Summary(String id,String mode,long version,Instant createdAt,Instant expiresAt,boolean applied,boolean adjustment,boolean processing) {}
     public record Turn(String id,String state,String message,String reply,String error,Instant createdAt) {}
     public record Session(String id,String mode,String recommendedMode,long version,AiDrafts.Draft draft,
                           JsonNode applied,Instant expiresAt,List<Turn> turns,AiAdjustmentService.View adjustment) {}
@@ -43,8 +43,8 @@ public class AiConversationService {
     @Transactional(readOnly=true)
     public List<Summary> list(String owner) {
         enabledUser(owner);
-        return db.query("SELECT id,selected_mode,version,created_at,expires_at,applied_json,adjustment_json IS NOT NULL FROM ai_sessions WHERE owner_id=? AND expires_at>? ORDER BY created_at DESC,id LIMIT 20",
-            (r,n)->new Summary(r.getString(1),r.getString(2),r.getLong(3),r.getTimestamp(4).toInstant(),r.getTimestamp(5).toInstant(),r.getString(6)!=null,r.getBoolean(7)),owner,now());
+        return db.query("SELECT s.id,s.selected_mode,s.version,s.created_at,s.expires_at,s.applied_json,s.adjustment_json IS NOT NULL,EXISTS(SELECT 1 FROM ai_jobs j WHERE j.session_id=s.id AND j.state IN ('QUEUED','RUNNING')) FROM ai_sessions s WHERE s.owner_id=? AND s.expires_at>? ORDER BY s.created_at DESC,s.id LIMIT 20",
+            (r,n)->new Summary(r.getString(1),r.getString(2),r.getLong(3),r.getTimestamp(4).toInstant(),r.getTimestamp(5).toInstant(),r.getString(6)!=null,r.getBoolean(7),r.getBoolean(8)),owner,now());
     }
     @Transactional
     public Session create(String owner,AiDrafts.Mode mode,boolean consent) {

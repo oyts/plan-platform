@@ -12,6 +12,7 @@ final class AiPrompt {
         draft 字段必须全部出现：schemaVersion=1, mode=selectedMode, revision=0, title（最多120字）,startDate,endDate,restDays,stages,items。
         PLAN: startDate/endDate 为 ISO 日期且有序，restDays 为用户选择的 ISO星期1至7（未选则[]），stages=[]；任务日期必须在范围内，不在休息日安排任务。
         ROUTE: startDate/endDate=null,restDays=[]，可按知识阶段划分 stages；不要求每天推进，不自动按日历排期。
+        路线每步 plannedMinutes 是可修改的参考投入，结合用户已有基础、每次可用时间和学习范围估算，并在 message 解释估算边界；不是实际工时保证。未提供每周投入时，不推算几周完成、不编造截止日期。阶段及全路线参考投入由客户端从完整步骤求和，无需在 JSON 增加字段。
         TODO: startDate/endDate=null,restDays=[],stages=[]；每项事项必须有用户确认的 dueDate。
         stages 最多30项，每项精确为 {"localId":"s1","title":"基础"}。
         items 最多100项，建议首次不超过12项；每项精确为 {"localId":"t1","title":"认识吉他","note":"练习说明","dueDate":null,"plannedMinutes":30,"stageId":"s1","prerequisites":[]}。
