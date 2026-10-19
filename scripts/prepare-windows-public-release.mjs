@@ -24,7 +24,7 @@ function safeDirectories(parent,segments) {
   }
   return directory;
 }
-export function prepareWindowsPublicRelease(root,{candidateDirectory,signingBackupDirectory,cloudBackupCopy,windowsAcceptanceConfirmed,oldCloudPairCleanupConfirmed,createdUtc=new Date().toISOString()}) {
+export function prepareWindowsPublicRelease(root,{candidateDirectory,signingBackupDirectory,cloudBackupCopy,windowsAcceptanceConfirmed,oldCloudPairCleanupConfirmed,createdUtc=new Date().toISOString(),notes}) {
   if(windowsAcceptanceConfirmed!==true||oldCloudPairCleanupConfirmed!==true) throw new Error('Confirm formal Windows acceptance and old cloud backup pair cleanup first.');
   const production=realpathSync(join(root,'production-artifacts'));
   const candidateRoot=within(production,realpathSync(candidateDirectory));
@@ -43,7 +43,7 @@ export function prepareWindowsPublicRelease(root,{candidateDirectory,signingBack
   if(originalPath.toLowerCase()===independentPath.toLowerCase()||statSync(independentPath).size>2*1024*1024||!statSync(independentPath).isFile()) throw new Error('Supply a separate downloaded cloud backup copy.');
   const backupProof=verifyBackupCopy(evidence,safeFile(backupDirectory,originalPath,2*1024*1024),readFileSync(independentPath));
   const publicKey=readFileSync(join(root,'.release-signing/windows-updater.key.pub'),'utf8');
-  const publication=windowsPublication({candidate,artifact,signature,publicKey,expectedVersion,backupProof,windowsAcceptanceConfirmed,oldCloudPairCleanupConfirmed,createdUtc});
+  const publication=windowsPublication({candidate,artifact,signature,publicKey,expectedVersion,backupProof,windowsAcceptanceConfirmed,oldCloudPairCleanupConfirmed,createdUtc,notes});
   // All checks precede output creation. Never rebuild, resign or replace a candidate.
   const runs=safeDirectories(production,['windows-public-release',expectedVersion]);
   const output=mkdtempSync(join(runs,createdUtc.replace(/[-:.]/g,'')+'-'));

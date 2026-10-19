@@ -64,7 +64,7 @@ foreach ($name in @('initialize-production.sh','mysql-backup.sh','mysql-restore-
     Copy-Item -LiteralPath "scripts/$name" -Destination "$output/scripts/$name" -Force
 }
 Copy-Item -LiteralPath scripts/operations-cloud-acceptance.py -Destination "$output/scripts/operations-cloud-acceptance.py" -Force
-foreach ($name in @('operations-status.py','check-governance-rollback.py','prepare-account-operations-overlay.py')) {
+foreach ($name in @('operations-status.py','check-governance-rollback.py','prepare-account-operations-overlay.py','configure-operations-runtime.py','enable-operations-mail.py')) {
     Copy-Item -LiteralPath "scripts/$name" -Destination "$output/scripts/$name" -Force
 }
 $archive = Join-Path $projectRoot "production-artifacts/plan-platform-$version.tar.gz"

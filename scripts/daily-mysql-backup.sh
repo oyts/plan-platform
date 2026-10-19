@@ -9,7 +9,18 @@ flock -n 9 || { echo 'Another MySQL backup is running; this run skipped.'; exit 
 release=$(readlink -f "$root/current")
 case "$release" in "$root"/release-*|"$root"/releases/*) ;; *) echo 'Unexpected current release'; exit 1;; esac
 cd "$release"
-sh scripts/mysql-backup.sh
-backup=$(find ./backups -maxdepth 1 -type f -name 'plan_platform-mysql-*.sql.gz' | sort | tail -n 1)
+record_result() {
+  if [ -f "$root/production-operations.yml" ]; then
+    python3 scripts/operations-status.py record-result --code "$1" --failed "$2" --output "$root/operations/failures.json" --group-readable
+  fi
+}
+if sh scripts/mysql-backup.sh; then record_result BACKUP_FAILED no; else record_result BACKUP_FAILED yes; exit 1; fi
+# Respect the same retained catalog configured for mysql-backup.sh.
+set -a; . ./.env; set +a
+backup_dir=${PLAN_MYSQL_BACKUP_DIR:-./backups}
+backup=$(find "$backup_dir" -maxdepth 1 -type f -name 'plan_platform-mysql-*.sql.gz' | sort | tail -n 1)
 [ -n "$backup" ] || { echo 'Backup not found'; exit 1; }
-sh scripts/mysql-oss-upload.sh "$backup"
+if sh scripts/mysql-oss-upload.sh "$backup"; then record_result OSS_FAILED no; else record_result OSS_FAILED yes; exit 1; fi
+if [ -f "$root/production-operations.yml" ] && [ -f "$root/collect-operations.sh" ]; then
+  sh "$root/collect-operations.sh" --verify-oss
+fi

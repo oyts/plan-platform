@@ -2,9 +2,9 @@
 
 一个支持周期计划、目标路线、今日待办和任务计时的开源多用户平台。项目由原本的纯前端“计划控制台”重构而来，面向 Java 学习、个人部署和跨设备任务管理。
 
-下一轮第一阶段的 **0.1.16／Android21源码候选** 已实现取消邀请抄送、账号邮箱验证入口及重发保护、持久告警邮件与不活动配置准备。后端、网页及独立MySQL定向验收已完成，原生候选和真实生产启用仍待相应门槛；正式版本以下文0.1.15为准。见 [邮件安全与运行保障](docs/mail-and-operations.md)。
+当前正式 Web/API、Windows 官网及可选更新源、Android 登录受限源均为 **0.1.16／Android构建21**。本版增加账号邮箱验证状态与重发保护，取消账号邮件抄送，启用经确认的成员治理和真实备份／OSS／恢复证据采集。管理员已确认收到本轮测试邮件，随后启用去重告警；没有制造生产故障或发送朋友测试邮件。见 [0.1.16 发布记录](docs/release-0116.md) 与 [邮件安全与运行保障](docs/mail-and-operations.md)。
 
-当前正式 Web/API、Windows 官网及可选更新源、Android 登录受限源均为 `0.1.15`（Android 构建 `20`）。本版已完成真实生产备份的 V19→V23 独立迁移／旧镜像回退、私有 OSS 核对、8项真实 HTTPS 新业务、Windows 8项正式窗口和5项公网发布、Android 7项正式只读升级保留和4项受限源检查。双端原登录及重开后的空队列保留，不宣称非空队列升级或本版应用内跨版本安装已复验。线上默认每人每天20次，管理员热修改、公开注册关闭及官网 APK／二维码关闭保持不变。见 [0.1.15 发布记录](docs/release-0115.md)；上一版见 [0.1.14 发布记录](docs/release-0114.md)。
+本版真实V23→V24快照迁移及旧0.1.15镜像演练通过，36张原业务表校验不变；正式网页6项、Windows7项与公网下载5项、Android真机5项及受限源4项通过。Android原登录及空队列保留；Windows在服务切换间隙启动出现502，用户手动重新登录后完成重开及0/0队列检查，不声称证明了原会话跨升级保留。非空队列和本版应用内跨版本安装未重新构造。默认AI每天20次、管理员热修改、公众注册关闭及官网APK／二维码关闭保持不变。上一版见 [0.1.15 发布记录](docs/release-0115.md)。
 
 旧正式 Android 的临时匿名迁移窗口已于北京时间 **2026-10-15 02:17:33** 到期，旧匿名地址现已返回 404，不重新开放。已接入受限通道的客户端继续登录后更新；未迁移的旧版本需私下取得同包名、同签名的正式 APK。见 [迁移说明](docs/legacy-android-migration.md)。
 
@@ -16,7 +16,7 @@
 
 日常小版本仅验证新增和受影响功能，大版本才执行全面回归；签名、版本、升级数据保留、生产备份与云端健康仍为发布门槛。见 [发布流程](docs/release-process.md) 与 [导航体验优化](docs/navigation-experience.md)。
 
-下一轮次序与验收边界见 [整合开发规划](docs/next-development-roadmap.md)，包括邮件安全、AI工作台、系统通知、复盘调优、个人模板及稳定试用。上一轮六阶段目标保留在 [历史规划](docs/development-roadmap.md)。源码已统一为 **0.1.15／Android 20**，实现[反馈与脱敏诊断](docs/feedback-and-diagnostics.md)、[个人数据中心](docs/personal-data-center.md)、[编排与长期历史](docs/orchestration-and-history.md)、[离线范围及冲突体验](docs/offline-experience.md)及[运行证据与成员治理](docs/operations-and-governance.md)。第六阶段补入 `/help` 帮助与版本、无需登录的 `/help/demo` 本地合成演示、分组菜单、键盘跳转、[项目讲解](docs/project-showcase.md)和[实际轻量基线](docs/performance-baseline.md)。共享源码、独立 MySQL、独立 PC 九组和 Android 十一组新增业务已验收，网页/API与双端更新源均已发布；正式覆盖保留的具体范围见[续做记录](docs/roadmap-progress.md)和[发布记录](docs/release-0115.md)。运维与成员治理生产开关仍关闭。
+后续次序与验收边界见 [整合开发规划](docs/next-development-roadmap.md)，第一阶段邮件安全已交付，第二阶段为AI工作台与手机输入体验，尚未开始。上一轮六阶段目标保留在 [历史规划](docs/development-roadmap.md)，已实现[反馈与脱敏诊断](docs/feedback-and-diagnostics.md)、[个人数据中心](docs/personal-data-center.md)、[编排与长期历史](docs/orchestration-and-history.md)、[离线范围及冲突体验](docs/offline-experience.md)、帮助／本地演示和[运行证据与成员治理](docs/operations-and-governance.md)。历史验收见[续做记录](docs/roadmap-progress.md)。清理仅预览，真实删除仍须另行确认。
 
 0.1.4 已完成 HTTPS 新版部署、MySQL 备份恢复、加密签名备份、Windows 官网下载及更新源发布，见 [Windows 发布记录](docs/windows-public-release.md)。Android 继续只提供受邀测试 APK，官网下载等待 APP 备案，公开注册保持关闭，见 [受邀客户端测试](docs/invited-client-testing.md)。成员页手机卡片与底部编辑面板已进入共享源码，桌面保留表格，详见 [成员邀请手机验收](docs/mobile-members.md)。
 

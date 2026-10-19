@@ -76,3 +76,9 @@ test('same original backup path, unrelated password file and outside candidate a
   for(const change of [{cloudBackupCopy:join(options.signingBackupDirectory,'PlanCabin.plan-signing-backup')},{cloudBackupCopy:join(root,'downloaded/password.txt')},{candidateDirectory:join(root,'downloaded')},{windowsAcceptanceConfirmed:false}]) assert.throws(()=>prepareWindowsPublicRelease(root,{...options,...change}));
   assert.equal(existsSync(join(root,'production-artifacts/windows-public-release')),false);
 }));
+test('optional release notes reach the update feed without changing artifact bytes',()=>sandbox(root=>{
+  const {options,f}=seed(root),notes='邮箱验证与运行保障；可选更新，安装前仍需确认。';
+  const result=prepareWindowsPublicRelease(root,{...options,notes});
+  const feed=JSON.parse(readFileSync(join(result.output,'public/client-updates/windows/latest.json')));
+  assert.equal(feed.notes,notes);assert.equal(result.plan.windows.sha256,f.candidate.windows.sha256);
+}));

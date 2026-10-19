@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "status": "candidate-accepted-snapshot-pass-production-not-switched",
-  "production": {"webApi":"0.1.15","windowsSource":"0.1.15","androidProtectedSource":"0.1.15/20"},
+  "status": "production-and-both-native-sources-released-github-archive-pending",
+  "production": {"webApi":"0.1.16","windowsSource":"0.1.16","androidProtectedSource":"0.1.16/21"},
   "automation": "PAUSED; never reschedule unless user explicitly re-enables",
   "userApprovals": {"productionUpgrade":true,"pcSavedClosed":true,"androidConnectedUnlocked":true,"sameIdentityDataPreservingAcceptance":true,"ordinaryMemberGovernance":true,"alertRecipientConfirmedPrivately":true,"alertActivationRequiresActualReceipt":true},
   "sourceVersion": "0.1.16",
@@ -9,16 +9,21 @@
   "apiSha256": "869daca03f6f60b94b5fd09f382e90791687aeef23b17c6b9dc931f72904106c",
   "localArchive": "production-artifacts/plan-platform-0.1.16.tar.gz",
   "localArchiveSha256": "f83fe9f4c067de0c27480eb3410f4013d6ddc1b3213892c3cccb45e5af1eaed6",
-  "localArchiveUploaded": false,
+  "localArchiveUploaded": true,
+  "activeRemoteRelease": "/home/oyts/plan-platform/releases/0.1.16-f83fe9f4",
   "previousRemoteCandidate": "/home/oyts/plan-platform/releases/0.1.16-4e0f5a3e",
   "previousRemoteArchiveSha256": "4e0f5a3e7e24530552b9f34aec0ae611456d31aded04aaeb90e7b3a62d74072e",
-  "snapshotDrill": {"status":"PASS","directory":"/home/oyts/plan-platform/release-drills/roadmap-20261019035018-8d799c7d","migration":"V23 -> V24","originalBusinessTablesUnchanged":36,"actualPreviousImage":"plan-platform-api:0.1.15","database":"plan_restore_20261019_035020","backup":"/home/oyts/plan-platform/releases/0.1.15-50bc92a/backups/plan_platform-mysql-20261019-035019.sql.gz","privateOssUploadAndDownloadVerified":true},
-  "operations": {"directory":"/home/oyts/plan-platform/operations","owner":"oyts","group":101,"mode":"2750","statusMode":"0640","candidate":"/home/oyts/plan-platform/production-operations.candidate-20261019T035629715667Z.yml","activeOverlayExists":false,"emailAlertsEnabled":false,"realEmailsSent":0},
+  "snapshotDrill": {"status":"PASS","directory":"/home/oyts/plan-platform/release-drills/roadmap-20261019075119-7fdabfbb","migration":"V23 -> V24","originalBusinessTablesUnchanged":36,"actualPreviousImage":"plan-platform-api:0.1.15","database":"plan_restore_20261019_075120","backup":"/home/oyts/plan-platform/releases/0.1.15-50bc92a/backups/plan_platform-mysql-20261019-075120.sql.gz","privateOssUploadAndDownloadVerified":true,"earlierEvidenceRetained":true},
+  "operations": {"directory":"/home/oyts/plan-platform/operations","owner":"oyts","group":101,"mode":"2750","statusMode":"0640","activeOverlayExists":true,"emailAlertsEnabled":true,"administratorTestReceiptConfirmed":true,"fakeProductionIncidents":0,"mailEventsAtFinalCheck":0,"collectionCronEntries":1,"codexAutomationEnabled":false,"runtimeRollbackInputs":"/home/oyts/plan-platform/operations-runtime-20261019T080628870741Z","alertRollbackConfiguration":"/home/oyts/plan-platform/operations-mail-activation-20261019T082012737944Z/previous.yml"},
   "nativeCandidate": "production-artifacts/client-release/0.1.16/20261019T033904Z-3b682161",
   "windowsSha256": "f8c612d0b4ffe4f780d5100a33b8fe6baa894dc8bd72a65fd0b7536b0ffae3a2",
   "androidSha256": "beccfba5cf8c0722400fa6cd1e61323e220dfbe3b2e5c93e5979202c69197afc",
-  "nativeInstallationAttempted": false,
-  "gates": [
+  "nativeInstallationAttempted": true,
+  "nativeAcceptance": {"windowsChecksPassed":7,"windowsDataFilesUnchangedBeforeLaunch":481,"windowsOriginalSessionUpgradeProven":false,"windowsManualReauthenticationAfterTransient502":true,"windowsReopenSessionPassed":true,"androidChecksPassed":5,"androidOriginalSessionRetained":true,"queueBefore":[0,0],"queueAfter":[0,0],"nonemptyQueueUpgradeProven":false,"newApplicationInternalInstallProven":false,"automaticDownloadChecked":false},
+  "publication": {"windowsStage":"production-artifacts/windows-public-release/0.1.16/20261019T081444403Z-uvftrM","windowsStaticRun":"windows-0116-jOMfgN","windowsPublicChecksPassed":5,"androidStage":"production-artifacts/invited-android/0.1.16/candidate-hYqOGe","androidRemoteStage":"/home/oyts/plan-platform/android-private/staging/android-21-6b408795","protectedChecksPassed":4,"androidNativeUpdateCheckPassed":true},
+  "github": {"status":"PENDING_TAG_AND_WINDOWS_ONLY_ARCHIVE"},
+  "remaining": ["Commit verified release tools and final evidence references; push source, create immutable v0.1.16 tag, publish Windows-only GitHub attachments."],
+  "historicalGateChecklist": [
     "Read mail-and-operations.md and actual quota/Git/live state first. At >=90 collect progress; >=95 stop and notify; no scheduling.",
     "Upload final f83fe9 archive to a NEW managed release directory; preserve previous archive and images. Extract and hash-check accepted API, rebuild images from exact final archive. Host Python3.6 compatibility is in final archive.",
     "Read and validate activate-mail-operations-release.py; only syntax checked so far. Use --check-only before activation. Never run hardcoded old activate-roadmap-release.sh for this version.",
@@ -29,6 +34,6 @@
     "Only after actual affected Windows/Android acceptance publish corresponding optional/protected sources and GitHub Windows-only release. Website APK/QR/public registration remain OFF.",
     "Actual administrator test and confirmed inbox receipt required before enabling operations mail; no real mail has been sent this turn. Do not simulate outage or send friends unsolicited tests."
   ],
-  "quotaLastChecked": {"usedPercent":90,"windowMinutes":300,"resetsAt":1792387321},
-  "limitations": "No 0.1.16 production switch, native installation, actual SMTP receipt or update-feed publication yet. No paid AI calls. Do not use old signed candidate success as native UI acceptance."
+  "quotaLastChecked": {"usedPercent":26,"windowMinutes":300,"resetsAt":1792414172},
+  "limitations": "No paid AI or real plan edits, real member status changes or queue replay. No fabricated production incident: actual administrator SMTP test receipt is not proof of real incident-mail inbox delivery. Windows original-session upgrade retention not proven after transient rollout502/manual login; subsequent cold reopen and empty queue retained. Historical checklist is not unfinished work."
 }

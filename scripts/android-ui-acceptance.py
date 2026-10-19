@@ -23,6 +23,15 @@ LABELS.update({'确定','继续','正在下载并校验更新包，不会自动�
 LABELS.add('请先点击“允许安装更新”，在系统设置中授权，再返回点击安装。')
 LABELS.update({'OK','CANCEL'})
 
+def assert_safe_snapshot(nodes, allow_blank_account_settings=False):
+    if any(n.get('text') in {'登录计划平台','注册计划平台'} for n in nodes):
+        raise RuntimeError('Authentication UI visible; no input/capture performed.')
+    passwords=[n for n in nodes if n.get('password')=='true']
+    if passwords and not (allow_blank_account_settings
+            and any(n.get('text')=='账号安全与数据迁移' for n in nodes)
+            and all(not n.get('text','') for n in passwords)):
+        raise RuntimeError('Authentication/private password field visible; no input/capture performed.')
+
 class Device:
     def __init__(self,serial): self.serial=serial
     def adb(self,*args):
@@ -35,7 +44,7 @@ class Device:
         current=[line for line in focused.splitlines() if 'mCurrentFocus=' in line]
         if not any(PACKAGE+'/' in line for line in current):
             raise RuntimeError('Formal app is not focused; unlock/return to Plan Cabin before input.')
-    def snapshot(self):
+    def snapshot(self,allow_blank_account_settings=False):
         self.foreground()
         path='/data/local/tmp/plan-ui-'+uuid.uuid4().hex+'.xml'
         try:
@@ -44,8 +53,7 @@ class Device:
             nodes=list(ET.fromstring(raw).iter('node'))
             self.foreground()
         finally: self.adb('shell','rm','-f',path)
-        if any(n.get('password')=='true' or n.get('text') in {'登录计划平台','注册计划平台'} for n in nodes):
-            raise RuntimeError('Authentication UI visible; no input/capture performed.')
+        assert_safe_snapshot(nodes,allow_blank_account_settings)
         return nodes
     def allowed(self,text):
         return text in LABELS or text.lower().startswith('nativeupgrade-') or bool(re.fullmatch(r'(0\.1\.\d+( / 构建 \d+)?|\d+|可更新至 0\.1\.\d+)',text))

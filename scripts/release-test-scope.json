@@ -1,16 +1,19 @@
 {
   "version": "0.1.16",
   "mailAndOperations": {
-    "status":"signed-candidates-and-real-snapshot-accepted-production-not-switched",
-    "reason":"Cancel invitation CC; authenticated verification status/cooldown/failure handling and account UI; durable merged operations incident mail with at-most-once attempts. Reuse existing member governance; no public registration, paid AI or actual mail.",
+    "status":"web-api-windows-protected-android-released-alerts-enabled-after-confirmed-admin-receipt",
+    "reason":"Cancel invitation CC; verification status/cooldown/failure handling and native account UI; durable merged operations mail and approved member governance. User initiated and received one administrator test; production alert flag enabled only afterward. No public registration or paid AI.",
     "backend":["EmailVerificationExperienceTest","InvitationMailCopyIntegrationTest","OperationsMailDeliveryTest","GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","AccountRecoveryIntegrationTest"],
     "browser":["e2e/email-verification.spec.ts","e2e/operations.spec.ts"],
-    "scripts":["scripts/test-prepare-account-operations.py"],
+    "scripts":["scripts/test-prepare-account-operations.py","scripts/public-mail-operations-acceptance.py","scripts/android-mail-operations-formal.py","scripts/test-android-mail-operations.py","scripts/configure-operations-runtime.py","scripts/test-operations-runtime.py","scripts/enable-operations-mail.py","scripts/test-enable-operations-mail.py"],
     "results":{"backendDistinctPassed":29,"frontendAffectedPassed":14,"browserPassed":20,"browserFailedFinal":0,"inactiveOverlayGuardsPassed":3,"mysqlCasesPassed":5,"mysqlRestoredTables":38,"realEmailsSent":0,"paidAiCalls":0},
+    "resultsNote":"The results counts above describe isolated prepublication acceptance, not the later user-initiated administrator SMTP test. Formal runtime results are listed separately.",
     "evidence":["acceptance-results/mail-operations/20261019-first-backend/","backend/target-acceptance/surefire-reports/","acceptance-results/mail-operations/browser-first/","acceptance-results/mail-operations/browser-final/","acceptance-results/mail-operations/browser-verified/report.json","acceptance-results/mail-operations/mysql/report.json"],
-    "limits":"Backend first run had two test-setup/response-expectation failures; affected ten passed after correction. Browser found two real verification routing/result-state bugs and both were fixed; final 20 passed. No native UI or real SMTP/production activation proof.",
-    "productionSnapshot":{"passed":true,"originalBusinessTablesChecked":36,"migration":"V23 -> V24","actualPreviousImage":"0.1.15","privateOssRoundtripVerified":true,"productionSwitched":false,"evidence":"remote release-drills/roadmap-20261019035018-8d799c7d/report.json"},
-    "pending":["final host-compatible archive upload and guarded activation","formal native affected acceptance","actual approved mailbox delivery before enabling alerts","optional Windows and protected Android publication"]
+    "limits":"Earlier test failures retained. Native original-session upgrade retention proved on Android only; Windows user manually reauthenticated after launching during a transient rollout HTTP502, then cold reopen passed. Empty queues only, no new application-internal cross-version install or fabricated production incident.",
+    "productionSnapshot":{"passed":true,"originalBusinessTablesChecked":36,"migration":"V23 -> V24","actualPreviousImage":"0.1.15","privateOssRoundtripVerified":true,"productionSwitched":true,"evidence":"remote release-drills/roadmap-20261019075119-7fdabfbb/report.json"},
+    "formalResults":{"httpsNewCasesPassed":6,"windowsNativeChecksPassed":7,"windowsPublicChecksPassed":5,"androidNativeCasesPassed":5,"androidProtectedSourceChecksPassed":4,"androidNativeUpdateCheckPassed":true,"operationsRuntimeGuardsPassed":5,"mailActivationGuardsPassed":4,"androidSnapshotGuardsPassed":5,"existingAndroidToolGuardsPassed":6,"windowsPublicationToolPassed":8,"administratorTestReceiptConfirmed":true,"mailAlertsEnabled":true,"paidAiCalls":0},
+    "formalEvidence":["acceptance-results/public-web/20261019-080319-77e9e7/report.json","acceptance-results/native-mail-operations-0116/windows-formal.json","acceptance-results/native-mail-operations-0116/after-20261019T080640445783Z.json","acceptance-results/native-mail-operations-0116/update-check-20261019T081123539070Z.json","acceptance-results/invited-android/2026-10-19T08-09-33-786Z-da8ea259/report.json","acceptance-results/windows-public-cloud/2026-10-19T08-16-28-431Z-6c928e11/report.json","acceptance-results/mail-operations/production-final.json"],
+    "pending":["GitHub immutable tag and Windows-only archive"]
   },
   "roadmapProduction": {
     "status":"web-api-windows-and-protected-android-released",
