@@ -13,7 +13,8 @@
     "productionSnapshot":{"passed":true,"originalBusinessTablesChecked":36,"migration":"V23 -> V24","actualPreviousImage":"0.1.15","privateOssRoundtripVerified":true,"productionSwitched":true,"evidence":"remote release-drills/roadmap-20261019075119-7fdabfbb/report.json"},
     "formalResults":{"httpsNewCasesPassed":6,"windowsNativeChecksPassed":7,"windowsPublicChecksPassed":5,"androidNativeCasesPassed":5,"androidProtectedSourceChecksPassed":4,"androidNativeUpdateCheckPassed":true,"operationsRuntimeGuardsPassed":5,"mailActivationGuardsPassed":4,"androidSnapshotGuardsPassed":5,"existingAndroidToolGuardsPassed":6,"windowsPublicationToolPassed":8,"administratorTestReceiptConfirmed":true,"mailAlertsEnabled":true,"paidAiCalls":0},
     "formalEvidence":["acceptance-results/public-web/20261019-080319-77e9e7/report.json","acceptance-results/native-mail-operations-0116/windows-formal.json","acceptance-results/native-mail-operations-0116/after-20261019T080640445783Z.json","acceptance-results/native-mail-operations-0116/update-check-20261019T081123539070Z.json","acceptance-results/invited-android/2026-10-19T08-09-33-786Z-da8ea259/report.json","acceptance-results/windows-public-cloud/2026-10-19T08-16-28-431Z-6c928e11/report.json","acceptance-results/mail-operations/production-final.json"],
-    "pending":["GitHub immutable tag and Windows-only archive"]
+    "github":{"status":"PUBLISHED","tag":"v0.1.16","tagCommit":"bacf97c89fb0405469d48c370fe88a0eb134b8a3","windowsOnlyAssets":true},
+    "pending":[]
   },
   "roadmapProduction": {
     "status":"web-api-windows-and-protected-android-released",

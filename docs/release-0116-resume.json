@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "production-and-both-native-sources-released-github-archive-pending",
+  "status": "COMPLETE",
   "production": {"webApi":"0.1.16","windowsSource":"0.1.16","androidProtectedSource":"0.1.16/21"},
   "automation": "PAUSED; never reschedule unless user explicitly re-enables",
   "userApprovals": {"productionUpgrade":true,"pcSavedClosed":true,"androidConnectedUnlocked":true,"sameIdentityDataPreservingAcceptance":true,"ordinaryMemberGovernance":true,"alertRecipientConfirmedPrivately":true,"alertActivationRequiresActualReceipt":true},
@@ -21,8 +21,9 @@
   "nativeInstallationAttempted": true,
   "nativeAcceptance": {"windowsChecksPassed":7,"windowsDataFilesUnchangedBeforeLaunch":481,"windowsOriginalSessionUpgradeProven":false,"windowsManualReauthenticationAfterTransient502":true,"windowsReopenSessionPassed":true,"androidChecksPassed":5,"androidOriginalSessionRetained":true,"queueBefore":[0,0],"queueAfter":[0,0],"nonemptyQueueUpgradeProven":false,"newApplicationInternalInstallProven":false,"automaticDownloadChecked":false},
   "publication": {"windowsStage":"production-artifacts/windows-public-release/0.1.16/20261019T081444403Z-uvftrM","windowsStaticRun":"windows-0116-jOMfgN","windowsPublicChecksPassed":5,"androidStage":"production-artifacts/invited-android/0.1.16/candidate-hYqOGe","androidRemoteStage":"/home/oyts/plan-platform/android-private/staging/android-21-6b408795","protectedChecksPassed":4,"androidNativeUpdateCheckPassed":true},
-  "github": {"status":"PENDING_TAG_AND_WINDOWS_ONLY_ARCHIVE"},
-  "remaining": ["Commit verified release tools and final evidence references; push source, create immutable v0.1.16 tag, publish Windows-only GitHub attachments."],
+  "github": {"status":"PUBLISHED","url":"https://github.com/oyts/plan-platform/releases/tag/v0.1.16","tagCommit":"bacf97c89fb0405469d48c370fe88a0eb134b8a3","assets":["Plan.Cabin_0.1.16_x64-setup.exe","Plan.Cabin_0.1.16_x64-setup.exe.sig","SHA256SUMS.txt"],"publicApk":false},
+  "remaining": [],
+  "nextStage": "AI planning workspace and mobile input experience; not started or authorized by this resume request.",
   "historicalGateChecklist": [
     "Read mail-and-operations.md and actual quota/Git/live state first. At >=90 collect progress; >=95 stop and notify; no scheduling.",
     "Upload final f83fe9 archive to a NEW managed release directory; preserve previous archive and images. Extract and hash-check accepted API, rebuild images from exact final archive. Host Python3.6 compatibility is in final archive.",

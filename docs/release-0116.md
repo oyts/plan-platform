@@ -52,3 +52,5 @@ Windows静态清单回退：`sh /home/oyts/plan-platform/client-public/releases/
 告警开关的旧配置保留于服务器 `operations-mail-activation-20261019T082012737944Z/previous.yml`；运行采集／旧crontab及备份helper保留于 `operations-runtime-20261019T080628870741Z/`。不将这些受限资料上传GitHub。
 
 GitHub公开附件仅限Windows EXE、其更新签名和校验和；APK、真实账号、数据库、备份和签名资料均不上传。默认AI20次／天和管理员热配置不变。Codex自动任务继续暂停，不自动安排下一窗口。下一完整开发阶段为AI规划工作台与手机输入体验，尚未开工。
+
+已发布 [GitHub v0.1.16](https://github.com/oyts/plan-platform/releases/tag/v0.1.16)，不可变标签指向 `bacf97c89fb0405469d48c370fe88a0eb134b8a3`。附件为 `Plan.Cabin_0.1.16_x64-setup.exe`、同名`.sig`和`SHA256SUMS.txt`；上传大小及GitHub摘要逐项核对通过。文件名的点号只替代空格，不改变安装包或签名字节。后续发布状态文档提交不移动该标签或改变已验收业务源码。
