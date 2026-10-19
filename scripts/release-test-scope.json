@@ -1,6 +1,11 @@
 {
   "version": "0.1.17",
   "release0117Candidate": {
+    "activationGuardsPassed":9,
+    "finalDirectoryMysqlRehearsalPassed":true,
+    "activationServerCheckOnlyPassed":true,
+    "activationPerformed":false,
+    "httpsWorkbenchScriptStatus":"syntax checked only; not run before production activation",
     "status":"signed-candidate-independent-android-and-mysql-accepted-not-published",
     "androidIndependentPassed":6,
     "hexWrapBrowserPassed":2,

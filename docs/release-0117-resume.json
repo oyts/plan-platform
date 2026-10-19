@@ -19,7 +19,14 @@
   "deviceReadinessRecheckedThisTurn":false,
   "obsoleteWebCandidateRetained":"/home/oyts/plan-platform/releases/0.1.17-61a7948b",
   "actualCurrent":"/home/oyts/plan-platform/releases/0.1.16-f83fe9f4",
-  "mysqlProof":"/home/oyts/plan-platform/release-drills/roadmap-20261019142529-d8d0dce1/report.json",
+  "mysqlProof":"/home/oyts/plan-platform/release-drills/roadmap-20261019221657-40ff370c/report.json",
+  "previousMysqlProofRetained":"/home/oyts/plan-platform/release-drills/roadmap-20261019142529-d8d0dce1/report.json",
+  "activationScript":"scripts/activate-ai-workbench-release.py",
+  "activationGuardTestsPassed":9,
+  "serverActivationPreflightPassed":true,
+  "activationPreflightOnly":true,
+  "publicAcceptanceScript":"scripts/public-ai-workbench-acceptance.py",
+  "publicAcceptanceStatus":"syntax-checked-only; run after activation; not claimed passed",
   "mysql":{"migration":"V24 -> V25","originalBusinessTablesUnchanged":37,"previousImage":"plan-platform-api:0.1.16","productionChanged":false,"freshProofRequiredBeforeLaterActivation":true},
   "androidIndependent":{"passed":6,"report":"acceptance-results/native/2026-10-19T14-35-33-922Z-76045ff2/report.json","originalFormalApplicationUntouched":true,"shareChooserAndActualExportedJsonVerified":true,"externalShareDestinationSelected":false,"systemImportPickerVerified":false},
   "finalColorBrowser":{"passed":2,"exitCode":0,"report":"acceptance-results/ai-workbench/hex-wrap-browser.log"},
@@ -28,6 +35,6 @@
   "feedsPublished":false,
   "paidAiCalls":0,
   "realEmailsSent":0,
-  "next":"Final archive/API hashes and Web image verified in finalRemoteRelease on 2026-10-20; do not repeat upload or use obsoleteWebCandidateRetained. Fresh MySQL proof still required before activation; implement/review version-correct guarded activation retaining active overlays; HTTPS synthetic acceptance; reconfirm device readiness and formal upgrades; publish feeds; GitHub tag and Windows-only release. Previous saved/closed/USB answers are historical, not current readiness.",
-  "quotaCheckpoint":{"fiveHourUsedPercent":1,"weeklyUsedPercent":98,"noAutomaticTaskCreated":true}
+  "next":"Final archive/API hashes and Web image verified; do not repeat upload or use obsoleteWebCandidateRetained. New final-directory MySQL proof and --check-only PASS. Recheck proof age (one hour), quota and actual state; inspect activationScript then invoke with --directory finalRemoteRelease --drill parent of mysqlProof, first --check-only, then without it only with verification/rollback headroom. Run publicAcceptanceScript after activation; failure requires guarded 0.1.16 rollback preserving data. Reconfirm devices; formal upgrades; feeds and GitHub Windows-only release remain pending. No production switch or formal installation occurred.",
+  "quotaCheckpoint":{"fiveHourUsedPercent":8,"weeklyUsedPercent":99,"noAutomaticTaskCreated":true}
 }
