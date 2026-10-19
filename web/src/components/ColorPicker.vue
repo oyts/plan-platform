@@ -19,3 +19,7 @@ function changeRgb() { const next = rgbToHex(rgb.value); if (!next) { error.valu
 <style scoped>
 .color-picker{padding:0;border:0;min-width:0;display:grid;gap:12px}.color-picker legend{font-size:.8rem;font-weight:700;margin-bottom:8px}.color-main{display:flex;gap:12px;align-items:end}.color-main>input{width:56px;min-height:48px;padding:4px;flex-shrink:0}.color-picker label{display:grid;gap:6px;font-size:.75rem;min-width:0}.color-main label{flex:1}.color-rgb{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.color-rgb input{width:100%;min-width:0;padding-inline:4px;font-variant-numeric:tabular-nums}.color-swatches{display:flex;flex-wrap:wrap;gap:8px}.color-swatches button{width:36px;min-height:36px;border:3px solid white;outline:1px solid var(--line);cursor:pointer}.color-swatches button[aria-pressed=true]{outline:2px solid currentColor}.color-picker p{margin:0}
 </style>
+<style scoped>
+/* A narrow parent column must wrap the HEX field, not crop its seven characters. */
+.color-main{flex-wrap:wrap}.color-main label{min-width:min(100%,120px)}
+</style>

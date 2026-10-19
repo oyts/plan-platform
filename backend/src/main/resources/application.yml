@@ -30,7 +30,7 @@ management:
         enabled: true
 
 app:
-  version: 0.1.16
+  version: 0.1.17
   governance:
     enabled: ${MEMBER_GOVERNANCE_ENABLED:false}
   operations:

@@ -1,5 +1,16 @@
 {
-  "version": "0.1.16",
+  "version": "0.1.17",
+  "release0117Candidate": {
+    "status":"signed-candidate-independent-android-and-mysql-accepted-not-published",
+    "androidIndependentPassed":6,
+    "hexWrapBrowserPassed":2,
+    "mysqlMigration":"V24 -> V25",
+    "mysqlOriginalTablesUnchanged":37,
+    "productionVersionUnchanged":"0.1.16",
+    "evidence":["acceptance-results/native/2026-10-19T14-35-33-922Z-76045ff2/report.json","acceptance-results/ai-workbench/hex-wrap-browser.log","remote release-drills/roadmap-20261019142529-d8d0dce1/report.json"],
+    "limits":"Independent Android actual IME/panel/reopen/cloud save, chooser cancellation and actual synthetic export JSON. No external share destination, system import picker, formal upgrade or production publication; final CSS wrap requires final archive upload. Failure evidence retained.",
+    "pending":["final cloud archive upload and fresh guarded activation","HTTPS synthetic acceptance","formal data-preserving upgrades","optional Windows and protected Android publication","GitHub Windows-only release"]
+  },
   "aiWorkbench": {
     "status":"shared-source-and-bounded-independent-windows-accepted-not-released",
     "reason":"Next roadmap stage 2: independent retained drafts V25, private unsent/edit/import autosave and clear races, fresh validated resume without paid replay, split mobile workspace, mode examples/switch protection, complete route effort and shared precise colors. No new production/native release or unrelated full regression.",

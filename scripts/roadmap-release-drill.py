@@ -22,16 +22,25 @@ def command(args, data=None, env=None):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--directory', required=True)
-    parser.add_argument('--profile', choices=['roadmap', 'mail-operations'], default='roadmap')
+    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench'], default='roadmap')
+    parser.add_argument('--archive-sha256')
+    parser.add_argument('--api-sha256')
     args = parser.parse_args()
     mail = args.profile == 'mail-operations'
+    workbench = args.profile == 'ai-workbench'
     new_version, old_version = ('0.1.16', '0.1.15') if mail else ('0.1.15', '0.1.14')
     source_schema, target_schema = (23, 24) if mail else (19, 23)
+    if workbench:
+        new_version, old_version, source_schema, target_schema = '0.1.17', '0.1.16', 24, 25
+        require(all(re.fullmatch('[a-f0-9]{64}', value or '') for value in [args.archive_sha256, args.api_sha256]), 'Accepted archive and API hashes required.')
     release = Path(args.directory).resolve()
     require(re.fullmatch(r'/home/[a-zA-Z0-9_-]+/plan-platform/releases/' + re.escape(new_version) + r'-[a-f0-9]+', str(release)), 'Expected selected managed release.')
     root = release.parent.parent
     previous = (root / 'current').resolve()
     require(previous.parent == release.parent and previous != release, 'An existing previous release is required.')
+    if workbench:
+        require(hashlib.sha256((release / 'release.tar.gz').read_bytes()).hexdigest() == args.archive_sha256, 'Accepted archive differs.')
+        require(hashlib.sha256((release / 'backend/api.jar').read_bytes()).hexdigest() == args.api_sha256, 'Accepted API differs.')
     if mail:
         require(hashlib.sha256((release / 'release.tar.gz').read_bytes()).hexdigest() ==
                 'f83fe9f4c067de0c27480eb3410f4013d6ddc1b3213892c3cccb45e5af1eaed6', 'Accepted archive differs.')
@@ -70,7 +79,12 @@ def main():
         if not backup.is_absolute():
             backup = previous / backup
         backup = backup.resolve()
-        require(previous in backup.parents and backup.name.startswith('plan_platform-mysql-'), 'Unexpected backup path.')
+        # Production deliberately retains its original managed backup directory
+        # across application upgrades. Do not require it to move with current.
+        require(backup.parent.name == 'backups' and backup.parent.parent.parent == root / 'releases'
+                and re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+-[a-f0-9]+', backup.parent.parent.name)
+                and re.fullmatch(r'plan_platform-mysql-[0-9]{8}-[0-9]{6}\.sql\.gz', backup.name)
+                and backup.is_file(), 'Unexpected backup path.')
         restore_output = command(['sh', str(previous / 'scripts/mysql-restore-drill.sh'), str(backup)])
         (folder / 'restore.txt').write_text(restore_output + '\n')
         match = re.search(r'Restore validated in isolated database (plan_restore_[0-9_]+);', restore_output)
@@ -80,7 +94,7 @@ def main():
         tables = sql("SELECT table_name FROM information_schema.tables WHERE table_schema='" + database + "' ORDER BY table_name;").splitlines()
         require(all(re.fullmatch(r'[a-z0-9_]+', t) for t in tables), 'Invalid table name.')
         columns = {}
-        for table in ([] if mail else ['users', 'task_templates', 'mainlines']):
+        for table in ([] if mail or workbench else ['users', 'task_templates', 'mainlines']):
             columns[table] = sql("SELECT column_name FROM information_schema.columns WHERE table_schema='" + database + "' AND table_name='" + table + "' ORDER BY ordinal_position;").splitlines()
             require(columns[table] and all(re.fullmatch('[a-z0-9_]+', c) for c in columns[table]), 'Invalid column projection.')
 
@@ -133,7 +147,9 @@ def main():
         boot('plan-platform-api:' + new_version, '', new_version)
         require(version(database) == target_schema, 'Target migration missing.')
         require(before == fingerprints(), 'Existing private business fields changed during migration.')
-        if not mail:
+        if workbench:
+            require(sql('SELECT COUNT(*) FROM ' + database + '.ai_saved_drafts;') == '0', 'Unexpected saved-draft mutation.')
+        elif not mail:
             require(sql('SELECT COUNT(*) FROM ' + database + '.users WHERE auth_generation<>0;') == '0', 'Unexpected generation mutation.')
         else:
             require(sql('SELECT COUNT(*) FROM ' + database + '.operations_mail_delivery;') == '0', 'Unexpected mail mutation.')

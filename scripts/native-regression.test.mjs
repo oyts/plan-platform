@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import net from 'node:net';
 import { PORTS, selectDevice, validateManifest, createFaultProxy, assertPortsFree, reportHtml, junitXml } from './native-regression-support.mjs';
 import { exerciseAndroidRoadmap } from './roadmap-android-acceptance.mjs';
+import { exerciseAndroidAiWorkbench } from './ai-workbench-android-acceptance.mjs';
+
+test('AI workbench suite refuses Windows before any UI or API operation',async()=>{
+  await assert.rejects(()=>exerciseAndroidAiWorkbench({client:{kind:'windows'}}),/Independent Android client required/);
+});
 
 test('only exactly one authorized phone or an explicit authorized serial is selected', () => {
   assert.equal(selectDevice('List of devices attached\nabc\tdevice\n'), 'abc');
