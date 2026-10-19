@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Plan Platform API
-  version: 0.1.15
+  version: 0.1.16
   x-roadmap-contract: ./core-api.md
   description: 多用户周期计划、目标路线、今日待办、计时与统计 API。除认证入口外，所有接口均需 Bearer Access Token。客户端可为写操作提供 X-Idempotency-Key；相同用户、键和请求内容在 24 小时内会重放已完成响应。
 servers:
@@ -95,6 +95,28 @@ paths:
       summary: 使用邮件令牌重置密码并撤销全部刷新会话
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PasswordResetConfirmRequest' } } } }
       responses: { '204': { description: 已重置 } }
+  /auth/email-verification/status:
+    get:
+      summary: 读取本人邮箱验证和重发冷却；不发送邮件
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: 私有验证状态, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, configured: { type: boolean }, verified: { type: boolean }, retryAfterSeconds: { type: integer, minimum: 0 } } } } } }
+  /auth/email-verification/request:
+    post:
+      summary: 向本人登录邮箱发送验证邮件；无抄送，不开放注册或强制验证
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: 发件服务器接受，或账号已验证；不保证收件箱投递 }
+        '403': { description: 验证功能未启用 }
+        '429': { description: 60秒冷却或15分钟限流，状态接口返回剩余秒数 }
+        '503': { description: 邮件未被服务接受；原有效验证令牌保留 }
+  /admin/operations/mail-status:
+    get:
+      summary: 管理员读取持久告警邮件状态计数；不发送、不返回收件人或邮件正文
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: enabled、configured与PENDING/SENDING/ACCEPTED/UNKNOWN/SUPERSEDED计数；ACCEPTED不等于收件箱投递 }
+        '403': { description: 不是管理员 }
   /auth/email-verification/confirm:
     post:
       summary: 使用一次性令牌验证邮箱

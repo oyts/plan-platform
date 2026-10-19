@@ -58,7 +58,7 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
     <InAppReminder v-if="auth.user && !productPage" :key="`${auth.user.id}:${serverScope()}`"/>
     <OperationsNotice v-if="auth.user?.role==='ADMIN'&&auth.operationsAvailable&&!productPage" :key="`${auth.user.id}:${serverScope()}`"/>
     <LearningPrompt v-if="auth.user && !productPage"/>
-    <main id="main-content" tabindex="-1" :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${router.currentRoute.value.path === '/ai' ? '/ai' : router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
+    <main id="main-content" tabindex="-1" :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${['/ai','/verify-email'].includes(router.currentRoute.value.path) ? router.currentRoute.value.path : router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
     <MobileNavigation v-if="auth.user && !productPage" @logout="logout"/>
   </div>
 </template>

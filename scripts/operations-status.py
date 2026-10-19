@@ -73,7 +73,7 @@ def collect(args):
     if len(json.dumps(result).encode())>65536:raise ValueError('Metadata cap exceeded; old status retained.')
     write(target,result,args.group_readable);return result
 def main():
-    parser=argparse.ArgumentParser();commands=parser.add_subparsers(dest='action',required=True)
+    parser=argparse.ArgumentParser();commands=parser.add_subparsers(dest='action');commands.required=True
     collect_command=commands.add_parser('collect');collect_command.add_argument('--backup-directory',required=True);collect_command.add_argument('--output',required=True);collect_command.add_argument('--drill-evidence');collect_command.add_argument('--failure-evidence');collect_command.add_argument('--verify-oss',action='store_true');collect_command.add_argument('--group-readable',action='store_true')
     drill=commands.add_parser('record-drill');drill.add_argument('--backup',required=True);drill.add_argument('--output',required=True);drill.add_argument('--group-readable',action='store_true')
     failure=commands.add_parser('record-result');failure.add_argument('--code',choices=sorted(FAILURES),required=True);failure.add_argument('--failed',choices=['yes','no'],required=True);failure.add_argument('--output',required=True);failure.add_argument('--group-readable',action='store_true')

@@ -13,6 +13,14 @@ class MailRequestLimiter {
     private final Map<String,Deque<Long>> attempts = new HashMap<>();
     MailRequestLimiter() { this(Clock.systemUTC()); }
     MailRequestLimiter(Clock clock) { this.clock=clock; }
+    synchronized int retryAfterSeconds(String purpose,String identity,String address) {
+        long now=clock.millis(),wait=0;
+        var person=attempts.get(key(purpose+"|user|"+identity.trim().toLowerCase(Locale.ROOT)));
+        var source=attempts.get(key(purpose+"|address|"+Objects.toString(address,"unknown")));
+        if(person!=null){var active=person.stream().filter(t->t>now-900_000).toList();if(!active.isEmpty())wait=Math.max(wait,active.getLast()+60_000-now);if(active.size()>=3)wait=Math.max(wait,active.getFirst()+900_000-now);}
+        if(source!=null){var active=source.stream().filter(t->t>now-900_000).toList();if(active.size()>=10)wait=Math.max(wait,active.getFirst()+900_000-now);}
+        return (int)Math.max(0,(wait+999)/1000);
+    }
     synchronized boolean acquire(String purpose,String identity,String address) {
         long now=clock.millis(),window=900_000;
         attempts.values().forEach(q->{while(!q.isEmpty()&&q.getFirst()<=now-window)q.removeFirst();});

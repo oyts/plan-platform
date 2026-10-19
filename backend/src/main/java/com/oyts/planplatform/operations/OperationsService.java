@@ -20,8 +20,8 @@ class OperationsService {
     record Cleanup(String name,boolean candidate,String reason){}
     record Proof(String backupName,Instant verifiedAt,boolean verified){}
     record Status(boolean enabled,boolean mailAlertsEnabled,boolean dataAvailable,Instant observedAt,Policy policy,List<Check> checks,List<Backup> backups,List<Cleanup> cleanupPreview,Proof oss,Proof restore,long diskFreeBytes,long diskTotalBytes){}
-    private final JdbcTemplate db;private final ObjectMapper mapper;private final boolean enabled;private final String statusFile;
-    OperationsService(JdbcTemplate db,ObjectMapper mapper,@Value("${app.operations.enabled:false}")boolean enabled,@Value("${app.operations.status-file:}")String statusFile){this.db=db;this.mapper=mapper;this.enabled=enabled;this.statusFile=statusFile;}
+    private final JdbcTemplate db;private final ObjectMapper mapper;private final boolean enabled;private final String statusFile;private final OperationsMailDelivery mail;
+    OperationsService(JdbcTemplate db,ObjectMapper mapper,@Value("${app.operations.enabled:false}")boolean enabled,@Value("${app.operations.status-file:}")String statusFile,OperationsMailDelivery mail){this.db=db;this.mapper=mapper;this.enabled=enabled;this.statusFile=statusFile;this.mail=mail;}
     Policy policy(){return db.queryForObject("select keep_newest,retention_days,backup_max_hours,disk_min_percent,version from operations_policy where id=1",(rs,n)->new Policy(rs.getInt(1),rs.getInt(2),rs.getInt(3),rs.getInt(4),rs.getLong(5)));}
     Status status(){
         var policy=policy();if(!enabled||statusFile.isBlank())return unavailable(policy,"运维采集尚未启用或未配置；未知不代表备份成功。");
@@ -57,7 +57,7 @@ class OperationsService {
                 else reason="超过保留天数且不属于受保护恢复点；仅建议，尚未删除。";
                 preview.add(new Cleanup(backup.name(),reason.startsWith("超过保留天数"),reason));
             }
-            return new Status(true,false,true,observed,policy,List.copyOf(checks),List.copyOf(backups),List.copyOf(preview),new Proof(verified.stream().filter(b->b.sha256().equals(ossSha)).map(Backup::name).findFirst().orElse(null),ossTime,ossVerified),new Proof(verified.stream().filter(b->b.sha256().equals(drillSha)).map(Backup::name).findFirst().orElse(null),drillTime,restored),diskValid?free:-1,diskValid?total:-1);
+            return new Status(true,mail.enabled(),true,observed,policy,List.copyOf(checks),List.copyOf(backups),List.copyOf(preview),new Proof(verified.stream().filter(b->b.sha256().equals(ossSha)).map(Backup::name).findFirst().orElse(null),ossTime,ossVerified),new Proof(verified.stream().filter(b->b.sha256().equals(drillSha)).map(Backup::name).findFirst().orElse(null),drillTime,restored),diskValid?free:-1,diskValid?total:-1);
         }catch(Exception invalid){return unavailable(policy,"运维状态无法安全读取，备份与清理状态均按未知处理。");}
     }
     @Transactional Policy updatePolicy(String actor,Policy request){
@@ -72,12 +72,13 @@ class OperationsService {
             if(rows.isEmpty())db.update("insert into operations_alerts(code,incident_id,active,first_seen,last_seen) values (?,?,true,?,?)",check.code(),UUID.randomUUID().toString(),Timestamp.from(now),Timestamp.from(now));
             else if(db.queryForObject("select active from operations_alerts where code=?",Boolean.class,check.code()))db.update("update operations_alerts set last_seen=? where code=?",Timestamp.from(now),check.code());
             else db.update("update operations_alerts set incident_id=?,active=true,first_seen=?,last_seen=?,resolved_at=null where code=?",UUID.randomUUID().toString(),Timestamp.from(now),Timestamp.from(now),check.code());
+            mail.opened(db.queryForObject("select incident_id from operations_alerts where code=?",String.class,check.code()),check.code());
         }
-        for(var row:db.queryForList("select code from operations_alerts where active=true")){String code=(String)row.get("code");if(!active.contains(code))db.update("update operations_alerts set active=false,resolved_at=?,last_seen=? where code=?",Timestamp.from(now),Timestamp.from(now),code);}
+        for(var row:db.queryForList("select code,incident_id from operations_alerts where active=true")){String code=(String)row.get("code");if(!active.contains(code)){db.update("update operations_alerts set active=false,resolved_at=?,last_seen=? where code=?",Timestamp.from(now),Timestamp.from(now),code);mail.resolved((String)row.get("incident_id"),code);}}
         return alerts();
     }
     List<Map<String,Object>> alerts(){return db.queryForList("select code,incident_id,active,first_seen,last_seen,resolved_at from operations_alerts order by active desc,last_seen desc,code");}
     com.oyts.planplatform.plan.PlanDtos.PageResponse<Map<String,Object>> policyAudit(int page){if(page<0||page>100000)throw new IllegalArgumentException("页码无效。");long count=db.queryForObject("select count(*) from operations_policy_audit",Long.class);return new com.oyts.planplatform.plan.PlanDtos.PageResponse<>(db.queryForList("select id,actor_id,previous_version,new_version,before_json,after_json,created_at from operations_policy_audit order by created_at desc,id limit 10 offset ?",(long)page*10),page,10,count,(int)((count+9)/10));}
-    private Status unavailable(Policy policy,String message){return new Status(enabled,false,false,null,policy,List.of(new Check("OPS_DATA_UNAVAILABLE",message,false)),List.of(),List.of(),new Proof(null,null,false),new Proof(null,null,false),-1,-1);}
+    private Status unavailable(Policy policy,String message){return new Status(enabled,mail.enabled(),false,null,policy,List.of(new Check("OPS_DATA_UNAVAILABLE",message,false)),List.of(),List.of(),new Proof(null,null,false),new Proof(null,null,false),-1,-1);}
     private Instant instant(JsonNode node,String key){try{return Instant.parse(node.path(key).asText());}catch(Exception error){return null;}}
 }

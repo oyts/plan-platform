@@ -38,7 +38,7 @@ class InvitationMailCopyIntegrationTest {
         user.makeAdmin();return users.saveAndFlush(user);
     }
 
-    @Test void invitationCopiesOnlyTheAuthenticatedInviterAndKeepsTheOriginalRecipient() throws Exception {
+    @Test void invitationSendsOnlyToRecipientAndIgnoresClientCopyFields() throws Exception {
         var admin=administrator();String email="copy-invited-"+UUID.randomUUID()+"@example.test";
         var response=mvc.perform(post("/api/admin/invitations")
             .with(jwt().jwt(j->j.subject(admin.getId())).authorities(new SimpleGrantedAuthority("ROLE_ADMIN")))
@@ -48,9 +48,9 @@ class InvitationMailCopyIntegrationTest {
         var captured=ArgumentCaptor.forClass(SimpleMailMessage.class);verify(sender).send(captured.capture());
         var message=captured.getValue();
         assertArrayEquals(new String[]{email},message.getTo());
-        assertArrayEquals(new String[]{admin.getEmail()},message.getCc());assertNull(message.getBcc());
+        assertNull(message.getCc());assertNull(message.getBcc());
         assertEquals("sender@example.test",message.getFrom());assertEquals("计划平台：邀请注册",message.getSubject());
-        assertTrue(message.getText().contains("请勿代替受邀人注册"));
+        assertTrue(message.getText().contains("请勿转发此链接"));assertFalse(message.getText().contains("管理员抄送"));
         assertFalse(response.getResponse().getContentAsString().contains("invite="));
         String link=Arrays.stream(message.getText().split("\n")).filter(s->s.contains("/register?")).findFirst().orElseThrow();
         assertTrue(link.contains("email="+java.net.URLEncoder.encode(email,StandardCharsets.UTF_8)));
@@ -81,9 +81,10 @@ class InvitationMailCopyIntegrationTest {
     }
 
     @Test void sameRecipientCopyIsNotDuplicatedAndMembersCannotSendInvitations() throws Exception {
-        assertTrue(mail.sendInvitation("same@example.test","synthetic-invitation-token"," SAME@example.test "));
+        assertTrue(mail.sendInvitation("same@example.test","synthetic-invitation-token"));
         var captured=ArgumentCaptor.forClass(SimpleMailMessage.class);verify(sender).send(captured.capture());assertNull(captured.getValue().getCc());
-        mvc.perform(post("/api/admin/invitations").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER")))
+        var member=users.saveAndFlush(new UserAccount("no-invite-"+UUID.randomUUID()+"@example.test","unused","合成普通成员"));
+        mvc.perform(post("/api/admin/invitations").with(jwt().jwt(j->j.subject(member.getId())).authorities(new SimpleGrantedAuthority("ROLE_USER")))
             .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"nobody@example.test\",\"expiresInHours\":24}"))
             .andExpect(status().isForbidden());
         verify(sender,times(1)).send(any(SimpleMailMessage.class));

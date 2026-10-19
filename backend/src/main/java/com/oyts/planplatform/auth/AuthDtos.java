@@ -31,5 +31,6 @@ public final class AuthDtos {
     public record InvitationRequest(@Email @NotBlank String email, Integer expiresInHours) {}
     public record InvitationResponse(String id, String email, Instant expiresAt, Instant acceptedAt, Instant revokedAt, String createdBy, String registrationUrl) {}
     public record EmailVerificationRequest() {}
+    public record EmailVerificationStatus(boolean enabled,boolean configured,boolean verified,int retryAfterSeconds) {}
     public record EmailVerificationConfirmRequest(@NotBlank @Size(max = 300) String token) {}
 }

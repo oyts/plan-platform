@@ -83,7 +83,10 @@ public class AuthController {
 
     @PostMapping("/email-verification/request")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void requestEmailVerification(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt) { authService.requestEmailVerification(jwt.getSubject()); }
+    void requestEmailVerification(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,HttpServletRequest request) { authService.requestEmailVerification(jwt.getSubject(),request.getRemoteAddr()); }
+
+    @GetMapping("/email-verification/status")
+    AuthDtos.EmailVerificationStatus emailVerificationStatus(@org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,HttpServletRequest request) { return authService.emailVerificationStatus(jwt.getSubject(),request.getRemoteAddr()); }
 
     @PostMapping("/email-verification/confirm")
     @ResponseStatus(HttpStatus.NO_CONTENT)

@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(MailDeliveryException.class)
+    ResponseEntity<?> mailUnavailable(MailDeliveryException exception) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
+    }
     @ExceptionHandler(NotFoundException.class)
     ResponseEntity<?> notFound(NotFoundException exception) {
         return error(HttpStatus.NOT_FOUND, exception.getMessage());

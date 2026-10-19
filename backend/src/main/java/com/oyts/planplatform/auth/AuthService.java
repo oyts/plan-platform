@@ -186,9 +186,30 @@ public class AuthService {
 
     @Transactional
     public void requestEmailVerification(String userId) {
+        requestEmailVerification(userId,"internal");
+    }
+
+    @Transactional(readOnly=true)
+    public AuthDtos.EmailVerificationStatus emailVerificationStatus(String userId,String address) {
+        var user=users.findById(userId).orElseThrow(()->new UnauthorizedException("用户不存在。"));
+        return new AuthDtos.EmailVerificationStatus(securityProperties.emailVerificationEnabled(),passwordResetMail.configured(),user.isEmailVerified(),user.isEmailVerified()?0:verificationWait(userId,address));
+    }
+
+    private int verificationWait(String userId,String address) {
+        int persisted=emailVerificationTokens.findByUserIdAndUsedAtIsNullAndExpiresAtAfter(userId,Instant.now()).stream()
+            .mapToInt(t->(int)Math.max(0,java.time.Duration.between(Instant.now(),t.getCreatedAt().plusSeconds(60)).toSeconds()+1)).max().orElse(0);
+        return Math.max(persisted,mailLimiter.retryAfterSeconds("verification",userId,address));
+    }
+
+    @Transactional
+    public void requestEmailVerification(String userId,String address) {
         if (!securityProperties.emailVerificationEnabled()) throw new ForbiddenException("服务器尚未启用邮箱验证。");
         UserAccount user = users.findById(userId).orElseThrow(() -> new IllegalArgumentException("用户不存在。"));
-        if (!user.isEmailVerified()) sendEmailVerification(user);
+        em.lock(user,jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);em.refresh(user);
+        if(!user.isEnabled())throw new UnauthorizedException("此账号已停用。");
+        if(user.isEmailVerified())return;
+        if(verificationWait(userId,address)>0||!mailLimiter.acquire("verification",userId,address))throw new com.oyts.planplatform.common.TooManyRequestsException("验证邮件发送过于频繁，请等待倒计时结束后重试。");
+        if(!sendEmailVerification(user))throw new com.oyts.planplatform.common.MailDeliveryException();
     }
 
     @Transactional
@@ -196,7 +217,10 @@ public class AuthService {
         EmailVerificationToken token = emailVerificationTokens.findByTokenHash(hash(request.token()))
             .filter(item -> item.getUsedAt() == null && item.getExpiresAt().isAfter(Instant.now()))
             .orElseThrow(() -> new UnauthorizedException("验证链接无效、已使用或已经过期。"));
-        token.getUser().verifyEmail(); token.consume();
+        var user=token.getUser();em.lock(user,jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);em.refresh(user);
+        em.lock(token,jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);em.refresh(token);
+        if(!user.isEnabled()||token.getUsedAt()!=null||!token.getExpiresAt().isAfter(Instant.now()))throw new UnauthorizedException("验证链接无效、已使用或已经过期。");
+        user.verifyEmail(); token.consume();
     }
 
     private IssuedTokens issueTokens(UserAccount user) {
@@ -231,11 +255,12 @@ public class AuthService {
         }
     }
 
-    private void sendEmailVerification(UserAccount user) {
+    private boolean sendEmailVerification(UserAccount user) {
         String rawToken = UUID.randomUUID() + "." + UUID.randomUUID();
-        if (!passwordResetMail.sendEmailVerification(user, rawToken)) return;
+        if (!passwordResetMail.sendEmailVerification(user, rawToken)) return false;
         emailVerificationTokens.findByUserIdAndUsedAtIsNullAndExpiresAtAfter(user.getId(), Instant.now()).forEach(EmailVerificationToken::revoke);
         emailVerificationTokens.save(new EmailVerificationToken(user, hash(rawToken), Instant.now().plus(securityProperties.emailVerificationMinutes(), ChronoUnit.MINUTES)));
+        return true;
     }
 
     record IssuedTokens(AuthDtos.TokenResponse response, String refreshToken) {}

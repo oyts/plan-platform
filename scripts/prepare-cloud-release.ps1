@@ -1,4 +1,4 @@
-param([switch]$SkipTests, [ValidateSet('affected','full')][string]$TestScope = 'affected')
+param([switch]$SkipTests, [ValidateSet('affected','full')][string]$TestScope = 'affected', [ValidatePattern('^[a-fA-F0-9]{64}$')][string]$VerifiedApiSha256)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
@@ -16,8 +16,15 @@ if (-not $maven) { throw 'Maven 3.9+ required.' }
 $arguments = @('-B','-f','backend/pom.xml','-Dplan.build.directory=target-acceptance','clean','package')
 if ($SkipTests -or ($TestScope -eq 'affected' -and -not @($affectedTests.backend).Count)) { $arguments += '-DskipTests' }
 elseif ($TestScope -eq 'affected') { $arguments += ('-Dtest=' + ($affectedTests.backend -join ',')) }
-& $maven @arguments
-if ($LASTEXITCODE -ne 0) { throw 'Isolated API build failed.' }
+if ($VerifiedApiSha256) {
+    if (-not $SkipTests) { throw 'Reusing an already accepted immutable API requires explicit -SkipTests.' }
+    $apiPath=Join-Path $projectRoot 'backend/target-acceptance/plan-platform-api.jar'
+    if (-not (Test-Path -LiteralPath $apiPath) -or (Get-FileHash -LiteralPath $apiPath -Algorithm SHA256).Hash -ne $VerifiedApiSha256) { throw 'Accepted API hash differs; no archive or rebuild performed.' }
+    Write-Host 'Reusing the exact accepted API bytes; no Maven rebuild or new test claim.'
+} else {
+    & $maven @arguments
+    if ($LASTEXITCODE -ne 0) { throw 'Isolated API build failed.' }
+}
 if (-not $SkipTests) { Invoke-ReleaseFrontendTests $TestScope }
 & npm.cmd --prefix web run build
 if ($LASTEXITCODE -ne 0) { throw 'Web build failed.' }
@@ -57,7 +64,7 @@ foreach ($name in @('initialize-production.sh','mysql-backup.sh','mysql-restore-
     Copy-Item -LiteralPath "scripts/$name" -Destination "$output/scripts/$name" -Force
 }
 Copy-Item -LiteralPath scripts/operations-cloud-acceptance.py -Destination "$output/scripts/operations-cloud-acceptance.py" -Force
-foreach ($name in @('operations-status.py','check-governance-rollback.py')) {
+foreach ($name in @('operations-status.py','check-governance-rollback.py','prepare-account-operations-overlay.py')) {
     Copy-Item -LiteralPath "scripts/$name" -Destination "$output/scripts/$name" -Force
 }
 $archive = Join-Path $projectRoot "production-artifacts/plan-platform-$version.tar.gz"

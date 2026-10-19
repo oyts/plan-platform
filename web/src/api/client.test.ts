@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TokenResponse } from '@/types';
+import {AxiosError} from 'axios';
 import type { OfflineOperation } from '@/offlineQueue';
 const platform = vi.hoisted(() => ({ desktop: true, server: 'https://one.example.cn' }));
 const updatePolicy = vi.hoisted(() => ({ required: false }));
@@ -12,6 +13,13 @@ const session = { accessToken: 'test-only', user: { id: 'user-one' } } as TokenR
 beforeEach(() => { clearTokens(); platform.desktop = true; platform.server = 'https://one.example.cn'; updatePolicy.required = false; });
 
 describe('offline identity partitioning', () => {
+  it('an expired verification link does not refresh, log out or queue the active account', async () => {
+    saveTokens(session);const owner=currentQueueOwner();
+    const adapter=vi.fn(async config=>{throw new AxiosError('Expired verification','ERR_BAD_REQUEST',config,undefined,{status:401,statusText:'Unauthorized',data:{message:'验证链接已过期'},headers:{},config});});
+    await expect(api.post('/auth/email-verification/confirm',{token:'synthetic-expired'},{adapter})).rejects.toThrow('Expired verification');
+    expect(adapter).toHaveBeenCalledTimes(1);expect(currentQueueOwner()).toBe(owner);
+    expect((await import('@/offlineQueue')).enqueueOperation).not.toHaveBeenCalled();
+  });
   it('adds an opaque request correlation id without queueing feedback submissions', async () => {
     saveTokens(session);const original=api.defaults.adapter;
     api.defaults.adapter=async config=>{expect(config.headers['X-Request-ID']).toMatch(/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i);return {data:{ok:true},status:201,statusText:'Created',headers:{},config};};

@@ -6,6 +6,10 @@ services:
       OPERATIONS_ENABLED: "true"
       OPERATIONS_STATUS_FILE: /run/plan-operations/status.json
       MEMBER_GOVERNANCE_ENABLED: "false"
+      # Each activation is deliberate. Mail-to stays only in the restricted server overlay.
+      OPERATIONS_MAIL_ALERTS_ENABLED: "false"
+      OPERATIONS_MAIL_TO: ${OPERATIONS_MAIL_TO:-}
+      EMAIL_VERIFICATION_ENABLED: "false"
     volumes:
       - type: bind
         source: ${PLAN_OPERATIONS_HOST_DIRECTORY:?Verified private operations directory required}

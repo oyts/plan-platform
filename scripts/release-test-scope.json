@@ -1,5 +1,17 @@
 {
-  "version": "0.1.15",
+  "version": "0.1.16",
+  "mailAndOperations": {
+    "status":"signed-candidates-and-real-snapshot-accepted-production-not-switched",
+    "reason":"Cancel invitation CC; authenticated verification status/cooldown/failure handling and account UI; durable merged operations incident mail with at-most-once attempts. Reuse existing member governance; no public registration, paid AI or actual mail.",
+    "backend":["EmailVerificationExperienceTest","InvitationMailCopyIntegrationTest","OperationsMailDeliveryTest","GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","AccountRecoveryIntegrationTest"],
+    "browser":["e2e/email-verification.spec.ts","e2e/operations.spec.ts"],
+    "scripts":["scripts/test-prepare-account-operations.py"],
+    "results":{"backendDistinctPassed":29,"frontendAffectedPassed":14,"browserPassed":20,"browserFailedFinal":0,"inactiveOverlayGuardsPassed":3,"mysqlCasesPassed":5,"mysqlRestoredTables":38,"realEmailsSent":0,"paidAiCalls":0},
+    "evidence":["acceptance-results/mail-operations/20261019-first-backend/","backend/target-acceptance/surefire-reports/","acceptance-results/mail-operations/browser-first/","acceptance-results/mail-operations/browser-final/","acceptance-results/mail-operations/browser-verified/report.json","acceptance-results/mail-operations/mysql/report.json"],
+    "limits":"Backend first run had two test-setup/response-expectation failures; affected ten passed after correction. Browser found two real verification routing/result-state bugs and both were fixed; final 20 passed. No native UI or real SMTP/production activation proof.",
+    "productionSnapshot":{"passed":true,"originalBusinessTablesChecked":36,"migration":"V23 -> V24","actualPreviousImage":"0.1.15","privateOssRoundtripVerified":true,"productionSwitched":false,"evidence":"remote release-drills/roadmap-20261019035018-8d799c7d/report.json"},
+    "pending":["final host-compatible archive upload and guarded activation","formal native affected acceptance","actual approved mailbox delivery before enabling alerts","optional Windows and protected Android publication"]
+  },
   "roadmapProduction": {
     "status":"web-api-windows-and-protected-android-released",
     "reason":"Fresh real V19 backup restored separately and migrated to V23, actual previous image rehearsal, original business projections/checksums, new pre-cutover backup and private OSS roundtrip. Only new/directly affected HTTPS behavior with existing invited synthetic USER accounts; no paid AI, real email, admin credential or real plan writes.",
@@ -176,22 +188,21 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Six roadmap stages released as 0.1.15 after fresh snapshot rehearsal, eight HTTPS checks, Windows formal retention/public download checks, Android formal retention/protected source/native update checks. Independent new-business and formal readonly upgrade evidence remain separate. No paid calls, real mail or unrelated full regression; public APK and registration remain disabled.",
-  "frontendUnit": [
-    "src/helpModel.test.ts",
-    "src/workspaceModel.test.ts",
-    "src/clientUpdates.test.ts"
-  ],
+  "reason": "0.1.16 candidate: account email verification experience and no-CC invitations; durable operations incident/recovery mail and inactive rollout preparation. Only new and directly affected authentication/governance/mail behavior; no unrelated full regression or paid calls. Historical 0.1.15 evidence below is not evidence for this candidate.",
+  "frontendUnit": ["src/api/client.test.ts"],
   "browser": [
-    "e2e/help-and-navigation.spec.ts"
+    "e2e/email-verification.spec.ts",
+    "e2e/operations.spec.ts"
   ],
   "backend": [
-    "OrchestrationIntegrationTest",
-    "PersonalDataIntegrationTest"
+    "EmailVerificationExperienceTest",
+    "InvitationMailCopyIntegrationTest",
+    "OperationsMailDeliveryTest",
+    "GovernanceOperationsIntegrationTest",
+    "GovernanceDisabledIntegrationTest",
+    "AccountRecoveryIntegrationTest"
   ],
-  "android": [
-    "cn.zijun701.plan.mobile.TransportRulesTest"
-  ],
+  "android": [],
   "dailyExperience": {
     "status": "released-0.1.14",
     "results": {"frontendUnitPassed": 32, "backendPassed": 12, "browserDistinctPassed": 20},

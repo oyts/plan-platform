@@ -29,7 +29,7 @@ class AdminService {
         if (hours < 1 || hours > 720) throw new IllegalArgumentException("邀请有效期必须在 1 到 720 小时之间。");
         String rawToken = UUID.randomUUID() + "." + UUID.randomUUID();
         Invitation invitation = invitations.save(new Invitation(email, hash(rawToken), Instant.now().plus(hours, ChronoUnit.HOURS), creator));
-        boolean mailed = mail.sendInvitation(email, rawToken, creator.getEmail());
+        boolean mailed = mail.sendInvitation(email, rawToken);
         return response(invitation, mailed ? null : mail.invitationLink(email, rawToken));
     }
     @Transactional void revoke(String id) { invitations.findById(id).orElseThrow(() -> new NotFoundException("邀请不存在。")).revoke(); }

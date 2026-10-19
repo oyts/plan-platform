@@ -7,7 +7,8 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController @RequestMapping("/api/admin/operations") @PreAuthorize("hasRole('ADMIN')")
 class OperationsController {
-    private final OperationsService service;OperationsController(OperationsService service){this.service=service;}
+    private final OperationsService service;private final OperationsMailDelivery mail;OperationsController(OperationsService service,OperationsMailDelivery mail){this.service=service;this.mail=mail;}
+    @GetMapping("/mail-status") Object mailStatus(){return mail.status();}
     @GetMapping("/status") Object status(){return service.status();}
     @GetMapping("/alerts") Object alerts(){return service.alerts();}
     @GetMapping("/policy-audit") Object policyAudit(@RequestParam(defaultValue="0")int page){return service.policyAudit(page);}
