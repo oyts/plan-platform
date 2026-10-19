@@ -8,7 +8,8 @@
     "evidence":["remote release-drills/roadmap-20261018130806-fcd62765/report.json","remote releases/0.1.15-50bc92a/activation-completed","remote releases/0.1.15-50bc92a/backup-download-check/result.txt","acceptance-results/public-web/20261018-131334-1a605a/report.json"],
     "windowsFormal":{"status":"PASS","originalFilesUnchangedBeforeLaunch":452,"readOnlyChecksPassed":8,"publicDownloadChecksPassed":5,"nonemptyQueueUpgradeProven":false,"applicationInternalCrossVersionInstallProvenThisRelease":false,"evidence":["acceptance-results/native-roadmap-0115/windows-formal.json","acceptance-results/windows-public-cloud/2026-10-18T13-26-02-922Z-4dadbe3a/report.json"]},
     "androidFormal":{"status":"PASS","versionCode":20,"readOnlyChecksPassed":7,"protectedSourceChecksPassed":4,"nativeUpdateCheckPassed":1,"automaticDownloadChecked":false,"queueBefore":[0,0],"queueAfter":[0,0],"nonemptyQueueUpgradeProven":false,"applicationInternalCrossVersionInstallProvenThisRelease":false,"evidence":["acceptance-results/native-roadmap-0115/android-formal.json","acceptance-results/native-roadmap-0115/android-update-check.json","acceptance-results/invited-android/2026-10-19T00-39-28-058Z-baf8e57f/report.json"],"harnessNote":"Startup readiness and duplicate parent/child accessibility labels corrected after two retained failed attempts. No business source edit or weakened product check."},
-    "pending":["v0.1.15 GitHub release after final publication record"]
+    "github":{"status":"PUBLISHED","tag":"v0.1.15","tagCommit":"a099efdd157af87953c8cc964a0612398a47f813","windowsOnlyAssets":true},
+    "pending":[]
   },
   "roadmapWindows": {
     "status":"independent-targeted-ui-accepted-formal-upgrade-and-release-complete",

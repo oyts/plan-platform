@@ -56,4 +56,6 @@ Windows与Android正式覆盖保留及更新源发布均已完成，没有重跑
 
 GitHub归档只包含Windows安装包、更新签名和校验和；不上传私测APK、私有验收资料、数据库或签名密钥。已接入受限通道的Android用户登录后更新；旧匿名迁移窗口不重开。官网Android仍为null，公开Android静态清单404，自动下载默认关闭。运维与成员治理生产开关仍关闭，真实清理、告警和治理策略仍需单独确认。
 
+2026年10月19日已发布 [GitHub v0.1.15](https://github.com/oyts/plan-platform/releases/tag/v0.1.15)，不可变标签对应提交 `a099efdd157af87953c8cc964a0612398a47f813`。附件仅 `Plan.Cabin_0.1.15_x64-setup.exe`、同名 `.sig` 和 `SHA256SUMS.txt`，上传大小与服务端摘要核对通过；GitHub文件名中的点是空格规范化，字节和原更新签名不变。本阶段自动续做任务已暂停，不继续后台测试或重复发布。
+
 生产应用回退必须先运行新版 `scripts/check-governance-rollback.py --target-supports-generation no`。通过后可用新版 `production-compose.sh` 对 `previous-release` 目录执行 `up -d --no-deps backend web`，验证健康后恢复 current 指针；不覆盖或降级数据库。若任一账号已提高会话代次，旧镜像回退会被拒绝，不能清零代次绕过。本次 `activate-roadmap-release.sh` 对失败自动回退也执行同一守卫。

@@ -1,5 +1,5 @@
 {
-  "status": "all-platforms-released-github-archive-pending",
+  "status": "complete",
   "dateBeijing": "2026-10-19",
   "production": {"webApi":"0.1.15","windowsSource":"0.1.15","androidProtectedSource":"0.1.15/20"},
   "android": {
@@ -23,11 +23,9 @@
     "sourcePublished": true,
     "rollback": "sh /home/oyts/plan-platform/android-private/staging/android-20-2e9ca4d7/rollback.sh"
   },
-  "next": [
-    "All requested formal Android checks and protected publication passed. Do not reinstall, repeat old tests or submit real queues.",
-    "Commit verified harness and release records, push source, archive immutable v0.1.15 and publish Windows-only GitHub attachments using the accepted Windows stage.",
-    "Keep public APK, QR and registration disabled. No further user-device action is required for this release."
-  ],
+  "github": {"url":"https://github.com/oyts/plan-platform/releases/tag/v0.1.15","tagCommit":"a099efdd157af87953c8cc964a0612398a47f813","assets":["Plan.Cabin_0.1.15_x64-setup.exe","Plan.Cabin_0.1.15_x64-setup.exe.sig","SHA256SUMS.txt"],"publicApk":false},
+  "automationStatus": "PAUSED",
+  "next": [],
   "quota": {"usedPercent":17,"resetsAt":1792387322,"note":"Last checked current 300-minute window; not an instruction to rerun completed work."},
   "limits": "Formal upgrade retained the original authenticated session and empty 0/0 queue; does not prove nonempty-queue upgrade or a new application-internal cross-version installation. No real queue submitted, no paid AI, no real mail."
 }
