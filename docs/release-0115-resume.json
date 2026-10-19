@@ -1,7 +1,7 @@
 {
-  "status": "android-installed-post-upgrade-acceptance-pending",
-  "dateBeijing": "2026-10-18",
-  "production": {"webApi":"0.1.15","windowsSource":"0.1.15","androidProtectedSource":"0.1.14/19"},
+  "status": "all-platforms-released-github-archive-pending",
+  "dateBeijing": "2026-10-19",
+  "production": {"webApi":"0.1.15","windowsSource":"0.1.15","androidProtectedSource":"0.1.15/20"},
   "android": {
     "userApprovedSameSignatureOverwrite": true,
     "installCommandResult": "Success",
@@ -11,18 +11,23 @@
     "candidateSha256": "19fd4815f6477716b4eea170e30b6f381b82589449a2d04d9f0b45e6a448e9ee",
     "baseline": "acceptance-results/native-roadmap-0115/android-before.json",
     "beforeQueue": [0,0],
-    "afterQueue": null,
-    "postUpgradeAccepted": false,
+    "afterQueue": [0,0],
+    "postUpgradeAccepted": true,
+    "readOnlyChecksPassed": 7,
+    "protectedSourceChecksPassed": 4,
+    "nativeUpdateCheckPassed": 1,
+    "automaticDownloadChecked": false,
+    "nonemptyQueueUpgradeProven": false,
+    "evidence": ["acceptance-results/native-roadmap-0115/android-formal.json","acceptance-results/native-roadmap-0115/android-update-check.json","acceptance-results/invited-android/2026-10-19T00-39-28-058Z-baf8e57f/report.json"],
     "publicationStage": "production-artifacts/invited-android/0.1.15/candidate-LkoG5B",
-    "sourcePublished": false
+    "sourcePublished": true,
+    "rollback": "sh /home/oyts/plan-platform/android-private/staging/android-20-2e9ca4d7/rollback.sh"
   },
   "next": [
-    "Do not reinstall or repeat passed Windows/Web tests. Read current docs, git state and real usage limits first.",
-    "With exactly one authorized unlocked device, open only the formal Plan Cabin app. Do not bypass a lock screen or installation/security prompt.",
-    "Run python scripts/android-roadmap-formal.py --serial <observed-serial>. Tool is syntax-checked only; no post-upgrade PASS yet. Fix only actual test-harness observations, never relax checks to claim success.",
-    "After actual signed APK/session/queue/new-page/reopen acceptance, publish the existing protected stage using scripts/publish-invited-android.ps1; verify protected-source checks and run the Android script with --update-check. Keep public APK and registration disabled.",
-    "Update truthful release records and GitHub source, then archive v0.1.15 with Windows-only attachments after the final publication record. Never upload private APK, test credentials or backups."
+    "All requested formal Android checks and protected publication passed. Do not reinstall, repeat old tests or submit real queues.",
+    "Commit verified harness and release records, push source, archive immutable v0.1.15 and publish Windows-only GitHub attachments using the accepted Windows stage.",
+    "Keep public APK, QR and registration disabled. No further user-device action is required for this release."
   ],
-  "quota": {"usedPercent":95,"resetsAt":1792345249,"nextWakeBeijing":"2026-10-19 01:47"},
-  "limits": "Installation success and package metadata are not post-upgrade UI, data retention or protected-source acceptance. No real queue submitted, no paid AI, no real mail."
+  "quota": {"usedPercent":17,"resetsAt":1792387322,"note":"Last checked current 300-minute window; not an instruction to rerun completed work."},
+  "limits": "Formal upgrade retained the original authenticated session and empty 0/0 queue; does not prove nonempty-queue upgrade or a new application-internal cross-version installation. No real queue submitted, no paid AI, no real mail."
 }

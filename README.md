@@ -2,7 +2,7 @@
 
 一个支持周期计划、目标路线、今日待办和任务计时的开源多用户平台。项目由原本的纯前端“计划控制台”重构而来，面向 Java 学习、个人部署和跨设备任务管理。
 
-当前正式 Web/API、Windows 官网及可选更新源为 `0.1.15`；Android 登录受限源仍为 `0.1.14`（构建 `19`），候选0.1.15／20待手机连接后的正式覆盖验收。本版已完成真实生产备份的 V19→V23 独立迁移／旧镜像回退、私有 OSS 核对、8项真实 HTTPS 新业务及 Windows 原数据保留、8项正式窗口与5项公网发布检查。线上默认每人每天20次，管理员热修改、公开注册关闭及官网 APK／二维码关闭保持不变。见 [0.1.15 发布进度](docs/release-0115.md)；上一版双端结果见 [0.1.14 发布记录](docs/release-0114.md)。
+当前正式 Web/API、Windows 官网及可选更新源、Android 登录受限源均为 `0.1.15`（Android 构建 `20`）。本版已完成真实生产备份的 V19→V23 独立迁移／旧镜像回退、私有 OSS 核对、8项真实 HTTPS 新业务、Windows 8项正式窗口和5项公网发布、Android 7项正式只读升级保留和4项受限源检查。双端原登录及重开后的空队列保留，不宣称非空队列升级或本版应用内跨版本安装已复验。线上默认每人每天20次，管理员热修改、公开注册关闭及官网 APK／二维码关闭保持不变。见 [0.1.15 发布记录](docs/release-0115.md)；上一版见 [0.1.14 发布记录](docs/release-0114.md)。
 
 旧正式 Android 的临时匿名迁移窗口已于北京时间 **2026-10-15 02:17:33** 到期，旧匿名地址现已返回 404，不重新开放。已接入受限通道的客户端继续登录后更新；未迁移的旧版本需私下取得同包名、同签名的正式 APK。见 [迁移说明](docs/legacy-android-migration.md)。
 
@@ -14,7 +14,7 @@
 
 日常小版本仅验证新增和受影响功能，大版本才执行全面回归；签名、版本、升级数据保留、生产备份与云端健康仍为发布门槛。见 [发布流程](docs/release-process.md) 与 [导航体验优化](docs/navigation-experience.md)。
 
-六阶段的目标、边界、验收及开发模型建议见 [开发规划](docs/development-roadmap.md)。源码已统一为 **0.1.15／Android 20**，实现[反馈与脱敏诊断](docs/feedback-and-diagnostics.md)、[个人数据中心](docs/personal-data-center.md)、[编排与长期历史](docs/orchestration-and-history.md)、[离线范围及冲突体验](docs/offline-experience.md)及[运行证据与成员治理](docs/operations-and-governance.md)。第六阶段补入 `/help` 帮助与版本、无需登录的 `/help/demo` 本地合成演示、分组菜单、键盘跳转、[项目讲解](docs/project-showcase.md)和[实际轻量基线](docs/performance-baseline.md)。共享源码、独立 MySQL、独立 PC 九组和 Android 十一组新增业务已验收，网页/API和Windows已正式发布；Android仍待正式安装保留验收及受限源发布，详见[续做记录](docs/roadmap-progress.md)和[发布进度](docs/release-0115.md)。运维与成员治理生产开关仍关闭。
+六阶段的目标、边界、验收及开发模型建议见 [开发规划](docs/development-roadmap.md)。源码已统一为 **0.1.15／Android 20**，实现[反馈与脱敏诊断](docs/feedback-and-diagnostics.md)、[个人数据中心](docs/personal-data-center.md)、[编排与长期历史](docs/orchestration-and-history.md)、[离线范围及冲突体验](docs/offline-experience.md)及[运行证据与成员治理](docs/operations-and-governance.md)。第六阶段补入 `/help` 帮助与版本、无需登录的 `/help/demo` 本地合成演示、分组菜单、键盘跳转、[项目讲解](docs/project-showcase.md)和[实际轻量基线](docs/performance-baseline.md)。共享源码、独立 MySQL、独立 PC 九组和 Android 十一组新增业务已验收，网页/API与双端更新源均已发布；正式覆盖保留的具体范围见[续做记录](docs/roadmap-progress.md)和[发布记录](docs/release-0115.md)。运维与成员治理生产开关仍关闭。
 
 0.1.4 已完成 HTTPS 新版部署、MySQL 备份恢复、加密签名备份、Windows 官网下载及更新源发布，见 [Windows 发布记录](docs/windows-public-release.md)。Android 继续只提供受邀测试 APK，官网下载等待 APP 备案，公开注册保持关闭，见 [受邀客户端测试](docs/invited-client-testing.md)。成员页手机卡片与底部编辑面板已进入共享源码，桌面保留表格，详见 [成员邀请手机验收](docs/mobile-members.md)。
 

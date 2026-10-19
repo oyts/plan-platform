@@ -1,6 +1,6 @@
 # 计划舱六阶段版本发布记录
 
-2026 年 10 月 18 日，正式 Web/API、Windows 官网下载和可选更新源已发布为 **0.1.15**。Android 登录受限源仍为 **0.1.14／19**，本版候选为 **0.1.15／20**，等待用户稍后连接手机并完成正式覆盖验收。公开注册、官网 APK 和二维码仍关闭；不是双端均已发布的声明。
+2026 年 10 月 18 日正式 Web/API、Windows 官网下载和可选更新源发布为 **0.1.15**；10 月 19 日 Android **0.1.15／20** 完成正式升级后的只读验收并发布登录受限更新源。公开注册、官网 APK 和二维码仍关闭。Windows 可从官网下载，受邀 Android 用户登录后可检查可选更新。
 
 ## 新增内容与已完成验收
 
@@ -35,20 +35,25 @@
 
 实际 HTTPS 五项检查全部通过：健康／注册关闭／HTTPS跳转，下载与更新清单no-store、两条真实EXE下载哈希与长期签名、不可变文件缓存，Android公开关闭，以及桌面／手机手机官网实际下载。证据 `acceptance-results/windows-public-cloud/2026-10-18T13-26-02-922Z-4dadbe3a/report.json`。Windows准备目录为 `production-artifacts/windows-public-release/0.1.15/20261018T132526316Z-bzeUzq/`。这是公开下载与覆盖安装验收，不冒充新一轮跨版本应用内安装。
 
-## 签名候选与待完成手机安装
+## 正式签名产物与 Android 验收
 
 正式候选位于 `production-artifacts/client-release/0.1.15/20261018T075011Z-49f03c07/`，发布前再次以原公钥／证书实际核验 Windows 更新签名、APK 签名、包名、构建号、禁止调试和明文网络，以及内嵌登录受限更新源。新核验证据在候选目录的 `prepublish-check-20261018/`。
 
 - Windows 安装包 `windows/Plan Cabin_0.1.15_x64-setup.exe`，SHA-256 `52067147ea37c147bb6362b3e4aa26c6223b39fdae95326b9e1bbc4a15509476`。Windows 更新签名不等于 Authenticode 发布者证书。
 - Android 安装包 `android/PlanCabin-0.1.15-release.apk`，SHA-256 `19fd4815f6477716b4eea170e30b6f381b82589449a2d04d9f0b45e6a448e9ee`。沿用 `cn.zijun701.plan.app` 原包名及证书，不卸载、不清数据。
 
-Android 仅准备了本地受限发布目录 `production-artifacts/invited-android/0.1.15/candidate-LkoG5B/`，没有上传或激活；最低构建号仍为1，属于可选更新。用户本次表示稍后连接手机，因此没有枚举或操作手机、覆盖正式 APK 或切换 Android 更新源。
+用户保存并明确允许后，Android 同包名同证书覆盖安装返回 Success；10月19日再次连接手机后完成7项正式只读检查：实际已安装 APK 字节与候选 SHA-256 一致、原登录和0/0队列保留，数据中心／反馈与诊断／离线范围／帮助与版本四个入口正常，页面资源／安装／HTTPS服务版本一致，关闭重开后原登录及0/0队列不变。没有修改真实业务、退出账号或提交队列，不把空队列结果称为非空队列跨升级证明。证据为 `acceptance-results/native-roadmap-0115/android-formal.json`。
 
-## 下一步与回退边界
+初次工具运行遇到应用启动尚未完成，第二次遇到菜单父控件和文字子控件的同名匹配；只修复等待条件和可点击控件选择，未改产品源码或放宽验证。失败记录与逐次结果保留在同目录的 `attempts/`，最终7项通过。
 
-1. Windows正式覆盖与公开源已完成，不重复安装或重跑无关业务；正式客户端保留在版本页供用户查看。
-2. 用户连接并解锁手机、明确同意覆盖后，记录升级前队列，使用同包名同证书覆盖安装并由本人处理系统提示。验证实际 APK 字节、原登录、数据与队列、重开和本次新增入口，不清队列或代填密码。
-3. 手机安装保留与云端门槛通过后，发布 Android 登录受限源，实际 HTTPS 验证哈希、私有缓存及未登录拒绝。Windows不重复发布，官网 Android仍为null，公开静态 Android清单404，自动下载默认关闭。
-4. 完成后归档 `v0.1.15` 和 GitHub Windows 附件；不上传私测 APK、私有验收资料、数据库或签名密钥。
+发布前只读确认没有排队或运行中的AI任务，再发布既有目录 `production-artifacts/invited-android/0.1.15/candidate-LkoG5B/`。受限源4项检查通过：匿名及无效凭据被拒绝，官网APK／旧公开源仍不可用，两个已有受邀合成普通账号分别取得私有no-store清单及哈希正确的APK。证据 `acceptance-results/invited-android/2026-10-19T00-39-28-058Z-baf8e57f/report.json`。最低构建号仍为1，可选更新；没有新增公开下载入口。保留远端回退命令 `sh /home/oyts/plan-platform/android-private/staging/android-20-2e9ca4d7/rollback.sh`，只恢复旧私有清单和配置，不删除APK或业务数据。
+
+随后正式手机通过实际Java连接桥检查受限源，显示“当前已是最新版本”，自动下载仍未勾选，未修改偏好或重装。证据 `acceptance-results/native-roadmap-0115/android-update-check.json`。这项检查不是新一轮应用内跨版本下载和安装。
+
+## 发布边界与回退
+
+Windows与Android正式覆盖保留及更新源发布均已完成，没有重跑无关业务。非空队列跨升级、新一轮应用内跨版本安装、Windows导出保存目标和Android系统文件选择／分享目标不在本轮新增证明范围内。共享源码及独立新增业务验收与正式账号只读检查分别记录。
+
+GitHub归档只包含Windows安装包、更新签名和校验和；不上传私测APK、私有验收资料、数据库或签名密钥。已接入受限通道的Android用户登录后更新；旧匿名迁移窗口不重开。官网Android仍为null，公开Android静态清单404，自动下载默认关闭。运维与成员治理生产开关仍关闭，真实清理、告警和治理策略仍需单独确认。
 
 生产应用回退必须先运行新版 `scripts/check-governance-rollback.py --target-supports-generation no`。通过后可用新版 `production-compose.sh` 对 `previous-release` 目录执行 `up -d --no-deps backend web`，验证健康后恢复 current 指针；不覆盖或降级数据库。若任一账号已提高会话代次，旧镜像回退会被拒绝，不能清零代次绕过。本次 `activate-roadmap-release.sh` 对失败自动回退也执行同一守卫。

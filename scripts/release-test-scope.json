@@ -1,31 +1,32 @@
 {
   "version": "0.1.15",
   "roadmapProduction": {
-    "status":"web-api-and-windows-released-android-formal-pending",
+    "status":"web-api-windows-and-protected-android-released",
     "reason":"Fresh real V19 backup restored separately and migrated to V23, actual previous image rehearsal, original business projections/checksums, new pre-cutover backup and private OSS roundtrip. Only new/directly affected HTTPS behavior with existing invited synthetic USER accounts; no paid AI, real email, admin credential or real plan writes.",
     "scripts":["scripts/roadmap-release-drill.py","scripts/activate-roadmap-release.sh","scripts/public-roadmap-acceptance.py"],
     "results":{"httpsTargetedPassed":8,"httpsFailed":0,"originalBusinessTablesChecked":27,"paidAiCalls":0,"realEmailsSent":0},
     "evidence":["remote release-drills/roadmap-20261018130806-fcd62765/report.json","remote releases/0.1.15-50bc92a/activation-completed","remote releases/0.1.15-50bc92a/backup-download-check/result.txt","acceptance-results/public-web/20261018-131334-1a605a/report.json"],
     "windowsFormal":{"status":"PASS","originalFilesUnchangedBeforeLaunch":452,"readOnlyChecksPassed":8,"publicDownloadChecksPassed":5,"nonemptyQueueUpgradeProven":false,"applicationInternalCrossVersionInstallProvenThisRelease":false,"evidence":["acceptance-results/native-roadmap-0115/windows-formal.json","acceptance-results/windows-public-cloud/2026-10-18T13-26-02-922Z-4dadbe3a/report.json"]},
-    "pending":["formal Android connection/confirmation, same-signature upgrade and data/queue retention","Android protected-source activation after native acceptance","v0.1.15 GitHub release after final publication record"]
+    "androidFormal":{"status":"PASS","versionCode":20,"readOnlyChecksPassed":7,"protectedSourceChecksPassed":4,"nativeUpdateCheckPassed":1,"automaticDownloadChecked":false,"queueBefore":[0,0],"queueAfter":[0,0],"nonemptyQueueUpgradeProven":false,"applicationInternalCrossVersionInstallProvenThisRelease":false,"evidence":["acceptance-results/native-roadmap-0115/android-formal.json","acceptance-results/native-roadmap-0115/android-update-check.json","acceptance-results/invited-android/2026-10-19T00-39-28-058Z-baf8e57f/report.json"],"harnessNote":"Startup readiness and duplicate parent/child accessibility labels corrected after two retained failed attempts. No business source edit or weakened product check."},
+    "pending":["v0.1.15 GitHub release after final publication record"]
   },
   "roadmapWindows": {
-    "status":"independent-targeted-ui-accepted-formal-upgrade-pending",
+    "status":"independent-targeted-ui-accepted-formal-upgrade-and-release-complete",
     "reason":"User manually authenticated in the independent Windows 0.1.15 client. Real Rust transport and isolated final API, Sky UI only; no formal account operations, paid AI, real mail, production release or old full regression.",
     "scripts":["scripts/roadmap-pc-fixture.mjs","scripts/roadmap-pc-network.mjs","scripts/roadmap-pc-network.test.mjs"],
     "results":{"targetedUiGroupsPassed":9,"controlGuardsPassed":6,"paidAiCalls":0,"realEmailsSent":0},
     "evidence":["acceptance-results/roadmap-pc/2026-10-18T09-06-41-903Z/pc-ui-observations.json","acceptance-results/roadmap-pc/2026-10-18T12-48-17-068Z/report.json"],
     "limits":"Two synthetic fixture sessions, not one uninterrupted run. Old in-memory test data was lost during fixture recovery; prior UI evidence retained. New file-H2 fixture required user relogin. Passed actual native file picker restore/replay, feedback draft/consent, plan copy, route paging/pause, todo history, weekly offline reopen, real 409 manual three-way selection/following operation, bounded preload and read-only governance. No Windows security-setting mutation.",
-    "pending":["formal same-identity upgrade and data/nonempty-queue retention with user confirmation","Windows native export save target","Windows future-batch409/admin-reply branches not repeated; shared-source and Android evidence separate","authorized production migration and publication"]
+    "pending":["nonempty-queue upgrade not proven this release","Windows native export save target","Windows future-batch409/admin-reply branches not repeated; shared-source and Android evidence separate"]
   },
   "roadmapAndroid": {
-    "status":"independent-device-new-business-accepted-formal-upgrade-pending",
+    "status":"independent-device-and-formal-upgrade-accepted-protected-source-published",
     "reason":"User-authorized Android 15 device acceptance for the six new stages only. Real Java bridge and isolated final H2 API; no old full suite, paid AI, actual mail or production writes.",
     "scripts":["scripts/native-regression.mjs --platform android --roadmap","scripts/native-regression.mjs --platform android --roadmap --roadmap-section help","scripts/native-regression.test.mjs"],
     "results":{"distinctBusinessScenariosPassed":11,"mainRunPassed":10,"helpFollowupPassed":2,"harnessGuardsPassed":8,"paidAiCalls":0,"realEmailsSent":0},
     "evidence":["acceptance-results/native/2026-10-18T08-58-26-271Z-9134f788/report.json:first-ten-PASS-help-selector-FAIL","acceptance-results/native/2026-10-18T09-00-48-297Z-d0c9b393/report.json:help-followup-PASS"],
-    "limits":"Not one all-green run: help selector was corrected and rechecked separately; synthetic login is setup, not duplicate business coverage. Backup input uses synthetic File injection, not the system picker/share chooser. Formal package remains 0.1.14 build19.",
-    "pending":["formal same-signature upgrade with saved-user confirmation and data/queue retention","system file picker/share target","authorized production migration and native publication"]
+    "limits":"Not one all-green run: help selector was corrected and rechecked separately; synthetic login is setup, not duplicate business coverage. Backup input uses synthetic File injection, not the system picker/share chooser. Formal 0.1.15 build20 readonly acceptance and protected publication are recorded separately in roadmapProduction.",
+    "pending":["system file picker/share target","nonempty-queue upgrade and fresh application-internal cross-version install not proven this release"]
   },
   "roadmapStable": {
     "status":"shared-source-baseline-and-independent-pc-help-accepted-release-gates-pending",
@@ -174,7 +175,7 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Six roadmap stages implemented for 0.1.15; Web/API and Windows optional public source released after fresh snapshot rehearsal, eight HTTPS checks, formal Windows file/session retention and five public download checks. Independent Android evidence remains separate. No paid calls, real mail or unrelated full regression. Android source stays 0.1.14 until formal phone upgrade/data retention and publication pass.",
+  "reason": "Six roadmap stages released as 0.1.15 after fresh snapshot rehearsal, eight HTTPS checks, Windows formal retention/public download checks, Android formal retention/protected source/native update checks. Independent new-business and formal readonly upgrade evidence remain separate. No paid calls, real mail or unrelated full regression; public APK and registration remain disabled.",
   "frontendUnit": [
     "src/helpModel.test.ts",
     "src/workspaceModel.test.ts",
