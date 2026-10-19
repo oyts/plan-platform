@@ -6,7 +6,7 @@
     "activationServerCheckOnlyPassed":true,
     "activationPerformed":true,
     "httpsWorkbenchScriptStatus":"PASS 6 targeted HTTPS cases using existing invited synthetic USER accounts",
-    "status":"formal-web-api-windows-protected-android-released-github-pending",
+    "status":"formal-web-api-windows-protected-android-and-github-released",
     "androidIndependentPassed":6,
     "hexWrapBrowserPassed":2,
     "mysqlMigration":"V24 -> V25",
@@ -16,7 +16,8 @@
     "formalResults":{"httpsPassed":6,"windowsReadonlyGroupsPassed":7,"windowsAppDataFilesUnchanged":498,"windowsPublicPassed":5,"androidReadonlyGroupsPassed":4,"androidProtectedSourcePassed":4,"androidUpdateCheckPassed":true,"snapshotHarnessGuardsPassed":4,"queueBefore":[0,0],"queueAfter":[0,0],"automaticDownloadChecked":false,"paidAiCalls":0},
     "formalEvidence":["acceptance-results/public-web/20261019-222525-a3d405/report.json","acceptance-results/native-ai-workbench-0117/windows-formal.json","acceptance-results/native-ai-workbench-0117/after-20261019T223238975173Z.json","acceptance-results/native-ai-workbench-0117/update-check-20261019T223525830574Z.json","acceptance-results/windows-public-cloud/2026-10-19T22-34-52-556Z-bc8114a6/report.json","acceptance-results/invited-android/2026-10-19T22-33-59-629Z-c96513db/report.json","remote release-drills/roadmap-20261019221657-40ff370c/report.json"],
     "limits":"Independent Android actual IME/panel/reopen/cloud save, chooser cancellation and actual synthetic export JSON. Formal upgrades retain original login and empty queue; no nonempty-queue upgrade, fresh app-internal cross-version install, external share destination or system import picker. Failure evidence retained. No paid AI or manual test email; existing approved production alerts remain active.",
-    "pending":["GitHub Windows-only release"]
+    "github":{"status":"PUBLISHED","tag":"v0.1.17","tagCommit":"e57a40b515c3e83a01572af7f9bff65159cbd889","windowsOnlyAssets":true},
+    "pending":[]
   },
   "aiWorkbench": {
     "status":"shared-source-and-bounded-native-accepted-released-see-release0117Candidate",

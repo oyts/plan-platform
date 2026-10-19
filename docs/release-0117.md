@@ -55,4 +55,6 @@ Android受限源4项通过：匿名及无效凭据拒绝清单和APK、公开APK
 
 Windows静态入口回退：`sh /home/oyts/plan-platform/client-public/releases/windows-0117-c9LfHB/publish.sh rollback windows-0117-c9LfHB`。Android私有源回退：`sh /home/oyts/plan-platform/android-private/staging/android-22-d7836193/rollback.sh`。不降级已安装应用或修改数据库。
 
-下一完整阶段为系统通知与事项提醒，尚未开工。Codex自动任务保持关闭。GitHub源码同步与Windows-only版本归档在验收记录提交后执行，不公开APK、私密证据或签名资料。精确状态见`release-0117-resume.json`。
+已发布 [GitHub v0.1.17](https://github.com/oyts/plan-platform/releases/tag/v0.1.17)，不可变标签指向`e57a40b515c3e83a01572af7f9bff65159cbd889`，源码已同步。公开附件仅Windows EXE、更新签名及`SHA256SUMS.txt`，逐项核对GitHub摘要与大小；APK、私密验收资料及签名备份不上传。后续状态文档提交不移动该标签或修改已验收业务源码。
+
+下一完整阶段为系统通知与事项提醒，尚未开工。Codex自动任务保持关闭。精确状态见`release-0117-resume.json`。

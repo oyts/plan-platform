@@ -1,6 +1,6 @@
 {
   "schemaVersion":1,
-  "status":"WEB_API_WINDOWS_PROTECTED_ANDROID_RELEASED_GITHUB_PENDING",
+  "status":"RELEASED_WEB_API_WINDOWS_PROTECTED_ANDROID_AND_GITHUB",
   "sourceVersion":"0.1.17",
   "androidCode":22,
   "previousFormalVersion":"0.1.16/21",
@@ -40,7 +40,9 @@
   "androidPublication":{"passed":4,"stage":"production-artifacts/invited-android/0.1.17/candidate-DinY61","remote":"/home/oyts/plan-platform/android-private/staging/android-22-d7836193","report":"acceptance-results/invited-android/2026-10-19T22-33-59-629Z-c96513db/report.json"},
   "limits":["Empty queues only; nonempty upgrade not proven this release","No fresh application-internal cross-version installation","System import picker and external share destination untested","Two pre-existing operations events remain pending administrator reconciliation; latest backup/OSS/restore/disk checks healthy"],
   "paidAiCalls":0,
-  "realEmailsSent":0,
-  "next":"Do not repeat activation, migration or installation. Commit reviewed source and acceptance, push main, create immutable v0.1.17, publish GitHub Windows-only assets from windowsPublication.stage, then record actual tag commit. Do not publish APK publicly or start stage3 without a new request.",
+  "manualTestEmailsSent":0,
+  "existingProductionAlertsPreserved":true,
+  "github":{"status":"PUBLISHED","url":"https://github.com/oyts/plan-platform/releases/tag/v0.1.17","tag":"v0.1.17","tagCommit":"e57a40b515c3e83a01572af7f9bff65159cbd889","windowsOnlyAssets":true},
+  "next":"Release completed. Do not repeat activation, migration or installation. Stage3 system notifications awaits a new development request. Public APK/registration and automatic tasks remain disabled. Preserve stated file-picker/nonempty-queue coverage limits and existing operations events.",
   "quotaCheckpoint":{"fiveHourUsedPercent":27,"weeklyUsedPercent":4,"noAutomaticTaskCreated":true}
 }
