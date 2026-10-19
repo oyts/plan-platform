@@ -12,6 +12,9 @@ import { initializeClientUpdates, checkClientUpdate } from './clientUpdates';
 import { workspace, workspaceEntry } from './workspace';
 import { workspaceHome } from './workspaceModel';
 import { aiNativeResumePath } from './aiPlanning';
+import {validReminderPath} from './reminders';
+import {onQueueChange,queueCount} from './offlineQueue';
+import {currentQueueOwner} from './api/client';
 const app = createApp(App);
 const pinia = createPinia();
 app.use(pinia);
@@ -27,6 +30,9 @@ async function bootstrap(): Promise<void> {
   if (isDesktop() && !isAndroid()) void checkClientUpdate();
   if (isAndroid()) {
     const { App: androidApp } = await import('@capacitor/app');
+    const openReminder=async()=>{if(!auth.user)return;const {nativeInvoke}=await import('./desktop');const path=await nativeInvoke<unknown>('reminder_take_path');if(validReminderPath(path))await router.push(path);};
+    await androidApp.addListener('appStateChange',({isActive})=>{if(isActive)void openReminder();});
+    window.addEventListener('plan-platform:reminder-ready',()=>{void openReminder();});
     await androidApp.addListener('backButton', ({ canGoBack }) => {
       const dialog = document.querySelector<HTMLDialogElement>('dialog[open]');
       if (dialog) { dialog.dispatchEvent(new Event('cancel', { cancelable: true })); return; }
@@ -38,9 +44,15 @@ async function bootstrap(): Promise<void> {
     });
   }
   if (isDesktop()) {
+    const suspendForQueue=async()=>{const owner=currentQueueOwner();if(!owner)return;try{if(await queueCount(owner)>0&&owner===currentQueueOwner()){const {nativeInvoke}=await import('./desktop');await nativeInvoke('reminder_clear');}}catch{/* No new reminder is enabled when queue inspection fails. */}};
+    onQueueChange(()=>{void suspendForQueue();});
+    window.addEventListener('plan-platform:reminder-refresh',()=>{void import('./desktop').then(m=>m.nativeInvoke('reminder_refresh')).catch(()=>undefined);});
+    window.addEventListener('plan-platform:session-invalidated',()=>{void import('./desktop').then(m=>m.nativeInvoke('reminder_clear')).catch(()=>undefined);});
     await auth.bootstrap();
+    await suspendForQueue();
     if (auth.user && router.currentRoute.value.path === '/login') await router.replace(aiResume ?? await workspaceEntry());
     if (isAndroid() && auth.user) void checkClientUpdate();
+    if(isAndroid()&&auth.user)window.dispatchEvent(new Event('plan-platform:reminder-ready'));
   }
 }
 void bootstrap().catch(() => {

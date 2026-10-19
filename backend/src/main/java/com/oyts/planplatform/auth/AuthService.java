@@ -240,6 +240,7 @@ public class AuthService {
     }
 
     private void revokeAllSessions(String userId) {
+        em.createNativeQuery("update native_reminder_devices set enabled=false where owner_id=:owner").setParameter("owner",userId).executeUpdate();
         refreshTokens.findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(userId, Instant.now()).forEach(RefreshToken::revoke);
     }
 

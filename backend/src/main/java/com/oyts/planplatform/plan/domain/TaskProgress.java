@@ -24,6 +24,7 @@ public class TaskProgress extends BaseEntity {
     private long accumulatedSeconds;
     private Instant startedAt;
     private Instant completedAt;
+    @Column(name="ever_started",nullable=false) private boolean everStarted;
     @Column(name = "acceptance_json", nullable = false, columnDefinition = "text")
     private String acceptanceJson = "[]";
     @Column(nullable = false, length = 2000)
@@ -35,8 +36,9 @@ public class TaskProgress extends BaseEntity {
     protected TaskProgress() {}
     public TaskProgress(PlanTask task) { this.task = task; }
 
-    public void start(Instant now) { status = Status.RUNNING.name(); startedAt = now; }
+    public void start(Instant now) { status = Status.RUNNING.name(); startedAt = now; everStarted=true; }
     public long pause(Instant now) {
+        everStarted=true;
         long added = startedAt == null ? 0 : Math.max(0, java.time.Duration.between(startedAt, now).getSeconds());
         accumulatedSeconds += added;
         status = Status.PAUSED.name();
@@ -44,6 +46,7 @@ public class TaskProgress extends BaseEntity {
         return added;
     }
     public void complete(String note, String acceptanceJson, Instant now) {
+        everStarted=true;
         if (Status.RUNNING.name().equals(status)) pause(now);
         status = Status.COMPLETED.name();
         this.note = note == null ? "" : note.trim();
@@ -52,6 +55,7 @@ public class TaskProgress extends BaseEntity {
         this.deferTo = null;
     }
     public void update(Status status, String note, String acceptanceJson, LocalDate deferTo, String skipReason) {
+        if (status == Status.RUNNING || status == Status.PAUSED || status == Status.PARTIAL || status == Status.COMPLETED) everStarted=true;
         this.status = status.name();
         this.note = note == null ? "" : note.trim();
         this.acceptanceJson = acceptanceJson;
@@ -60,12 +64,13 @@ public class TaskProgress extends BaseEntity {
         if (status != Status.RUNNING) startedAt = null;
         if (status != Status.COMPLETED) completedAt = null;
     }
-    public void addSeconds(long seconds) { accumulatedSeconds = Math.max(0, accumulatedSeconds + seconds); }
+    public void addSeconds(long seconds) { accumulatedSeconds = Math.max(0, accumulatedSeconds + seconds); if(seconds>0)everStarted=true; }
     public void importState(Status status, long accumulatedSeconds, Instant startedAt, Instant completedAt,
                             String acceptanceJson, String note, LocalDate deferTo, String skipReason) {
         this.status = status.name();
         this.accumulatedSeconds = Math.max(0, accumulatedSeconds);
         this.startedAt = startedAt;
+        if(startedAt!=null||accumulatedSeconds>0||status==Status.RUNNING||status==Status.PAUSED||status==Status.PARTIAL||status==Status.COMPLETED)everStarted=true;
         this.completedAt = completedAt;
         this.acceptanceJson = acceptanceJson == null ? "[]" : acceptanceJson;
         this.note = note == null ? "" : note.trim();
@@ -74,6 +79,8 @@ public class TaskProgress extends BaseEntity {
     }
 
     public PlanTask getTask() { return task; }
+    public boolean isEverStarted() { return everStarted; }
+    public void preserveStartedEvidence(boolean value) { everStarted=everStarted||value; }
     public Status getStatus() { return Status.valueOf(status); }
     public long getAccumulatedSeconds() { return accumulatedSeconds; }
     public Instant getStartedAt() { return startedAt; }

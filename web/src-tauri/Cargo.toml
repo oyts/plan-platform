@@ -28,6 +28,10 @@ tokio = { version = "1", features = ["sync"] }
 sha2 = "0.10"
 url = "2"
 cookie = "0.18"
+chrono = "0.4"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = ["Data_Xml_Dom", "UI_Notifications", "Win32_System_WinRT", "Win32_UI_Shell"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

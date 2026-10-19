@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('check', 'dev', 'build', 'test', 'regression')][string]$Action = 'check',
+    [ValidateSet('check', 'dev', 'build', 'test', 'regression', 'notification-probe')][string]$Action = 'check',
     [string]$UpdateUrl = '',
     [string]$PublicKeyPath = '',
     [string]$TestCertificatePath = '',
@@ -97,15 +97,27 @@ if ($Action -eq 'dev') {
     exit $LASTEXITCODE
 }
 
-if ($Action -eq 'regression') {
+if ($Action -eq 'regression' -or $Action -eq 'notification-probe') {
     if ($UpdateUrl -or $PublicKeyPath -or $TestCertificatePath -or $TestVersion) { throw 'Regression builds cannot enable updater lab overrides.' }
     foreach ($name in @('PLAN_DESKTOP_UPDATE_URL','PLAN_DESKTOP_UPDATE_PUBKEY','PLAN_DESKTOP_TEST_UPDATE_CERT','TAURI_CONFIG')) { Remove-Item "Env:$name" -ErrorAction SilentlyContinue }
     $regressionConfig = Join-Path $projectRoot 'web/src-tauri/tauri.regression.conf.json'
-    & npx.cmd tauri build --debug --no-bundle --config $regressionConfig --features native-regression -- --locked
+    if($Action -eq 'notification-probe') {
+        & npx.cmd tauri build --debug --bundles nsis --config $regressionConfig --config (Join-Path $projectRoot 'web/src-tauri/tauri.reminder-probe.conf.json') --features native-regression -- --locked
+    } else {
+        & npx.cmd tauri build --debug --no-bundle --config $regressionConfig --features native-regression -- --locked
+    }
     if ($LASTEXITCODE -ne 0) { throw 'Isolated desktop regression build failed.' }
     $regressionOutput = Join-Path $projectRoot '.desktop-tools/native-regression'
     New-Item -ItemType Directory -Force -Path $regressionOutput | Out-Null
     Copy-Item -LiteralPath 'src-tauri/target/debug/plan-platform-desktop.exe' -Destination (Join-Path $regressionOutput 'plan-regression.exe') -Force
+    if($Action -eq 'notification-probe') {
+        $probeOutput=Join-Path $projectRoot ('.desktop-tools/reminder-windows-installer/'+[Guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $probeOutput | Out-Null
+        $probeInstaller=Join-Path $projectRoot ("web/src-tauri/target/debug/bundle/nsis/Plan Cabin Regression_${version}_x64-setup.exe")
+        if(-not $version){$version=(Get-Content (Join-Path $projectRoot 'web/package.json') -Raw|ConvertFrom-Json).version;$probeInstaller=Join-Path $projectRoot ("web/src-tauri/target/debug/bundle/nsis/Plan Cabin Regression_${version}_x64-setup.exe")}
+        Copy-Item -LiteralPath $probeInstaller -Destination (Join-Path $probeOutput 'PlanCabin-Notification-Test-setup.exe')
+        Write-Host "Independent notification probe installer: $probeOutput"
+    }
     exit 0
 }
 

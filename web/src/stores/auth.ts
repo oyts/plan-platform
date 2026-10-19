@@ -5,7 +5,7 @@ import { api, clearTokens, currentQueueOwner, restoreOfflineIdentity, saveTokens
 import { cachedIdentity, forgetScope, isSignedOut, rememberIdentity, signOutScope } from '@/offlineCache';
 import { markDisconnected, requiresConnection } from '@/connectionState';
 import type { TokenResponse, User } from '@/types';
-import { clearNativeSession } from '@/desktop';
+import { clearNativeSession,isNativeClient,nativeInvoke } from '@/desktop';
 import { validateServerConfig, serverConnectionIssue } from '@/serverCompatibility';
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null); const ready = ref(false); const registrationEnabled = ref(false); const passwordResetEnabled = ref(false); const invitationEnabled = ref(false); const emailVerificationEnabled = ref(false);
@@ -13,7 +13,10 @@ export const useAuthStore = defineStore('auth', () => {
   const planRestDaysEnabled = ref(false);
   const operationsAvailable=ref(false);
   const connectionError = ref('');
-  async function accept(data: TokenResponse) { saveTokens(data); user.value = data.user; await rememberIdentity(serverScope(), currentQueueOwner()!, data.user); }
+  async function accept(data: TokenResponse) {
+    if(isNativeClient()){const state=await nativeInvoke<{owner?:string|null;enabled:boolean}>('reminder_status');if(state.enabled&&state.owner!==data.user.id)await nativeInvoke('reminder_clear');}
+    saveTokens(data); user.value = data.user; await rememberIdentity(serverScope(), currentQueueOwner()!, data.user);
+  }
   async function bootstrap() {
     const attempt = ++sessionAttempt; const scope = serverScope();
     connectionError.value = '';

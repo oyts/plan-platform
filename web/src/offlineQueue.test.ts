@@ -1,14 +1,19 @@
 import { IDBFactory } from 'fake-indexeddb';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+const native=vi.hoisted(()=>({enabled:vi.fn(),invoke:vi.fn()}));
+vi.mock('./desktop',()=>({isNativeClient:native.enabled,nativeInvoke:native.invoke}));
 import { enqueueOperation, getOperation, listOperations, queueCount, updateOperation, deleteOperation, onQueueChange,replaceConflict } from './offlineQueue';
 
 const operation = (id: string, ownerId = 'server-one|owner') => ({ id, ownerId, method: 'POST', url: '/plans', data: { name: id } });
 beforeEach(() => {
+  native.enabled.mockReturnValue(false);native.invoke.mockReset();
   vi.stubGlobal('indexedDB', new IDBFactory());
   vi.stubGlobal('window', new EventTarget());
 });
 
 describe('durable offline queue', () => {
+  it('cancels native reminders before durable unsynced writes',async()=>{native.enabled.mockReturnValue(true);native.invoke.mockImplementation(async()=>{expect(await queueCount('server-one|owner')).toBe(0);});await enqueueOperation(operation('new-local'));expect(native.invoke).toHaveBeenCalledWith('reminder_clear');expect(await queueCount('server-one|owner')).toBe(1);});
+  it('does not persist an edit if native reminder cancellation fails',async()=>{native.enabled.mockReturnValue(true);native.invoke.mockRejectedValue(new Error('synthetic vault unavailable'));await expect(enqueueOperation(operation('blocked-local'))).rejects.toThrow('vault unavailable');expect(await queueCount('server-one|owner')).toBe(0);});
   it('atomically replaces only a confirmed conflict and retains FIFO, original content and revision history',async()=>{
     await enqueueOperation({...operation('conflict'),method:'PUT',url:'/todos/id',data:{title:'本机',version:0},base:{version:0,fields:{title:'共同基础'}}});await enqueueOperation(operation('following'));await updateOperation('conflict',{status:'CONFLICT'});
     const original=(await getOperation('conflict'))!;const next=await replaceConflict(original,{title:'选择后的标题',version:2},{version:2,fields:{title:'云端'}});let rows=await listOperations('server-one|owner');expect(rows.map(row=>row.id)).toEqual([next,'following']);expect(rows[0]).toMatchObject({status:'PENDING',attempts:0,sequence:original.sequence,resolution:{originalId:'conflict',originalData:{title:'本机',version:0}}});

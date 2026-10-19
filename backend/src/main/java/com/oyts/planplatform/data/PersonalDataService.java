@@ -35,7 +35,7 @@ class PersonalDataService {
 
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
     ObjectNode backup(String owner){
-        ObjectNode result=mapper.createObjectNode();result.put("format",FORMAT);result.put("schemaVersion",1);result.put("sourceVersion",version);result.put("exportedAt",Instant.now().toString());
+        ObjectNode result=mapper.createObjectNode();result.put("format",FORMAT);result.put("schemaVersion",2);result.put("sourceVersion",version);result.put("exportedAt",Instant.now().toString());
         result.set("records",queryRecords(owner,NAMES));validate(result);return result;
     }
     private ObjectNode queryRecords(String owner,Set<String> requested){
@@ -164,8 +164,8 @@ class PersonalDataService {
     private RestoreReport report(String value){try{return mapper.readValue(value,RestoreReport.class);}catch(JsonProcessingException e){throw new IllegalStateException("恢复记录无法读取。");}}
 
     private Validated validate(JsonNode payload){
-        if(payload==null||!payload.isObject()||!keys(payload).equals(Set.of("format","schemaVersion","sourceVersion","exportedAt","records"))||!FORMAT.equals(payload.path("format").asText())||!payload.path("schemaVersion").isIntegralNumber()||!payload.path("schemaVersion").canConvertToInt()||payload.path("schemaVersion").asInt()!=1)
-            throw new IllegalArgumentException("仅支持计划舱私有备份 schemaVersion 1，不能使用旧版迁移或其他软件的文件。");
+        if(payload==null||!payload.isObject()||!keys(payload).equals(Set.of("format","schemaVersion","sourceVersion","exportedAt","records"))||!FORMAT.equals(payload.path("format").asText())||!payload.path("schemaVersion").isIntegralNumber()||!payload.path("schemaVersion").canConvertToInt()||!Set.of(1,2).contains(payload.path("schemaVersion").asInt()))
+            throw new IllegalArgumentException("仅支持计划舱私有备份 schemaVersion 1或2，不能使用旧版迁移或其他软件的文件。");
         if(json(payload).getBytes(StandardCharsets.UTF_8).length>MAX_BYTES)throw new IllegalArgumentException("备份文件不能超过 5 MiB。");
         if(!payload.path("sourceVersion").isTextual()||!payload.path("sourceVersion").asText().matches("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}([+-][A-Za-z0-9.-]{1,24})?"))throw new IllegalArgumentException("备份版本无效。");
         instant(payload.path("exportedAt"),true);
@@ -176,9 +176,13 @@ class PersonalDataService {
             total+=values.size();if(total>MAX_ROWS)throw new IllegalArgumentException("备份不能超过 20000 条记录。");
             List<ObjectNode> list=new ArrayList<>();Map<String,ObjectNode> index=new HashMap<>();
             var allowed=table.fields().stream().map(Field::name).collect(java.util.stream.Collectors.toSet());
+            boolean oldProgress=payload.path("schemaVersion").asInt()==1&&table.name().equals("task_progress");
+            if(oldProgress)allowed.remove("ever_started");
             for(JsonNode value:values){
                 if(!value.isObject()||!keys(value).equals(allowed))throw invalid(table.name(),"字段缺失或包含未知字段（不允许账号、凭据或所有权字段）");
-                var row=(ObjectNode)value.deepCopy();for(Field field:table.fields())check(table.name(),field,row.get(field.name()));
+                var row=(ObjectNode)value.deepCopy();
+                if(oldProgress)row.put("ever_started",row.path("started_at").isTextual()||row.path("accumulated_seconds").asLong()>0||Set.of("RUNNING","PAUSED","PARTIAL","COMPLETED").contains(row.path("status").asText()));
+                for(Field field:table.fields())check(table.name(),field,row.get(field.name()));
                 if(index.putIfAbsent(row.path("id").asText(),row)!=null)throw invalid(table.name(),"记录编号重复");
                 if(row.path("status").asText().equals("RUNNING"))running++;list.add(row);
             }
@@ -224,7 +228,10 @@ class PersonalDataService {
         if(rows.get("task_progress").size()!=rows.get("plan_tasks").size())throw invalid("task_progress","每个任务必须有且仅有一份进度");
         for(var task:rows.get("plan_tasks"))if(!task.path("tag_id").isNull()&&!indexes.get("plan_tags").get(task.path("tag_id").asText()).path("plan_id").equals(task.path("plan_id")))throw invalid("plan_tasks","标签不属于对应计划");
         for(String table:List.of("task_progress","mainline_items"))for(var row:rows.get(table))if(!STATES.contains(row.path("status").asText()))throw invalid(table,"进度状态无效");
-        for(var row:rows.get("time_entries"))if(Instant.parse(row.path("ended_at").asText()).isBefore(Instant.parse(row.path("started_at").asText())))throw invalid("time_entries","流水结束早于开始");
+          for(var row:rows.get("time_entries")){
+              if(Instant.parse(row.path("ended_at").asText()).isBefore(Instant.parse(row.path("started_at").asText())))throw invalid("time_entries","流水结束早于开始");
+              indexes.get("task_progress").get(row.path("progress_id").asText()).put("ever_started",true);
+          }
         for(var row:rows.get("weekly_reviews"))if(LocalDate.parse(row.path("week_start").asText()).getDayOfWeek()!=DayOfWeek.MONDAY)throw invalid("weekly_reviews","周次必须为周一");
         for(var line:rows.get("mainlines")){
             String lineId=line.path("id").asText(),mode=line.path("execution_mode").asText();

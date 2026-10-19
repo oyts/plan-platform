@@ -1,3 +1,4 @@
+import {isNativeClient,nativeInvoke} from './desktop';
 export type OfflineOperationStatus = 'PENDING' | 'CONFLICT' | 'FAILED';
 
 export interface OfflineOperation {
@@ -63,6 +64,8 @@ export function onQueueChange(listener: () => void): () => void {
 }
 
 export async function enqueueOperation(operation: Pick<OfflineOperation, 'id' | 'ownerId' | 'method' | 'url' | 'params' | 'data' | 'base'>): Promise<void> {
+  // Cancel native delivery BEFORE persisting an unsynced edit, not in a later UI event.
+  if(isNativeClient())await nativeInvoke('reminder_clear');
   const database = await openDatabase();
   await new Promise<void>((resolve, reject) => {
     // One transaction assigns the durable order even when tabs enqueue in the same millisecond.

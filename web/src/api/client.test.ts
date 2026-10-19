@@ -13,6 +13,10 @@ const session = { accessToken: 'test-only', user: { id: 'user-one' } } as TokenR
 beforeEach(() => { clearTokens(); platform.desktop = true; platform.server = 'https://one.example.cn'; updatePolicy.required = false; });
 
 describe('offline identity partitioning', () => {
+  it('refreshes native reminder state after an online task mutation but not a read', async () => {
+    const previous=globalThis.window,dispatchEvent=vi.fn();vi.stubGlobal('window',{dispatchEvent});
+    try{saveTokens(session);const adapter=vi.fn(async config=>({data:{},status:200,statusText:'OK',headers:{},config}));await api.post('/tasks/synthetic/complete',{}, {adapter});expect(dispatchEvent.mock.calls[0][0].type).toBe('plan-platform:reminder-refresh');dispatchEvent.mockClear();await api.get('/statistics/daily',{adapter});expect(dispatchEvent).not.toHaveBeenCalled();}finally{vi.stubGlobal('window',previous);}
+  });
   it('an expired verification link does not refresh, log out or queue the active account', async () => {
     saveTokens(session);const owner=currentQueueOwner();
     const adapter=vi.fn(async config=>{throw new AxiosError('Expired verification','ERR_BAD_REQUEST',config,undefined,{status:401,statusText:'Unauthorized',data:{message:'验证链接已过期'},headers:{},config});});

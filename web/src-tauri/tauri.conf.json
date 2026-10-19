@@ -22,7 +22,7 @@
     "icon": ["icons/icon.ico"],
     "shortDescription": "计划、主线与时间管理",
     "windows": {
-      "nsis": { "installMode": "currentUser", "languages": ["SimpChinese", "English"], "displayLanguageSelector": true },
+      "nsis": { "installMode": "currentUser", "languages": ["SimpChinese", "English"], "displayLanguageSelector": true, "installerHooks":"notification-hooks.nsh" },
       "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true }
     }
   }

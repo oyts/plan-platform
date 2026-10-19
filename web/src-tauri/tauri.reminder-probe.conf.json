@@ -1,0 +1,7 @@
+{
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "shortDescription": "仅用于计划舱系统通知定向验收，不是正式安装包"
+  }
+}

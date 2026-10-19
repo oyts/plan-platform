@@ -12,6 +12,7 @@ export function navigationGroups(mode:WorkspaceMode,admin:boolean,native:boolean
     {title:'规划与回顾',items:[
       {path:'/ai',label:'AI 规划',description:'对话、草稿与确认生成'},
       {path:'/overview',label:'今日与提醒',description:'今日、逾期与即将到期'},
+      {path:'/reminders',label:'系统提醒',description:'本设备授权、提前与收尾通知'},
       {path:'/weekly-review',label:'周复盘',description:'本周推进与下周重点'},
       {path:'/organize',label:'编排与历史',description:'整套复制、未来调整与分页查询'},
     ]},

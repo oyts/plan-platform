@@ -9,6 +9,11 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
+import android.Manifest;
+import android.os.Build;
+import android.provider.Settings;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -25,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.json.JSONObject;
 
-@CapacitorPlugin(name = "PlanNative")
+@CapacitorPlugin(name = "PlanNative", permissions = {@Permission(alias="notifications",strings={Manifest.permission.POST_NOTIFICATIONS})})
 public class PlanNativePlugin extends Plugin {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     // Large update downloads must not block login, API requests or offline replay.
@@ -42,12 +47,33 @@ public class PlanNativePlugin extends Plugin {
     }
     @PluginMethod public void execute(PluginCall call) {
         String command = call.getString("command", "");
+        if(command.equals("reminder_permission")){
+            getActivity().runOnUiThread(()->{if(Build.VERSION.SDK_INT>=33)requestPermissionForAlias("notifications",call,"reminderPermission");else reminderPermission(call);});return;
+        }
         ExecutorService executor = Arrays.asList("desktop_check_update", "desktop_download_update", "desktop_install_update", "desktop_allow_update_install").contains(command) ? updateWorker : worker;
         executor.execute(() -> {
             try {
                 JSObject args = call.getObject("args", new JSObject());
                 Object result;
                 switch (command) {
+                    case "reminder_status": result=ReminderScheduler.status(getContext());break;
+                    case "reminder_enable": ReminderScheduler.enable(getContext(),server,args.getString("owner"),args.getJSONObject("registration"));result=ReminderScheduler.status(getContext());break;
+                    case "reminder_clear": ReminderScheduler.clear(getContext());result=true;break;
+                    case "reminder_refresh": ReminderScheduler.refresh(getContext());result=true;break;
+                    case "reminder_test_active":
+                        if(!BuildConfig.DEBUG||!getContext().getPackageName().endsWith(".regression"))throw new IllegalArgumentException("Unsupported command");
+                        org.json.JSONArray tags=new org.json.JSONArray();for(android.service.notification.StatusBarNotification n:((android.app.NotificationManager)getContext().getSystemService(android.content.Context.NOTIFICATION_SERVICE)).getActiveNotifications())if(n.getId()==1701)tags.put(n.getTag());result=tags;break;
+                    case "reminder_test_diagnostics":
+                        if(!BuildConfig.DEBUG||!getContext().getPackageName().endsWith(".regression"))throw new IllegalArgumentException("Unsupported command");
+                        result=new JSObject().put("wake",ReminderScheduler.testWake).put("result",ReminderScheduler.testResult).put("http",ReminderScheduler.testHttp);break;
+                    case "reminder_test_tick":
+                        if(!BuildConfig.DEBUG||!getContext().getPackageName().endsWith(".regression"))throw new IllegalArgumentException("Unsupported command");
+                        ReminderScheduler.tick(getContext());result=true;break;
+                    case "reminder_exact_permission":
+                        if(Build.VERSION.SDK_INT>=31){getActivity().runOnUiThread(()->getActivity().startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,Uri.parse("package:"+getContext().getPackageName()))));}result=true;break;
+                    case "reminder_take_path":
+                        String path=getActivity().getIntent().getStringExtra("planReminderPath");getActivity().getIntent().removeExtra("planReminderPath");
+                        result=path!=null&&(path.matches("/plans/[a-f0-9-]{36}\\?date=\\d{4}-\\d{2}-\\d{2}")||path.matches("/todos\\?date=\\d{4}-\\d{2}-\\d{2}"))?path:JSONObject.NULL;break;
                     case "desktop_info":
                         result = new JSObject().put("version", BuildConfig.VERSION_NAME).put("versionCode", BuildConfig.VERSION_CODE).put("serverUrl", server).put("updatesEnabled", updater.enabled()).put("updateChannel", BuildConfig.PLAN_UPDATE_URL).put("updateRequiresLogin", updater.requiresLogin()).put("debug", BuildConfig.DEBUG); break;
                     case "desktop_check_update": result = updater.check(server, args); break;
@@ -57,12 +83,13 @@ public class PlanNativePlugin extends Plugin {
                     case "desktop_probe": result = probe(args.getString("serverUrl")); break;
                     case "desktop_save_server":
                         String next = TransportRules.server(args.getString("serverUrl"), BuildConfig.DEBUG);
+                        ReminderScheduler.clear(getContext());
                         if (!getContext().getSharedPreferences("plan-native-settings", 0).edit().putString("server", next).commit()) throw new IllegalStateException("配置保存失败。");
                         server = next; updater.invalidate(); result = true; break;
                     case "desktop_request":
                         if (server.isEmpty()) throw new IllegalStateException("请先进入客户端设置，配置新版 Spring Boot 服务器地址。");
                         result = request(server, args.getJSObject("request"), true); break;
-                    case "clear_native_session": updater.invalidate(); if (!server.isEmpty()) vault.write(server, null); result = true; break;
+                    case "clear_native_session": ReminderScheduler.clear(getContext());updater.invalidate(); if (!server.isEmpty()) vault.write(server, null); result = true; break;
                     case "desktop_open_url": openUrl(args.getString("url")); result = true; break;
                     case "share_file": shareFile(args); result = true; break;
                     default: throw new IllegalArgumentException("客户端操作不支持。");
@@ -74,6 +101,9 @@ public class PlanNativePlugin extends Plugin {
                 call.reject(message);
             }
         });
+    }
+    @PermissionCallback private void reminderPermission(PluginCall call){
+        try{call.resolve(new JSObject().put("value",ReminderScheduler.status(getContext())));}catch(Exception failure){call.reject("无法读取通知权限。");}
     }
     private String probe(String input) throws Exception {
         String origin = TransportRules.server(input, BuildConfig.DEBUG);

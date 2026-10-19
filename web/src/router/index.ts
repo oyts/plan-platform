@@ -18,6 +18,7 @@ const router = createRouter({ history: isDesktop() ? createWebHashHistory() : cr
   { path: '/todos', component: () => import('@/views/TodosView.vue') },
   { path: '/ai', component: () => import('@/views/AiPlanningView.vue') },
   { path: '/overview', component: () => import('@/views/DailyOverviewView.vue') },
+  { path: '/reminders', component: () => import('@/views/RemindersView.vue') },
   { path: '/weekly-review', component: () => import('@/views/WeeklyReviewView.vue') },
   { path: '/feedback', component: () => import('@/views/FeedbackView.vue') },
   { path: '/organize', component: () => import('@/views/OrganizeView.vue') },

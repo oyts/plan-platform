@@ -1,12 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-const mocks = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn(), clearTokens: vi.fn(), clearNative: vi.fn(), identity: vi.fn(), forget: vi.fn(), restore: vi.fn(), signedOut: vi.fn() }));
-vi.mock('@/api/client', () => ({ api: { post: mocks.post, get: mocks.get }, clearTokens: mocks.clearTokens, saveTokens: vi.fn(), serverScope: () => 'server', currentQueueOwner: () => 'user', restoreOfflineIdentity: mocks.restore }));
+const mocks = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn(), clearTokens: vi.fn(), clearNative: vi.fn(), identity: vi.fn(), forget: vi.fn(), restore: vi.fn(), signedOut: vi.fn(),native:vi.fn(),invoke:vi.fn(),save:vi.fn() }));
+vi.mock('@/api/client', () => ({ api: { post: mocks.post, get: mocks.get }, clearTokens: mocks.clearTokens, saveTokens: mocks.save, serverScope: () => 'server', currentQueueOwner: () => 'user', restoreOfflineIdentity: mocks.restore }));
 vi.mock('@/offlineCache', () => ({ cachedIdentity: mocks.identity, forgetScope: mocks.forget, signOutScope: mocks.forget, isSignedOut: mocks.signedOut, rememberIdentity: vi.fn() }));
-vi.mock('@/desktop', () => ({ clearNativeSession: mocks.clearNative }));
+vi.mock('@/desktop', () => ({ clearNativeSession: mocks.clearNative,isNativeClient:mocks.native,nativeInvoke:mocks.invoke }));
 import { useAuthStore } from './auth';
 import { connectionState } from '@/connectionState';
 beforeEach(() => { setActivePinia(createPinia()); Object.values(mocks).forEach(mock => mock.mockReset()); mocks.forget.mockResolvedValue(undefined); connectionState.reachable = true; connectionState.offlineSession = false; });
+
+describe('reminder ownership on authentication',()=>{
+  it('clears a previous account device authorization before accepting new login',async()=>{mocks.native.mockReturnValue(true);mocks.invoke.mockResolvedValueOnce({enabled:true,owner:'previous'}).mockResolvedValueOnce(true);mocks.post.mockResolvedValue({data:{accessToken:'synthetic',user:{id:'next'}}});const store=useAuthStore();await store.login('synthetic@example.test','test-only');expect(mocks.invoke.mock.calls.map(c=>c[0])).toEqual(['reminder_status','reminder_clear']);expect(store.user?.id).toBe('next');expect(mocks.save).toHaveBeenCalledOnce();});
+  it('does not erase the same account opt-in during normal refresh',async()=>{mocks.native.mockReturnValue(true);mocks.invoke.mockResolvedValue({enabled:true,owner:'same'});mocks.post.mockResolvedValue({data:{accessToken:'synthetic',user:{id:'same'}}});const store=useAuthStore();await store.login('synthetic@example.test','test-only');expect(mocks.invoke).toHaveBeenCalledOnce();expect(store.user?.id).toBe('same');});
+  it('does not accept another account when cancellation fails',async()=>{mocks.native.mockReturnValue(true);mocks.invoke.mockResolvedValueOnce({enabled:true,owner:'previous'}).mockRejectedValueOnce(new Error('synthetic cancellation failed'));mocks.post.mockResolvedValue({data:{user:{id:'next'}}});const store=useAuthStore();await expect(store.login('synthetic@example.test','test-only')).rejects.toThrow('cancellation failed');expect(mocks.save).not.toHaveBeenCalled();expect(store.user).toBeNull();});
+});
 describe('native logout safety', () => {
   it.each(['logout', 'logoutAll'] as const)('clears local credentials even when %s cannot reach the server', async (action) => {
     mocks.post.mockRejectedValue(new Error('offline')); mocks.clearNative.mockResolvedValue(undefined);

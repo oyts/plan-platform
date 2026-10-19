@@ -493,8 +493,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link",
 ]
 
@@ -2727,6 +2729,7 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 name = "plan-platform-desktop"
 version = "0.1.17"
 dependencies = [
+ "chrono",
  "cookie",
  "keyring",
  "reqwest 0.12.28",
@@ -2741,6 +2744,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "url",
+ "windows",
 ]
 
 [[package]]

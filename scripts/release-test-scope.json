@@ -222,18 +222,23 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Unreleased next-roadmap stage 2 on the 0.1.16 source baseline: AI workbench independent drafts/autosave/lifecycle, mobile layout, confirmed mode changes, reference effort and precise colors. Formal version remains 0.1.16 until a separate signed candidate node. Only new/directly affected tests, no paid AI or real mail.",
-  "frontendUnit": ["src/aiWorkbench.test.ts","src/colors.test.ts","src/routeStages.test.ts","src/aiPlanning.test.ts","src/aiAdjustment.test.ts","src/privateDrafts.test.ts"],
+  "reason": "Unreleased next-roadmap stage3 native notifications on published 0.1.17 baseline: independent rules/device authorization/live checks, prior-start protection, private backup v2/legacy v1, offline queue cancellation, native scheduling and permission boundaries. No production switch, paid AI or real test email; version bump only at signed candidate node.",
+  "frontendUnit": ["src/reminders.test.ts","src/personalData.test.ts","src/stores/auth.test.ts","src/offlineQueue.test.ts","src/api/client.test.ts"],
+  "nativeReminders": {
+    "status":"unreleased-native-acceptance-in-progress",
+    "results":{"backendPassed":29,"frontendUnitPassed":40,"browserPassed":8,"windowsRustPassed":4,"windowsOsWakeAndShowAccepted":true,"androidBackgroundPassed":false,"paidAiCalls":0,"realTestEmails":0},
+    "evidence":["backend/target-reminders/surefire-reports/","acceptance-results/reminders/browser/","acceptance-results/reminders/windows-probe/","acceptance-results/reminders/android/"],
+    "pending":["Android real background notification and cancellation","Windows scoped-key live-API integration","V26 MySQL restore/rollback rehearsal","signed release and formal upgrade acceptance"],
+    "details":"docs/native-reminders-progress.md"
+  },
   "browser": [
-    "e2e/ai-workbench.spec.ts",
-    "e2e/ai-planning.spec.ts",
-    "e2e/ai-adjustment.spec.ts",
-    "e2e/precise-colors.spec.ts"
+    "e2e/reminders.spec.ts"
   ],
   "backend": [
-    "AiWorkbenchIntegrationTest",
-    "AiConversationIntegrationTest",
-    "AiAdjustmentIntegrationTest"
+    "NativeReminderIntegrationTest",
+    "PersonalDataIntegrationTest",
+    "DailyExperienceIntegrationTest",
+    "ReminderPollLimiterTest"
   ],
   "android": [],
   "dailyExperience": {

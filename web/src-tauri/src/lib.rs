@@ -1,6 +1,7 @@
 mod transport;
 mod update_policy;
 mod update_tls;
+pub mod reminders;
 
 use serde::Serialize;
 use tauri::{Manager, State};
@@ -75,6 +76,7 @@ async fn desktop_info(app: tauri::AppHandle, state: State<'_, Mutex<DesktopState
 
 #[tauri::command]
 async fn desktop_save_server(server_url: String, state: State<'_, Mutex<DesktopState>>) -> Result<DesktopConfig, String> {
+    reminders::clear()?;
     state.lock().await.save_server(&server_url)
 }
 
@@ -82,7 +84,16 @@ async fn desktop_save_server(server_url: String, state: State<'_, Mutex<DesktopS
 async fn desktop_probe(server_url: String) -> Result<String, String> { transport::probe(&server_url).await }
 
 #[tauri::command]
-async fn clear_native_session(state: State<'_, Mutex<DesktopState>>) -> Result<(), String> { state.lock().await.clear_session() }
+async fn clear_native_session(state: State<'_, Mutex<DesktopState>>) -> Result<(), String> { reminders::clear()?; state.lock().await.clear_session() }
+
+#[tauri::command]
+fn reminder_status()->reminders::Status{reminders::status()}
+#[tauri::command]
+fn reminder_clear()->Result<(),String>{reminders::clear()}
+#[tauri::command]
+fn reminder_refresh()->Result<(),String>{reminders::refresh()}
+#[tauri::command]
+async fn reminder_enable(owner:String,registration:reminders::Registration,state:State<'_,Mutex<DesktopState>>)->Result<reminders::Status,String>{let server=state.lock().await.server.to_string();reminders::install(&server,owner,registration)}
 
 #[tauri::command]
 async fn desktop_request(request: NativeRequest, state: State<'_, Mutex<DesktopState>>) -> Result<NativeResponse, String> {
@@ -125,7 +136,7 @@ pub fn run() {
         };
         window.build()?;
         Ok(())
-    }).invoke_handler(tauri::generate_handler![desktop_info, desktop_save_server, desktop_probe, desktop_request, desktop_open_url, desktop_check_update, desktop_download_update, desktop_install_update, clear_native_session])
+    }).invoke_handler(tauri::generate_handler![desktop_info, desktop_save_server, desktop_probe, desktop_request, desktop_open_url, desktop_check_update, desktop_download_update, desktop_install_update, clear_native_session, reminder_status, reminder_clear, reminder_refresh, reminder_enable])
       .run(tauri::generate_context!())
       .expect("无法启动计划舱桌面客户端");
 }

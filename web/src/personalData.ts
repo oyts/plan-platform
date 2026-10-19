@@ -7,6 +7,6 @@ export function readPrivateBackup(text:string,bytes:number):unknown{
   if(bytes>MAX_BACKUP_BYTES)throw new Error('备份文件不能超过 5 MiB。');
   let value:unknown;try{value=JSON.parse(text.replace(/^\uFEFF/,''));}catch{throw new Error('请选择可读取的 JSON 备份文件。');}
   const data=value as {format?:string;schemaVersion?:number};
-  if(!data||data.format!=='plan-cabin-private-backup'||data.schemaVersion!==1)throw new Error('仅支持计划舱私有备份 schemaVersion 1；旧版迁移文件请继续使用原迁移入口。');
+  if(!data||data.format!=='plan-cabin-private-backup'||![1,2].includes(data.schemaVersion??0))throw new Error('仅支持计划舱私有备份 schemaVersion 1或2；旧版迁移文件请继续使用原迁移入口。');
   return value;
 }
