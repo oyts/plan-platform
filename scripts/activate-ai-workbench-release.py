@@ -12,6 +12,7 @@ from pathlib import Path
 
 HASHES = {'release.tar.gz': 'cd635586c759db28be0cd3b6747de34631bc268199f52cd08d656cfb72608d0b',
           'backend/api.jar': 'b009c2b9035aaa01fda02b2bb692ec8185d39016afd25ab53ea238aff57332eb'}
+NEW_VERSION, OLD_VERSION, MIGRATION = '0.1.17', '0.1.16', 'V24 -> V25'
 FLAGS = ['AI_ENABLED', 'REFRESH_COOKIE_SECURE', 'EMAIL_VERIFICATION_ENABLED',
          'MEMBER_GOVERNANCE_ENABLED', 'OPERATIONS_ENABLED', 'OPERATIONS_MAIL_ALERTS_ENABLED']
 OVERLAYS = ['production-web.yml', 'production-operations.yml', 'production-mail.yml',
@@ -30,17 +31,17 @@ def run(args, data=None, env=None):
 
 
 def validate_proof(proof, modified_at, now):
-    require(proof.get('status') == 'PASS' and proof.get('migration') == 'V24 -> V25'
-            and proof.get('previousImage') == 'plan-platform-api:0.1.16'
-            and proof.get('targetImage') == 'plan-platform-api:0.1.17'
+    require(proof.get('status') == 'PASS' and proof.get('migration') == MIGRATION
+            and proof.get('previousImage') == 'plan-platform-api:' + OLD_VERSION
+            and proof.get('targetImage') == 'plan-platform-api:' + NEW_VERSION
             and proof.get('productionApplicationChanged') is False
             and proof.get('apiSha256') == HASHES['backend/api.jar'], 'Matching isolated rehearsal required.')
     require(0 <= now - modified_at <= 3600, 'Rehearsal proof is stale or future-dated.')
 
 
 def next_environment(body):
-    require(re.findall(r'^PLAN_VERSION=(.*)$', body, re.M) == ['0.1.16'], 'Expected one previous version.')
-    return re.sub(r'^PLAN_VERSION=.*$', 'PLAN_VERSION=0.1.17', body, flags=re.M)
+    require(re.findall(r'^PLAN_VERSION=(.*)$', body, re.M) == [OLD_VERSION], 'Expected one previous version.')
+    return re.sub(r'^PLAN_VERSION=.*$', 'PLAN_VERSION=' + NEW_VERSION, body, flags=re.M)
 
 
 def approved_runtime(container):
@@ -62,10 +63,10 @@ def main():
     args = parser.parse_args()
     os.umask(0o077)
     release = Path(args.directory).resolve()
-    require(re.fullmatch(r'/home/[A-Za-z0-9_-]+/plan-platform/releases/0\.1\.17-cd635586', str(release)), 'Expected final managed candidate.')
+    require(re.fullmatch(r'/home/[A-Za-z0-9_-]+/plan-platform/releases/' + re.escape(NEW_VERSION + '-' + HASHES['release.tar.gz'][:8]), str(release)), 'Expected final managed candidate.')
     root = release.parent.parent
     previous = (root / 'current').resolve()
-    require(previous.parent == root / 'releases' and re.fullmatch(r'0\.1\.16-[a-f0-9]+', previous.name), 'Expected retained 0.1.16 release.')
+    require(previous.parent == root / 'releases' and re.fullmatch(re.escape(OLD_VERSION) + '-[a-f0-9]+', previous.name), 'Expected retained previous release.')
     drill = Path(args.drill).resolve()
     require(drill.parent == root / 'release-drills', 'Unexpected rehearsal path.')
     proof_path = drill / 'report.json'
@@ -75,7 +76,7 @@ def main():
     require(not (release / '.env').exists() and not (release / 'activation-started').exists(), 'Earlier activation state exists; inspect it first.')
     require(not (root / 'current.new').exists() and not (root / 'current.new').is_symlink(), 'Pending entry exists.')
     before = json.loads(run(['docker', 'inspect', 'plan-platform-backend-1']))[0]
-    require(before['Config']['Image'] == 'plan-platform-api:0.1.16', 'Production image changed.')
+    require(before['Config']['Image'] == 'plan-platform-api:' + OLD_VERSION, 'Production image changed.')
     approved_runtime(before)
     overlays = {}
     for name in OVERLAYS:
@@ -124,9 +125,9 @@ def main():
             if hasattr(signal, name):
                 signal.signal(getattr(signal, name), interrupted)
         run(compose(release))
-        healthy('0.1.17')
+        healthy(NEW_VERSION)
         config = json.loads(run(['curl', '--max-time', '15', '-fsS', 'https://plan.zijun701.cn/api/auth/config']))
-        require(config.get('serverVersion') == '0.1.17' and config.get('registrationEnabled') is False
+        require(config.get('serverVersion') == NEW_VERSION and config.get('registrationEnabled') is False
                 and config.get('invitationEnabled') and config.get('passwordResetEnabled'), 'Account configuration differs.')
         approved_runtime(json.loads(run(['docker', 'inspect', 'plan-platform-backend-1']))[0])
         for name, expected in overlays.items():
@@ -135,16 +136,16 @@ def main():
         (root / 'current.new').symlink_to(release)
         os.replace(root / 'current.new', root / 'current')
         (release / 'activation-completed').write_text(str(time.time()))
-        print('Web/API 0.1.17 healthy. Approved flags/overlays retained; native feeds unchanged.')
+        print('Web/API ' + NEW_VERSION + ' healthy. Approved flags/overlays retained; native feeds unchanged.')
     except BaseException:
         run(['python3', str(release / 'scripts/check-governance-rollback.py'), '--target-supports-generation', 'yes'])
         run(compose(previous))
-        healthy('0.1.16')
+        healthy(OLD_VERSION)
         if (root / 'current').resolve() == release:
             require(not (root / 'current.new').exists() and not (root / 'current.new').is_symlink(), 'Rollback entry needs inspection.')
             (root / 'current.new').symlink_to(previous)
             os.replace(root / 'current.new', root / 'current')
-        print('Activation failed; retained generation-aware 0.1.16 restored. Database and backups kept.')
+        print('Activation failed; retained generation-aware ' + OLD_VERSION + ' restored. Database and backups kept.')
         raise
 
 

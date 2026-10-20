@@ -1,8 +1,8 @@
 {
-  "status":"signed-candidates-prepared-not-released",
+  "status":"web-api-released-windows-installed-native-completion-pending",
   "candidateVersion":"0.1.18","androidVersionCode":23,
-  "productionVersion":"0.1.17","productionAndroidVersionCode":22,
-  "productionChanged":false,"formalClientsInstalled":false,"feedsPublished":false,"githubReleaseCreated":false,
+  "productionVersion":"0.1.18","productionWindowsFeedVersion":"0.1.17","productionAndroidVersionCode":22,
+  "productionChanged":true,"formalClientsInstalled":false,"formalWindowsInstalled":true,"formalAndroidInstalled":false,"feedsPublished":false,"githubReleaseCreated":false,
   "clientCandidate":"production-artifacts/client-release/0.1.18/20261020T101604Z-e2ed7fab",
   "archive":"production-artifacts/plan-platform-0.1.18.tar.gz",
   "archiveSha256":"b7654985d3349c6d220881e350883f1138eabbc1cc91cb06426e5514f5ac18fb",
@@ -17,7 +17,11 @@
   "queryMysqlPassed":true,"windowsLivePassed":true,"rustReminderTestsPassed":5,
   "backendPassed":24,"frontendPassed":41,"browserAssertionsPassed":20,"browserCommandExitedNormally":false,
   "archivePackagingExitedZero":true,"signaturesVerified":true,
-  "next":["Inspect and adapt release-drill/activation guards for final0.1.18; old hardcoded scripts must not be run blindly","Fresh real production snapshot rehearsal V25-to-V27 and previous-image compatibility","Ask save/close and same-identity formal client retention acceptance","Activate only with enough quota for health and rollback","Publish optional Windows and protected Android feeds, verify, then GitHub Windows-only release"],
+  "productionSnapshot":{"passed":true,"directory":"/home/oyts/plan-platform/release-drills/roadmap-20261020222301-5f707ee6","migration":"V25 -> V27","snapshotRestoreTables":39,"originalBusinessTablesUnchanged":38,"previousImage":"plan-platform-api:0.1.17","earlierFailureRetained":true},
+  "activationCompleted":true,"activationBackup":"/home/oyts/plan-platform/releases/0.1.15-50bc92a/backups/plan_platform-mysql-20261020-222712.sql.gz","privateOssRoundtripVerified":true,
+  "publicReflection":{"passedGroups":8,"evidence":"acceptance-results/public-web/20261020-222858-316330/report.json","cloudBusinessWrites":0},
+  "windowsInstallation":{"originalDataFilesUnchanged":524,"directory":"E:/PlannedCabin/Plan Cabin","privateInstallationProof":".desktop-tools/formal-windows/private/20261020T222429Z-55544448/installation.json","originalLoginRetained":true,"initialQueue":[0,0],"reopenLoginRetained":true,"reopenQueue":"pending-user-confirmation","uiHelperFailure":"coordinate input geometry is unavailable; stopped after one recovery/retry"},
+  "next":["Await user readonly PC post-reopen queue confirmation, then publish/verify Windows source","Await Android connection/unlock and cover-install authorization; enumerate fresh device, run android-reflection-formal.py --phase before, install same signed candidate -r, user confirms system prompt, then --phase after","Only after Android formal acceptance publish protected source and --phase update-check","Commit/push actual status; create immutable v0.1.18 and GitHub Windows-only release after remaining gates"],
   "stopWhenFiveHourRemainingPercentAtMost":10,"automationEnabled":false,
   "paidAiCalls":0,"realEmailsSent":0
 }

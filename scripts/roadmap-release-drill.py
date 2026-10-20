@@ -4,7 +4,7 @@
 Retain snapshots, isolated users and stopped containers. No model/mail keys,
 public ports, user login, cleanup or production application switch.
 """
-import argparse, datetime, hashlib, json, os, re, secrets, subprocess, time
+import argparse, datetime, gzip, hashlib, json, os, re, secrets, subprocess, time
 from pathlib import Path
 
 
@@ -19,26 +19,58 @@ def command(args, data=None, env=None):
     return result.stdout.decode().strip()
 
 
+def snapshot_bytes(backup):
+    expected = Path(str(backup) + '.sha256').read_text().split()
+    require(len(expected) == 2 and expected[1] == backup.name
+            and hashlib.sha256(backup.read_bytes()).hexdigest() == expected[0], 'Snapshot checksum differs.')
+    with gzip.open(backup, 'rb') as stream:
+        data = stream.read()
+    require(data and not re.search(rb'^\s*(USE\s|CREATE\s+DATABASE|DROP\s+DATABASE)', data, re.I | re.M),
+            'Database-switching snapshot refused.')
+    return data
+
+
+def snapshot_restore(backup, sql, environment):
+    # A live alert/session table can legitimately change after a consistent dump.
+    # Verify two independent restores of the immutable dump, not a later live DB.
+    data = snapshot_bytes(backup)
+    base = 'plan_restore_' + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d_%H%M%S')
+    databases = [base, base + '_reference']
+    for database in databases:
+        sql('CREATE DATABASE ' + database + ' CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;')
+        command(['docker', 'exec', '-i', '-e', 'MYSQL_PWD', 'plan-platform-mysql-1', 'mysql', '-uroot',
+                 '--default-character-set=utf8mb4', database], data=data, env=environment)
+    tables = sql("SELECT table_name FROM information_schema.tables WHERE table_schema='" + base + "' ORDER BY table_name;").splitlines()
+    reference_tables = sql("SELECT table_name FROM information_schema.tables WHERE table_schema='" + databases[1] + "' ORDER BY table_name;").splitlines()
+    require(tables and tables == reference_tables and all(re.fullmatch('[a-z0-9_]+', t) for t in tables), 'Restore tables differ.')
+    for table in tables:
+        values = [sql('CHECKSUM TABLE ' + db + '.' + table + ' EXTENDED;').split()[-1] for db in databases]
+        require(values[0] != 'NULL' and values[0] == values[1], 'Immutable snapshot restore checksum differs.')
+    return base, dict(method='Two independent full restores of one checksum-verified consistent snapshot; no later-live comparison',
+                      tablesChecked=len(tables), referenceDatabase=databases[1])
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--directory', required=True)
-    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench'], default='roadmap')
+    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench', 'reflection'], default='roadmap')
     parser.add_argument('--archive-sha256')
     parser.add_argument('--api-sha256')
     args = parser.parse_args()
     mail = args.profile == 'mail-operations'
     workbench = args.profile == 'ai-workbench'
+    reflection = args.profile == 'reflection'
     new_version, old_version = ('0.1.16', '0.1.15') if mail else ('0.1.15', '0.1.14')
     source_schema, target_schema = (23, 24) if mail else (19, 23)
-    if workbench:
-        new_version, old_version, source_schema, target_schema = '0.1.17', '0.1.16', 24, 25
+    if workbench or reflection:
+        new_version, old_version, source_schema, target_schema = ('0.1.18', '0.1.17', 25, 27) if reflection else ('0.1.17', '0.1.16', 24, 25)
         require(all(re.fullmatch('[a-f0-9]{64}', value or '') for value in [args.archive_sha256, args.api_sha256]), 'Accepted archive and API hashes required.')
     release = Path(args.directory).resolve()
     require(re.fullmatch(r'/home/[a-zA-Z0-9_-]+/plan-platform/releases/' + re.escape(new_version) + r'-[a-f0-9]+', str(release)), 'Expected selected managed release.')
     root = release.parent.parent
     previous = (root / 'current').resolve()
     require(previous.parent == release.parent and previous != release, 'An existing previous release is required.')
-    if workbench:
+    if workbench or reflection:
         require(hashlib.sha256((release / 'release.tar.gz').read_bytes()).hexdigest() == args.archive_sha256, 'Accepted archive differs.')
         require(hashlib.sha256((release / 'backend/api.jar').read_bytes()).hexdigest() == args.api_sha256, 'Accepted API differs.')
     if mail:
@@ -85,16 +117,23 @@ def main():
                 and re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+-[a-f0-9]+', backup.parent.parent.name)
                 and re.fullmatch(r'plan_platform-mysql-[0-9]{8}-[0-9]{6}\.sql\.gz', backup.name)
                 and backup.is_file(), 'Unexpected backup path.')
-        restore_output = command(['sh', str(previous / 'scripts/mysql-restore-drill.sh'), str(backup)])
-        (folder / 'restore.txt').write_text(restore_output + '\n')
-        match = re.search(r'Restore validated in isolated database (plan_restore_[0-9_]+);', restore_output)
-        require(match is not None, 'Verified isolated restore missing.')
-        database = match[1]
+        if reflection:
+            database, restore_proof = snapshot_restore(backup, sql, environment)
+            report['snapshotRestore'] = restore_proof
+        else:
+            restore_output = command(['sh', str(previous / 'scripts/mysql-restore-drill.sh'), str(backup)])
+            (folder / 'restore.txt').write_text(restore_output + '\n')
+            match = re.search(r'Restore validated in isolated database (plan_restore_[0-9_]+);', restore_output)
+            require(match is not None, 'Verified isolated restore missing.')
+            database = match[1]
         require(version(database) == source_schema, 'Restored migration version differs.')
         tables = sql("SELECT table_name FROM information_schema.tables WHERE table_schema='" + database + "' ORDER BY table_name;").splitlines()
         require(all(re.fullmatch(r'[a-z0-9_]+', t) for t in tables), 'Invalid table name.')
         columns = {}
-        for table in ([] if mail or workbench else ['users', 'task_templates', 'mainlines']):
+        # Compare every original field for tables extended by V26/V27, rather
+        # than comparing a whole-table checksum whose column layout changes.
+        projected = ['task_progress', 'weekly_reviews', 'restored_weekly_reviews', 'ai_sessions'] if reflection else ([] if mail or workbench else ['users', 'task_templates', 'mainlines'])
+        for table in projected:
             columns[table] = sql("SELECT column_name FROM information_schema.columns WHERE table_schema='" + database + "' AND table_name='" + table + "' ORDER BY ordinal_position;").splitlines()
             require(columns[table] and all(re.fullmatch('[a-z0-9_]+', c) for c in columns[table]), 'Invalid column projection.')
 
@@ -147,7 +186,14 @@ def main():
         boot('plan-platform-api:' + new_version, '', new_version)
         require(version(database) == target_schema, 'Target migration missing.')
         require(before == fingerprints(), 'Existing private business fields changed during migration.')
-        if workbench:
+        if reflection:
+            require(sql('SELECT COUNT(*) FROM ' + database + ".task_progress p WHERE ever_started<>(started_at IS NOT NULL OR accumulated_seconds>0 OR status IN ('RUNNING','PAUSED','PARTIAL','COMPLETED') OR EXISTS (SELECT 1 FROM " + database + '.time_entries t WHERE t.progress_id=p.id));') == '0', 'History-protection backfill differs.')
+            for table in ['native_reminder_preferences', 'native_reminder_devices', 'native_reminder_deliveries', 'daily_reviews', 'restored_daily_reviews', 'reflection_preferences', 'reflection_guides', 'reflection_coaching']:
+                require(sql('SELECT COUNT(*) FROM ' + database + '.' + table + ';') == '0', 'Unexpected new-feature mutation.')
+            require(sql('SELECT COUNT(*) FROM ' + database + '.ai_sessions WHERE review_context_json IS NOT NULL;') == '0', 'Unexpected AI context backfill.')
+            for table in ['weekly_reviews', 'restored_weekly_reviews']:
+                require(sql('SELECT COUNT(*) FROM ' + database + '.' + table + " WHERE energy<>'UNSPECIFIED' OR burden<>'UNSPECIFIED' OR reviewed<>TRUE OR open_to_increase<>FALSE;") == '0', 'Unexpected weekly defaults.')
+        elif workbench:
             require(sql('SELECT COUNT(*) FROM ' + database + '.ai_saved_drafts;') == '0', 'Unexpected saved-draft mutation.')
         elif not mail:
             require(sql('SELECT COUNT(*) FROM ' + database + '.users WHERE auth_generation<>0;') == '0', 'Unexpected generation mutation.')
@@ -160,6 +206,7 @@ def main():
                       originalTablesChecked=len(before), originalProjectionTables=list(columns), migration='V19 -> V23',
                       rollback='Actual previous image; governance not exercised, rollback still requires generation guard.',
                       targetImage='plan-platform-api:' + new_version,
+                      archiveSha256=hashlib.sha256((release / 'release.tar.gz').read_bytes()).hexdigest(),
                       apiSha256=hashlib.sha256((release / 'backend/api.jar').read_bytes()).hexdigest())
         report['migration'] = 'V' + str(source_schema) + ' -> V' + str(target_schema)
         print('PASS: private production snapshot migration and previous-image rehearsal; original business fields unchanged.')
