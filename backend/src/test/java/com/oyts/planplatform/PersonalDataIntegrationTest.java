@@ -78,10 +78,10 @@ class PersonalDataIntegrationTest {
         assertThat(backup(a).path("records")).isEqualTo(file.path("records"));
     }
     @Test void backupV2PreservesEverStartedAndLegacyV1StillRestoresWithSameChecksum()throws Exception{
-        var a=account();var b=account();var file=fixture(a);assertThat(file.path("schemaVersion").asInt()).isEqualTo(2);
+        var a=account();var b=account();var file=fixture(a);assertThat(file.path("schemaVersion").asInt()).isEqualTo(3);
         var progress=file.path("records").path("task_progress");((ObjectNode)progress.get(0)).put("status","PENDING");((ObjectNode)progress.get(0)).put("accumulated_seconds",0);((ObjectNode)progress.get(0)).put("ever_started",true);
         var restored=restore(b,file);String plan=restored.path("planIds").get(0).asText();assertThat(jdbc.queryForObject("select count(*) from task_progress g join plan_tasks t on t.id=g.task_id where t.plan_id=? and g.ever_started=true",Long.class,plan)).isEqualTo(2);
-        ObjectNode old=(ObjectNode)file.deepCopy();old.put("schemaVersion",1);old.path("records").path("task_progress").forEach(row->((ObjectNode)row).remove("ever_started"));
+        ObjectNode old=(ObjectNode)file.deepCopy();old.put("schemaVersion",1);((ObjectNode)old.path("records")).remove("daily_reviews");old.path("records").path("weekly_reviews").forEach(row->((ObjectNode)row).remove(List.of("energy","burden","reviewed","open_to_increase")));old.path("records").path("task_progress").forEach(row->((ObjectNode)row).remove("ever_started"));
         String checksum=preview(b,old).path("checksum").asText();var first=restore(b,old);var again=restore(b,old);assertThat(again.path("batchId")).isEqualTo(first.path("batchId"));assertThat(preview(b,old).path("checksum").asText()).isEqualTo(checksum);
     }
     @Test void previewIsReadOnlyAndOwnershipIsNeverExported()throws Exception{

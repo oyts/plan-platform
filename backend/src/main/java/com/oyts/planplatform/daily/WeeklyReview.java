@@ -12,9 +12,14 @@ public class WeeklyReview extends BaseEntity {
     @Column(nullable = false, length = 4000) private String wins = "";
     @Column(nullable = false, length = 4000) private String blockers = "";
     @Column(nullable = false, length = 4000) private String nextFocus = "";
+    @Column(nullable=false,length=16) private String energy="UNSPECIFIED";
+    @Column(nullable=false,length=16) private String burden="UNSPECIFIED";
+    @Column(nullable=false) private boolean reviewed;
+    @Column(nullable=false) private boolean openToIncrease;
     protected WeeklyReview() {}
     WeeklyReview(UserAccount owner, LocalDate weekStart) { this.owner = owner; this.weekStart = weekStart; }
-    void update(DailyDtos.ReviewRequest r) { wins = clean(r.wins()); blockers = clean(r.blockers()); nextFocus = clean(r.nextFocus()); }
+    void update(DailyDtos.ReviewRequest r) { wins = clean(r.wins()); blockers = clean(r.blockers()); nextFocus = clean(r.nextFocus());
+        if(r.energy()!=null)energy=r.energy();if(r.burden()!=null)burden=r.burden();reviewed=r.reviewed()==null||r.reviewed();if(r.openToIncrease()!=null)openToIncrease=r.openToIncrease(); }
     private String clean(String value) { return value == null ? "" : value.trim(); }
-    DailyDtos.Review response() { return new DailyDtos.Review(weekStart, wins, blockers, nextFocus, getVersion(), getUpdatedAt()); }
+    DailyDtos.Review response() { return new DailyDtos.Review(weekStart, wins, blockers, nextFocus, getVersion(), getUpdatedAt(),energy,burden,reviewed,openToIncrease); }
 }

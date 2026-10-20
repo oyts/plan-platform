@@ -15,7 +15,7 @@ beforeEach(() => { clearTokens(); platform.desktop = true; platform.server = 'ht
 describe('offline identity partitioning', () => {
   it('refreshes native reminder state after an online task mutation but not a read', async () => {
     const previous=globalThis.window,dispatchEvent=vi.fn();vi.stubGlobal('window',{dispatchEvent});
-    try{saveTokens(session);const adapter=vi.fn(async config=>({data:{},status:200,statusText:'OK',headers:{},config}));await api.post('/tasks/synthetic/complete',{}, {adapter});expect(dispatchEvent.mock.calls[0][0].type).toBe('plan-platform:reminder-refresh');dispatchEvent.mockClear();await api.get('/statistics/daily',{adapter});expect(dispatchEvent).not.toHaveBeenCalled();}finally{vi.stubGlobal('window',previous);}
+    try{saveTokens(session);const adapter=vi.fn(async config=>({data:{},status:200,statusText:'OK',headers:{},config}));await api.post('/tasks/synthetic/complete',{}, {adapter});expect(dispatchEvent.mock.calls.map(c=>c[0].type)).toEqual(['plan-platform:business-changed','plan-platform:reminder-refresh']);dispatchEvent.mockClear();await api.get('/statistics/daily',{adapter});expect(dispatchEvent).not.toHaveBeenCalled();}finally{vi.stubGlobal('window',previous);}
   });
   it('an expired verification link does not refresh, log out or queue the active account', async () => {
     saveTokens(session);const owner=currentQueueOwner();

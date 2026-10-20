@@ -1,0 +1,9 @@
+import {describe,it,expect} from 'vitest';
+import {emptyReflection,reflectionDefaults,reflectionDraft,reflectionStart,reflectionItemPath} from './reflection';
+describe('review semantics and private drafts',()=>{
+ it('does not opt devices into timed review or infer capacity',()=>{const p=reflectionDefaults();expect([p.dailyEnabled,p.weeklyEnabled]).toEqual([false,false]);expect([p.dailyTime,p.weeklyTime]).toEqual(['22:30','22:30']);expect(p.weekDay).toBe(7);expect(emptyReflection()).toMatchObject({energy:'UNSPECIFIED',burden:'UNSPECIFIED',openToIncrease:false,reviewed:false});});
+ it('normalizes weeks without changing days and rejects fake dates',()=>{expect(reflectionStart('WEEK','2026-10-18')).toBe('2026-10-12');expect(reflectionStart('DAY','2026-10-18')).toBe('2026-10-18');expect(()=>reflectionStart('DAY','2026-02-30')).toThrow('日期');});
+ it('restores only the requested owner-scoped period format',()=>{const d={schemaVersion:1,kind:'DAY',start:'2026-10-18',savedAt:'2026-10-18T10:00:00Z',baseVersion:0,content:{...emptyReflection(),wins:'本机修改'}};expect(reflectionDraft(d,'DAY','2026-10-18')?.content.wins).toBe('本机修改');expect(()=>reflectionDraft(d,'WEEK','2026-10-12')).toThrow('格式');});
+ it('rejects broken versions and invalid self reports without inventing values',()=>{for(const change of [{baseVersion:-1},{content:{...emptyReflection(),energy:'automatic-happy'}},{content:{...emptyReflection(),wins:'x'.repeat(4001)}}])expect(()=>reflectionDraft({schemaVersion:1,kind:'DAY',start:'2026-10-18',savedAt:'2026-10-18T10:00:00Z',baseVersion:0,content:emptyReflection(),...change},'DAY','2026-10-18')).toThrow('格式');});
+ it('opens free route steps without forcing a daily date',()=>{const route=reflectionItemPath({kind:'ROUTE',id:'step',parentId:'line',title:'合成步骤',arrangedDate:null,status:'COMPLETED',completedAt:null});expect(route).toEqual({path:'/mainlines',query:{line:'line'}});});
+});

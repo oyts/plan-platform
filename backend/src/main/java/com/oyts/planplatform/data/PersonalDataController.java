@@ -26,10 +26,11 @@ class PersonalDataController {
     }
     @GetMapping("/restores") ResponseEntity<?> history(@AuthenticationPrincipal Jwt jwt,@RequestParam(defaultValue="0")int page){return privateReply(service.history(jwt.getSubject(),page));}
     @GetMapping("/restored-weekly-reviews") ResponseEntity<?> copies(@AuthenticationPrincipal Jwt jwt,@RequestParam(defaultValue="0")int page){return privateReply(service.weeklyCopies(jwt.getSubject(),page));}
+    @GetMapping("/restored-daily-reviews") ResponseEntity<?> dayCopies(@AuthenticationPrincipal Jwt jwt,@RequestParam(defaultValue="0")int page){return privateReply(service.dailyCopies(jwt.getSubject(),page));}
     @GetMapping("/export/{kind}") ResponseEntity<byte[]> readable(@AuthenticationPrincipal Jwt jwt,@PathVariable String kind){
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.parseMediaType("text/csv;charset=UTF-8")).header("Content-Disposition","attachment; filename=plan-cabin-"+exportKind(kind)+".csv").body(("\ufeff"+service.readable(jwt.getSubject(),kind)).getBytes(StandardCharsets.UTF_8));
     }
-    private String exportKind(String kind){if(!Set.of("routes","todos","weekly").contains(kind))throw new IllegalArgumentException("导出类型不支持。");return kind;}
+    private String exportKind(String kind){if(!Set.of("routes","todos","weekly","daily").contains(kind))throw new IllegalArgumentException("导出类型不支持。");return kind;}
     private JsonNode read(HttpServletRequest request){
         try{byte[] bytes=request.getInputStream().readNBytes(PersonalDataService.MAX_BYTES+4097);if(bytes.length>PersonalDataService.MAX_BYTES+4096)throw new IllegalArgumentException("请求文件不能超过 5 MiB。");
             JsonNode value=reader.readTree(bytes);if(value==null)throw new IllegalArgumentException("请选择 JSON 备份文件。");return value;

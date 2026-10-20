@@ -222,25 +222,37 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Unreleased next-roadmap stage3 native notifications on published 0.1.17 baseline: independent rules/device authorization/live checks, prior-start protection, private backup v2/legacy v1, offline queue cancellation, native scheduling and permission boundaries. No production switch, paid AI or real test email; version bump only at signed candidate node.",
-  "frontendUnit": ["src/reminders.test.ts","src/personalData.test.ts","src/stores/auth.test.ts","src/offlineQueue.test.ts","src/api/client.test.ts"],
+  "reason": "Unreleased roadmap stage4 on the 0.1.17 baseline, with deferred stage3 Android tests: day/week factual review, private drafts/conflict comparison, optional self-report, readonly consent-scoped AI, conservative trend/cooldown, merged review reminders and private schema3 backup. Only new/directly affected tests; no production switch, paid AI, real email or Android device actions.",
+  "frontendUnit": ["src/reflection.test.ts","src/reminders.test.ts","src/personalData.test.ts","src/weeklyDraft.test.ts","src/api/client.test.ts","src/offlineCache.test.ts"],
+  "reflectionWorkspace": {
+    "status":"shared-source-browser-and-mysql-accepted-pc-awaiting-user-login-android-deferred",
+    "results":{"backendPassed":66,"frontendUnitPassed":41,"browserPassed":20,"windowsRustPassed":5,"androidRouteUnitPassed":5,"mysqlCasesPassed":6,"mysqlTablesRestored":47,"androidDeviceTested":false,"paidAiCalls":0,"realEmailsSent":0},
+    "evidence":["acceptance-results/reflection/backend-final.log","backend/target-reflection/surefire-reports/","acceptance-results/reflection/frontend-final.log","acceptance-results/reflection/browser-final/","acceptance-results/reflection/rust-final.log","acceptance-results/reflection/android-final.log","remote reflection-candidates/20261020T061810Z-3c32df69/report.json"],
+    "pending":["Independent Windows UI after user authentication","Combined stages3/4 Android physical-device acceptance","Signed candidates, formal retention and production release gates"],
+    "details":"docs/reflection-progress.md"
+  },
   "nativeReminders": {
     "status":"unreleased-native-acceptance-in-progress",
     "results":{"backendPassed":29,"frontendUnitPassed":40,"browserPassed":8,"windowsRustPassed":4,"windowsOsWakeAndShowAccepted":true,"androidBackgroundPassed":false,"paidAiCalls":0,"realTestEmails":0},
     "evidence":["backend/target-reminders/surefire-reports/","acceptance-results/reminders/browser/","acceptance-results/reminders/windows-probe/","acceptance-results/reminders/android/"],
-    "pending":["Android real background notification and cancellation","Windows scoped-key live-API integration","V26 MySQL restore/rollback rehearsal","signed release and formal upgrade acceptance"],
+    "pending":["Android real background notification and cancellation (deferred with stage4)","Windows scoped-key live-API integration","signed release and formal upgrade acceptance"],
+    "mysqlFollowup":"V25 to V27 plus prior-start backfill, 47-table restore and actual 0.1.17 read compatibility passed in reflectionWorkspace; production unchanged",
     "details":"docs/native-reminders-progress.md"
   },
   "browser": [
-    "e2e/reminders.spec.ts"
+    "e2e/reflection.spec.ts",
+    "e2e/personal-data.spec.ts"
   ],
   "backend": [
+    "ReflectionIntegrationTest",
+    "ReflectionAiIntegrationTest",
     "NativeReminderIntegrationTest",
     "PersonalDataIntegrationTest",
     "DailyExperienceIntegrationTest",
-    "ReminderPollLimiterTest"
+    "AiAdjustmentIntegrationTest",
+    "AiConversationIntegrationTest"
   ],
-  "android": [],
+  "android": ["cn.zijun701.plan.mobile.ReminderRoutesTest"],
   "dailyExperience": {
     "status": "released-0.1.14",
     "results": {"frontendUnitPassed": 32, "backendPassed": 12, "browserDistinctPassed": 20},

@@ -79,6 +79,8 @@ export async function clearResponses(scope: string): Promise<void> {
 }
 export function cacheable(url: string): boolean {
   return ['/plans', '/dashboard/today', '/tasks/carryover', '/templates', '/mainlines', '/todos', '/daily/summary', '/daily/items', '/daily/routes', '/daily/reminders', '/weekly/summary', '/weekly/reviews'].includes(url)
+    || ['/reflection/facts','/reflection/items','/reflection/preferences'].includes(url)
+    || /^\/reflection\/days\/\d{4}-\d{2}-\d{2}$/.test(url)
     || /^\/weekly\/reviews\/\d{4}-\d{2}-\d{2}$/.test(url)
     || /^\/plans\/[^/]+\/(tags|tasks(?:\/page)?|milestones|stats(?:\/daily)?|recurrences)$/.test(url);
 }

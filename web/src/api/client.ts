@@ -58,7 +58,8 @@ let refreshing: Promise<string> | null = null;
 api.interceptors.response.use(async (response) => {
   const request = response.config as InternalOfflineRequestConfig;
   if (request.cacheOwner && (request.sessionEpoch !== epoch || request.cacheOwner !== currentQueueOwner())) throw new Error('账号或服务器已变化，请重新读取页面。');
-  if(typeof window!=='undefined'&&isDesktop()&&request.cacheOwner&&!['GET','HEAD'].includes(request.method?.toUpperCase()??'GET')&&/^\/(?:plans|tasks|todos|organize|data|reminders\/preferences)(?:\/|$)/.test(request.url??''))window.dispatchEvent(new Event('plan-platform:reminder-refresh'));
+  if(typeof window!=='undefined'&&request.cacheOwner&&!['GET','HEAD'].includes(request.method?.toUpperCase()??'GET')&&/^\/(?:plans|tasks|todos|weekly\/reviews|reflection\/days)(?:\/|$)/.test(request.url??''))window.dispatchEvent(new Event('plan-platform:business-changed'));
+  if(typeof window!=='undefined'&&isDesktop()&&request.cacheOwner&&!['GET','HEAD'].includes(request.method?.toUpperCase()??'GET')&&/^\/(?:plans|tasks|todos|organize|data|reminders\/preferences|reflection\/(?:days|preferences)|weekly\/reviews)(?:\/|$)/.test(request.url??''))window.dispatchEvent(new Event('plan-platform:reminder-refresh'));
   if (request.url === '/auth/config' && request.cacheScope === serverScope()) rememberFeedbackServer(request.cacheScope, response.data);
   if (!response.headers['x-plan-local-cache']) {
     markConnected(); connectionState.cacheReadAt = 0;

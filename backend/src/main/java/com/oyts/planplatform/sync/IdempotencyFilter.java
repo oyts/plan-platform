@@ -29,7 +29,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     @Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
         String key = request.getHeader(HEADER); Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         // AI owns its durable job admission and atomic apply replay; never wrap paid calls in the generic cache.
-        if (request.getRequestURI().startsWith("/api/ai/") || request.getRequestURI().startsWith("/api/reminders/") || key == null || key.isBlank() || authentication == null || !authentication.isAuthenticated() || !isMutation(request.getMethod())) { chain.doFilter(request, response); return; }
+        if (request.getRequestURI().startsWith("/api/ai/") || request.getRequestURI().startsWith("/api/reflection/") || request.getRequestURI().startsWith("/api/reminders/") || key == null || key.isBlank() || authentication == null || !authentication.isAuthenticated() || !isMutation(request.getMethod())) { chain.doFilter(request, response); return; }
         if (!key.matches("[A-Za-z0-9._:-]{8,100}")) { response.sendError(400, "X-Idempotency-Key 格式无效。" ); return; }
         CachedBodyRequest cachedRequest = new CachedBodyRequest(request);
         String userId = authentication.getName(); String method = request.getMethod(); String path = request.getRequestURI();

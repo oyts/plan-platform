@@ -25,6 +25,7 @@ web/test-results/
 web/playwright-report/
 acceptance-results/
 backend/target-reminders/
+backend/target-reflection/
 android-artifacts/
 .android-signing/
 *.keystore

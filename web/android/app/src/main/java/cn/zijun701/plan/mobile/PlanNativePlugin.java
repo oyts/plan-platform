@@ -73,7 +73,7 @@ public class PlanNativePlugin extends Plugin {
                         if(Build.VERSION.SDK_INT>=31){getActivity().runOnUiThread(()->getActivity().startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,Uri.parse("package:"+getContext().getPackageName()))));}result=true;break;
                     case "reminder_take_path":
                         String path=getActivity().getIntent().getStringExtra("planReminderPath");getActivity().getIntent().removeExtra("planReminderPath");
-                        result=path!=null&&(path.matches("/plans/[a-f0-9-]{36}\\?date=\\d{4}-\\d{2}-\\d{2}")||path.matches("/todos\\?date=\\d{4}-\\d{2}-\\d{2}"))?path:JSONObject.NULL;break;
+                        result=ReminderScheduler.validPath(path)?path:JSONObject.NULL;break;
                     case "desktop_info":
                         result = new JSObject().put("version", BuildConfig.VERSION_NAME).put("versionCode", BuildConfig.VERSION_CODE).put("serverUrl", server).put("updatesEnabled", updater.enabled()).put("updateChannel", BuildConfig.PLAN_UPDATE_URL).put("updateRequiresLogin", updater.requiresLogin()).put("debug", BuildConfig.DEBUG); break;
                     case "desktop_check_update": result = updater.check(server, args); break;

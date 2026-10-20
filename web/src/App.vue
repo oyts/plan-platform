@@ -9,6 +9,7 @@ import MobileNavigation from '@/components/MobileNavigation.vue';
 import WorkspaceSwitcher from '@/components/WorkspaceSwitcher.vue';
 import LearningPrompt from '@/components/LearningPrompt.vue';
 import InAppReminder from '@/components/InAppReminder.vue';
+import ReflectionGuide from '@/components/ReflectionGuide.vue';
 import OperationsNotice from '@/components/OperationsNotice.vue';
 import DesktopNavigation from '@/components/DesktopNavigation.vue';
 import { serverScope } from '@/api/client';
@@ -56,6 +57,7 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
     <ConnectionBar v-if="auth.user && !productPage" :key="auth.user.id" :busy="reconnecting" @reconnect="reconnect" />
     <ClientUpdateNotice v-if="!productPage" />
     <InAppReminder v-if="auth.user && !productPage" :key="`${auth.user.id}:${serverScope()}`"/>
+    <ReflectionGuide v-if="auth.user && !productPage" :key="`reflection:${auth.user.id}:${serverScope()}`"/>
     <OperationsNotice v-if="auth.user?.role==='ADMIN'&&auth.operationsAvailable&&!productPage" :key="`${auth.user.id}:${serverScope()}`"/>
     <LearningPrompt v-if="auth.user && !productPage"/>
     <main id="main-content" tabindex="-1" :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${['/ai','/verify-email'].includes(router.currentRoute.value.path) ? router.currentRoute.value.path : router.currentRoute.value.fullPath}:${pageRevision}`" /></main>

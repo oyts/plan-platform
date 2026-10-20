@@ -6,7 +6,7 @@ async function login(page:Page,email:string){await page.goto('/login');await pag
 async function fixture(request:APIRequestContext){const a=await account(request),headers={Authorization:`Bearer ${a.token}`};await request.post(`${API}/todos`,{headers,data:{title:'合成备份待办',note:'中文,带引号"的备注',dueDate:'2026-10-18'}});await request.post(`${API}/mainlines`,{headers,data:{name:'合成长期路线',description:'无期限',color:'#002FA7',executionMode:'FLEXIBLE'}});await request.put(`${API}/weekly/reviews/2026-10-12`,{headers,data:{wins:'源账号周收获',blockers:'无',nextFocus:'下周小步推进'}});const response=await request.get(`${API}/data/backup`,{headers});expect(response.status()).toBe(200);return{file:await response.json(),account:a};}
 async function select(page:Page,file:unknown){await page.getByLabel('选择私有 JSON 备份',{exact:true}).setInputFiles({name:'synthetic-private.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(file))});await expect(page.getByText('synthetic-private.json',{exact:true})).toBeVisible();}
 const consent='我确认这是获准使用的私有备份，同意将文件发送到当前登录服务器进行只读预检。';
-const confirmation='我已核对以上数量和限制，确认恢复为新副本。周复盘保存在下方只读副本中，不覆盖当前周。';
+const confirmation='我已核对以上数量和限制，确认恢复为新副本。日周复盘保存在下方只读副本中，不覆盖当前记录。';
 test('private backup preview, restore copies, duplicate protection and JSON download',async({page,request},info)=>{
   const source=await fixture(request),target=await account(request),headers={Authorization:`Bearer ${target.token}`};
   await request.post(`${API}/todos`,{headers,data:{title:'原来的待办',dueDate:'2026-10-18'}});await request.put(`${API}/weekly/reviews/2026-10-12`,{headers,data:{wins:'不可覆盖的原复盘',blockers:'',nextFocus:''}});
@@ -35,6 +35,6 @@ test('offline file selection cannot preview or restore and does not expose the q
 });
 test('data center is shared without switching the selected workspace',async({page,request},info)=>{
   const user=await account(request);await login(page,user.email);await page.getByLabel('工作模式',{exact:true}).selectOption('route');await expect(page.getByLabel('工作模式',{exact:true})).toHaveValue('route');
-  if(info.project.name==='mobile-web')await page.getByRole('button',{name:'更多',exact:true}).click();
+  await page.getByRole('button',{name:'更多',exact:true}).click();
   await page.getByRole('link',{name:'数据中心',exact:true}).click();await expect(page.getByRole('heading',{name:'个人数据中心',exact:true})).toBeVisible();await expect(page.getByLabel('工作模式',{exact:true})).toHaveValue('route');
 });

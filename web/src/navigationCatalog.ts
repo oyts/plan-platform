@@ -14,6 +14,7 @@ export function navigationGroups(mode:WorkspaceMode,admin:boolean,native:boolean
       {path:'/overview',label:'今日与提醒',description:'今日、逾期与即将到期'},
       {path:'/reminders',label:'系统提醒',description:'本设备授权、提前与收尾通知'},
       {path:'/weekly-review',label:'周复盘',description:'本周推进与下周重点'},
+      {path:'/reflection',label:'日周复盘',description:'三模式事实、自述与AI分析'},
       {path:'/organize',label:'编排与历史',description:'整套复制、未来调整与分页查询'},
     ]},
     {title:'数据与连接',items:[

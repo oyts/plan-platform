@@ -7,7 +7,7 @@ export interface ReminderPreferences {
 export interface ReminderDevice {id:string;platform:'WINDOWS'|'ANDROID';label:string;enabled:boolean;expiresAt:string;lastSeenAt:string|null}
 export interface ReminderNativeStatus {enabled:boolean;permission:boolean|null;permissionDetail?:string;exact?:boolean;deviceId?:string|null;owner?:string|null;platform:string}
 export const notificationDefaults=():ReminderPreferences=>({advanceEnabled:false,advanceMinutes:5,startEnabled:false,todoEnabled:false,todoTime:'22:30',zone:'Asia/Shanghai',quietEnabled:false,quietFrom:'23:00',quietUntil:'07:00',hideDetails:true,primaryDeviceId:null,version:null});
-export function validReminderPath(path:unknown):path is string {return typeof path==='string'&&(/^\/plans\/[a-f0-9-]{36}\?date=\d{4}-\d{2}-\d{2}$/.test(path)||/^\/todos\?date=\d{4}-\d{2}-\d{2}$/.test(path));}
+export function validReminderPath(path:unknown):path is string {return typeof path==='string'&&(/^\/plans\/[a-f0-9-]{36}\?date=\d{4}-\d{2}-\d{2}$/.test(path)||/^\/todos\?date=\d{4}-\d{2}-\d{2}$/.test(path)||/^\/reflection\?kind=(DAY|WEEK)&date=\d{4}-\d{2}-\d{2}$/.test(path));}
 export async function nativeReminderStatus():Promise<ReminderNativeStatus>{return isNativeClient()?nativeInvoke('reminder_status'):{enabled:false,permission:false,platform:'WEB'};}
 export async function enableDeviceReminders(owner:string):Promise<ReminderNativeStatus>{
   if(!isNativeClient())throw new Error('网页版保留站内提醒；系统通知需要已安装的客户端。');

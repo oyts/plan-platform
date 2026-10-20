@@ -13,9 +13,16 @@ public final class DailyDtos {
     public record Reminders(boolean enabled, boolean includePlans, boolean includeTodos, boolean showOverdue, int lookAheadDays, Long version) {}
     public record ReminderRequest(@NotNull Boolean enabled, @NotNull Boolean includePlans, @NotNull Boolean includeTodos,
         @NotNull Boolean showOverdue, @NotNull @Min(1) @Max(14) Integer lookAheadDays, @PositiveOrZero Long version) {}
-    public record Review(LocalDate weekStart, String wins, String blockers, String nextFocus, Long version, Instant updatedAt) {}
+    public record Review(LocalDate weekStart, String wins, String blockers, String nextFocus, Long version, Instant updatedAt,
+        String energy,String burden,boolean reviewed,boolean openToIncrease) {
+        public Review(LocalDate start,String wins,String blockers,String next,Long version,Instant updatedAt){this(start,wins,blockers,next,version,updatedAt,"UNSPECIFIED","UNSPECIFIED",false,false);}
+    }
     public record ReviewRequest(@Size(max = 4000) String wins, @Size(max = 4000) String blockers,
-        @Size(max = 4000) String nextFocus, @PositiveOrZero Long version) {}
+        @Size(max = 4000) String nextFocus, @PositiveOrZero Long version,
+        @Pattern(regexp="UNSPECIFIED|LOW|STEADY|HIGH") String energy,
+        @Pattern(regexp="UNSPECIFIED|LIGHT|MANAGEABLE|HEAVY") String burden,Boolean reviewed,Boolean openToIncrease) {
+        public ReviewRequest(String wins,String blockers,String next,Long version){this(wins,blockers,next,version,null,null,null,null);}
+    }
     public record Week(LocalDate start, LocalDate end, Instant calculatedAt, long planScheduled, long planCompleted,
         long todoScheduled, long todoCompleted, long routeCompleted, long recordedPlanSeconds,
         long openPlansThroughEnd, long openTodosThroughEnd, long legacyCompletedTodosUntimed) {}

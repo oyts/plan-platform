@@ -31,11 +31,12 @@ class PersonalDataService {
     record Preview(String checksum,Map<String,Integer> counts,List<String> warnings,int totalRecords){}
     record RestoreReport(String batchId,Instant createdAt,Map<String,Integer> counts,List<String> planIds,List<String> routeIds){}
     private record Validated(ObjectNode payload,Map<String,List<ObjectNode>> rows,Preview preview){}
-    record WeeklyCopy(String id,String batchId,LocalDate weekStart,String wins,String blockers,String nextFocus){}
+    record WeeklyCopy(String id,String batchId,LocalDate weekStart,String wins,String blockers,String nextFocus,String energy,String burden,boolean reviewed,boolean openToIncrease){}
+    record DailyCopy(String id,String batchId,LocalDate date,String wins,String blockers,String nextFocus,String energy,String burden,boolean reviewed){}
 
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
     ObjectNode backup(String owner){
-        ObjectNode result=mapper.createObjectNode();result.put("format",FORMAT);result.put("schemaVersion",2);result.put("sourceVersion",version);result.put("exportedAt",Instant.now().toString());
+        ObjectNode result=mapper.createObjectNode();result.put("format",FORMAT);result.put("schemaVersion",3);result.put("sourceVersion",version);result.put("exportedAt",Instant.now().toString());
         result.set("records",queryRecords(owner,NAMES));validate(result);return result;
     }
     private ObjectNode queryRecords(String owner,Set<String> requested){
@@ -45,6 +46,7 @@ class PersonalDataService {
             String columns=String.join(",",table.fields().stream().map(f->"t."+f.name()).toList());
             String sql="select "+columns+" from "+table.from();Object[] args={owner};
             if(table.name().equals("weekly_reviews")){sql+=" union all select "+columns+" from restored_weekly_reviews t where t.owner_id=?";args=new Object[]{owner,owner};}
+            if(table.name().equals("daily_reviews")){sql+=" union all select "+columns+" from restored_daily_reviews t where t.owner_id=?";args=new Object[]{owner,owner};}
             sql+=" order by id limit "+(MAX_ROWS+1);
             String query=sql;Object[] parameters=args;
             var rows=jdbc.query(connection->{
@@ -78,12 +80,12 @@ class PersonalDataService {
     Preview preview(JsonNode payload){return validate(payload).preview();}
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
     String readable(String owner,String kind){
-        Set<String> tables=switch(kind){case "todos"->Set.of("todos");case "weekly"->Set.of("weekly_reviews");case "routes"->Set.of("mainlines","mainline_stages","mainline_items");default->throw new IllegalArgumentException("导出类型不支持。");};
+        Set<String> tables=switch(kind){case "todos"->Set.of("todos");case "weekly"->Set.of("weekly_reviews");case "daily"->Set.of("daily_reviews");case "routes"->Set.of("mainlines","mainline_stages","mainline_items");default->throw new IllegalArgumentException("导出类型不支持。");};
         var data=queryRecords(owner,tables);CsvBuffer csv=new CsvBuffer();
         if(kind.equals("todos")){
             csvRow(csv,List.of("日期","任务","备注","已完成","完成时间","已删除"));for(JsonNode row:data.path("todos"))csvRow(csv,List.of(text(row,"due_date"),text(row,"title"),text(row,"note"),text(row,"done"),text(row,"completed_at"),text(row,"deleted")));
-        }else if(kind.equals("weekly")){
-            csvRow(csv,List.of("周一日期","本周收获","阻塞","下周重点"));for(JsonNode row:data.path("weekly_reviews"))csvRow(csv,List.of(text(row,"week_start"),text(row,"wins"),text(row,"blockers"),text(row,"next_focus")));
+        }else if(kind.equals("weekly")||kind.equals("daily")){
+            csvRow(csv,List.of("日期","收获","阻塞","下一步","精力自述","负担自述","已完成复盘"));for(JsonNode row:data.path(kind.equals("weekly")?"weekly_reviews":"daily_reviews"))csvRow(csv,List.of(text(row,kind.equals("weekly")?"week_start":"review_date"),text(row,"wins"),text(row,"blockers"),text(row,"next_focus"),text(row,"energy"),text(row,"burden"),text(row,"reviewed")));
         }else if(kind.equals("routes")){
             csvRow(csv,List.of("路线","路线说明","推进方式","归档","阶段","步骤","步骤说明","状态","计划分钟","累计秒数","完成时间","依赖方式","前置步骤编号","删除时间"));
             Map<String,JsonNode> stages=new HashMap<>();data.path("mainline_stages").forEach(row->stages.put(text(row,"id"),row));
@@ -140,7 +142,7 @@ class PersonalDataService {
                     values.add(value);
                 }
                 if(table.owned()){columns.add("owner_id");values.add(owner);}
-                if(table.name().equals("weekly_reviews")){columns.add("batch_id");values.add(batch);}
+                if(table.name().equals("weekly_reviews")||table.name().equals("daily_reviews")){columns.add("batch_id");values.add(batch);}
                 else if(!table.name().equals("time_entries")){columns.add("version");values.add(0);}
                 String sql="insert into "+table.target()+"("+String.join(",",columns)+") values("+String.join(",",Collections.nCopies(columns.size(),"?"))+")";
                 jdbc.update(sql,values.toArray());
@@ -156,32 +158,36 @@ class PersonalDataService {
     }
     PageResponse<WeeklyCopy> weeklyCopies(String owner,int page){
         page(page);long count=jdbc.queryForObject("select count(*) from restored_weekly_reviews where owner_id=?",Long.class,owner);
-        var rows=jdbc.query("select id,batch_id,week_start,wins,blockers,next_focus from restored_weekly_reviews where owner_id=? order by week_start desc,id limit 10 offset ?",(rs,n)->new WeeklyCopy(rs.getString(1),rs.getString(2),rs.getDate(3).toLocalDate(),rs.getString(4),rs.getString(5),rs.getString(6)),owner,page*10);
+        var rows=jdbc.query("select id,batch_id,week_start,wins,blockers,next_focus,energy,burden,reviewed,open_to_increase from restored_weekly_reviews where owner_id=? order by week_start desc,id limit 10 offset ?",(rs,n)->new WeeklyCopy(rs.getString(1),rs.getString(2),rs.getDate(3).toLocalDate(),rs.getString(4),rs.getString(5),rs.getString(6),rs.getString(7),rs.getString(8),rs.getBoolean(9),rs.getBoolean(10)),owner,page*10);
         return new PageResponse<>(rows,page,10,count,(int)((count+9)/10));
     }
     private void page(int page){if(page<0||page>100000)throw new IllegalArgumentException("页码无效。");}
+    PageResponse<DailyCopy> dailyCopies(String owner,int page){page(page);long count=jdbc.queryForObject("select count(*) from restored_daily_reviews where owner_id=?",Long.class,owner);var rows=jdbc.query("select id,batch_id,review_date,wins,blockers,next_focus,energy,burden,reviewed from restored_daily_reviews where owner_id=? order by review_date desc,id limit 10 offset ?",(r,n)->new DailyCopy(r.getString(1),r.getString(2),r.getDate(3).toLocalDate(),r.getString(4),r.getString(5),r.getString(6),r.getString(7),r.getString(8),r.getBoolean(9)),owner,page*10);return new PageResponse<>(rows,page,10,count,(int)((count+9)/10));}
     private List<String> newIds(Validated v,Map<String,String> ids,String table){return v.rows().get(table).stream().map(row->ids.get(table+":"+row.path("id").asText())).toList();}
     private RestoreReport report(String value){try{return mapper.readValue(value,RestoreReport.class);}catch(JsonProcessingException e){throw new IllegalStateException("恢复记录无法读取。");}}
 
     private Validated validate(JsonNode payload){
-        if(payload==null||!payload.isObject()||!keys(payload).equals(Set.of("format","schemaVersion","sourceVersion","exportedAt","records"))||!FORMAT.equals(payload.path("format").asText())||!payload.path("schemaVersion").isIntegralNumber()||!payload.path("schemaVersion").canConvertToInt()||!Set.of(1,2).contains(payload.path("schemaVersion").asInt()))
-            throw new IllegalArgumentException("仅支持计划舱私有备份 schemaVersion 1或2，不能使用旧版迁移或其他软件的文件。");
+        if(payload==null||!payload.isObject()||!keys(payload).equals(Set.of("format","schemaVersion","sourceVersion","exportedAt","records"))||!FORMAT.equals(payload.path("format").asText())||!payload.path("schemaVersion").isIntegralNumber()||!payload.path("schemaVersion").canConvertToInt()||!Set.of(1,2,3).contains(payload.path("schemaVersion").asInt()))
+            throw new IllegalArgumentException("仅支持计划舱私有备份 schemaVersion 1至3，不能使用旧版迁移或其他软件的文件。");
         if(json(payload).getBytes(StandardCharsets.UTF_8).length>MAX_BYTES)throw new IllegalArgumentException("备份文件不能超过 5 MiB。");
         if(!payload.path("sourceVersion").isTextual()||!payload.path("sourceVersion").asText().matches("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}([+-][A-Za-z0-9.-]{1,24})?"))throw new IllegalArgumentException("备份版本无效。");
         instant(payload.path("exportedAt"),true);
-        JsonNode records=payload.path("records");if(!records.isObject()||!keys(records).equals(NAMES))throw new IllegalArgumentException("备份记录类型缺失或包含未允许的内容。");
+        boolean oldReview=payload.path("schemaVersion").asInt()<3;Set<String> expectedNames=new HashSet<>(NAMES);if(oldReview)expectedNames.remove("daily_reviews");
+        JsonNode records=payload.path("records");if(!records.isObject()||!keys(records).equals(expectedNames))throw new IllegalArgumentException("备份记录类型缺失或包含未允许的内容。");
         Map<String,List<ObjectNode>> rows=new LinkedHashMap<>();Map<String,Map<String,ObjectNode>> indexes=new HashMap<>();Map<String,Integer> counts=new LinkedHashMap<>();int total=0,running=0;
         for(Table table:TABLES){
-            var values=records.path(table.name());if(!values.isArray())throw invalid(table.name(),"必须是记录数组");
+            var values=oldReview&&table.name().equals("daily_reviews")?mapper.createArrayNode():records.path(table.name());if(!values.isArray())throw invalid(table.name(),"必须是记录数组");
             total+=values.size();if(total>MAX_ROWS)throw new IllegalArgumentException("备份不能超过 20000 条记录。");
             List<ObjectNode> list=new ArrayList<>();Map<String,ObjectNode> index=new HashMap<>();
             var allowed=table.fields().stream().map(Field::name).collect(java.util.stream.Collectors.toSet());
             boolean oldProgress=payload.path("schemaVersion").asInt()==1&&table.name().equals("task_progress");
             if(oldProgress)allowed.remove("ever_started");
+            if(oldReview&&table.name().equals("weekly_reviews"))allowed.removeAll(Set.of("energy","burden","reviewed","open_to_increase"));
             for(JsonNode value:values){
                 if(!value.isObject()||!keys(value).equals(allowed))throw invalid(table.name(),"字段缺失或包含未知字段（不允许账号、凭据或所有权字段）");
                 var row=(ObjectNode)value.deepCopy();
                 if(oldProgress)row.put("ever_started",row.path("started_at").isTextual()||row.path("accumulated_seconds").asLong()>0||Set.of("RUNNING","PAUSED","PARTIAL","COMPLETED").contains(row.path("status").asText()));
+                if(oldReview&&table.name().equals("weekly_reviews")){row.put("energy","UNSPECIFIED");row.put("burden","UNSPECIFIED");row.put("reviewed",true);row.put("open_to_increase",false);}
                 for(Field field:table.fields())check(table.name(),field,row.get(field.name()));
                 if(index.putIfAbsent(row.path("id").asText(),row)!=null)throw invalid(table.name(),"记录编号重复");
                 if(row.path("status").asText().equals("RUNNING"))running++;list.add(row);
@@ -194,7 +200,7 @@ class PersonalDataService {
         relations(rows,indexes);
         var warnings=new ArrayList<String>();warnings.add("只恢复为新记录，不覆盖现有内容；所有 ID 和关系重新映射。模板名附带恢复标记，过长时缩短显示名；完整原名另外保留在备份字段 restored_original_name。");
         warnings.add("不含账号凭据、AI 对话、反馈、本机未提交队列、客户端偏好和服务器配置。此文件包含私人业务内容，请妥善保存。");
-        warnings.add("周复盘恢复为数据中心内的只读副本，保留原周次，不覆盖当前周复盘。已删除和归档状态保留。");
+        warnings.add("日周复盘恢复为数据中心内的只读副本，保留原日期、自述和文字，不覆盖当前复盘，不触发提醒或AI。已删除和归档状态保留。");
         if(running>0)warnings.add(running+" 个运行中计时将恢复为暂停；只保留已结算用时和流水，不估算尚未结算的时间。");
         String checksum=hash(json(canonical(payload)));return new Validated((ObjectNode)payload,rows,new Preview(checksum,Map.copyOf(counts),List.copyOf(warnings),total));
     }
@@ -233,6 +239,9 @@ class PersonalDataService {
               indexes.get("task_progress").get(row.path("progress_id").asText()).put("ever_started",true);
           }
         for(var row:rows.get("weekly_reviews"))if(LocalDate.parse(row.path("week_start").asText()).getDayOfWeek()!=DayOfWeek.MONDAY)throw invalid("weekly_reviews","周次必须为周一");
+        for(String reviewTable:List.of("daily_reviews","weekly_reviews"))for(var row:rows.get(reviewTable)){
+            if(!Set.of("UNSPECIFIED","LOW","STEADY","HIGH").contains(row.path("energy").asText())||!Set.of("UNSPECIFIED","LIGHT","MANAGEABLE","HEAVY").contains(row.path("burden").asText()))throw invalid(reviewTable,"精力或负担自述无效");
+        }
         for(var line:rows.get("mainlines")){
             String lineId=line.path("id").asText(),mode=line.path("execution_mode").asText();
             if(!Set.of("SEQUENTIAL","FLEXIBLE").contains(mode))throw invalid("mainlines","推进方式无效");

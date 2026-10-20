@@ -11,14 +11,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.oyts.planplatform.reflection.ReflectionService;
+import com.oyts.planplatform.reflection.ReflectionDtos.Kind;
 import static com.oyts.planplatform.reminders.ReminderDtos.*;
 
 /** Only fresh server state authorizes delivery. A lost claim response is not replayed. */
 @Service @Transactional
 public class ReminderService {
-    private final JdbcTemplate db; private final ObjectMapper json;
+    private final JdbcTemplate db; private final ObjectMapper json;private final ReflectionService reflections;
     @Autowired(required=false) private Clock clock=Clock.systemUTC();
-    public ReminderService(JdbcTemplate db,ObjectMapper json) { this.db=db;this.json=json; }
+    public ReminderService(JdbcTemplate db,ObjectMapper json,ReflectionService reflections) { this.db=db;this.json=json;this.reflections=reflections; }
     private record Account(String password,long generation,boolean enabled) {}
     private Account lock(String owner) {
         var rows=db.query("select password_hash,auth_generation,enabled from users where id=? for update",(r,n)->new Account(r.getString(1),r.getLong(2),r.getBoolean(3)),owner);
@@ -105,7 +107,20 @@ public class ReminderService {
                 }
             }
         }
-        events.sort(Comparator.comparing(Event::at));
+        var reviewPrefs=reflections.preferences(credential.owner());LocalDate reviewDate=now.atZone(ReflectionService.ZONE).toLocalDate();
+        for(int offset=0;offset<=1;offset++){
+            LocalDate day=reviewDate.plusDays(offset);
+            if(reviewPrefs.dailyEnabled())reviewEvent(events,credential.owner(),Kind.DAY,day,day,reviewPrefs.dailyTime(),now);
+            if(reviewPrefs.weeklyEnabled()&&day.getDayOfWeek().getValue()==reviewPrefs.weekDay())reviewEvent(events,credential.owner(),Kind.WEEK,day.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),day,reviewPrefs.weeklyTime(),now);
+        }
+        // One stable event per instant, even when one of the eligible evening reasons changes later.
+        Map<Instant,List<Event>> evening=new LinkedHashMap<>();List<Event> combined=new ArrayList<>();
+        for(Event e:events){if(e.path().startsWith("/todos?")||e.path().startsWith("/reflection?"))evening.computeIfAbsent(e.at(),k->new ArrayList<>()).add(e);else combined.add(e);}
+        for(var group:evening.entrySet()){
+            var reasons=group.getValue();var destination=reasons.stream().filter(e->e.path().contains("kind=WEEK")).findFirst().orElseGet(()->reasons.stream().filter(e->e.path().startsWith("/reflection?")).findFirst().orElse(reasons.getFirst()));
+            combined.add(new Event("EVENING:"+group.getKey(),group.getKey(),reasons.size()>1?"今日收尾与复盘":destination.title(),reasons.size()>1?"有待办收尾或复盘可回顾；打开计划舱查看，不会自动修改计划。":destination.body(),destination.path()));
+        }
+        events=combined;events.sort(Comparator.comparing(Event::at));
         long next=now.plusSeconds(900).toEpochMilli();List<Notice> notices=new ArrayList<>();List<String> active=new ArrayList<>();
         for(Event event:events) {
             if(event.at().isAfter(now)) { next=Math.min(next,event.at().toEpochMilli());continue; }
@@ -121,6 +136,11 @@ public class ReminderService {
         return new Poll(now.toEpochMilli(),Math.max(next,now.plusSeconds(15).toEpochMilli()),List.copyOf(notices),List.copyOf(active),tasks.size()>2000);
     }
     private record Event(String key,Instant at,String title,String body,String path) {}
+    private void reviewEvent(List<Event> events,String owner,Kind kind,LocalDate period,LocalDate day,String time,Instant now){
+        if(reflections.reviewed(owner,kind,period))return;
+        Instant at=day.atTime(LocalTime.parse(time)).atZone(ReflectionService.ZONE).toInstant();
+        if(at.isAfter(now)||at.isAfter(now.minusSeconds(300))&&reflections.applicable(owner,kind,period))events.add(new Event("REVIEW:"+kind+":"+period,at,kind==Kind.DAY?"花一分钟回顾今天？":"回顾本周，按自己的节奏前进","仅含已同步记录，是否分析或调整由你决定。",ReflectionService.path(kind,period)));
+    }
     private boolean quiet(Preferences p,LocalTime at) {
         if(!p.quietEnabled())return false;LocalTime from=LocalTime.parse(p.quietFrom()),until=LocalTime.parse(p.quietUntil());
         return from.isBefore(until)?!at.isBefore(from)&&at.isBefore(until):!at.isBefore(from)||at.isBefore(until);

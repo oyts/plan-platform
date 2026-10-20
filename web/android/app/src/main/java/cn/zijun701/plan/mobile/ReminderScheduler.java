@@ -68,7 +68,7 @@ final class ReminderScheduler {
     }
     private static void show(Context c,JSONObject n)throws Exception {
         String key=n.getString("key"),path=n.getString("path"),title=n.getString("title"),body=n.getString("body");
-        if(!key.matches("[a-f0-9]{64}")||!(path.matches("/plans/[a-f0-9-]{36}\\?date=\\d{4}-\\d{2}-\\d{2}")||path.matches("/todos\\?date=\\d{4}-\\d{2}-\\d{2}"))||title.length()>180||body.length()>600)return;
+        if(!key.matches("[a-f0-9]{64}")||!validPath(path)||title.length()>180||body.length()>600)return;
         NotificationManager manager=(NotificationManager)c.getSystemService(Context.NOTIFICATION_SERVICE);
         if(Build.VERSION.SDK_INT>=26){NotificationChannel channel=new NotificationChannel(CHANNEL,"事项提醒",NotificationManager.IMPORTANCE_DEFAULT);channel.setDescription("本人开启的周期任务与待办提醒");channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);manager.createNotificationChannel(channel);}
         int id=key.hashCode();Intent open=new Intent(c,MainActivity.class).setData(UriForReminder.key(key)).putExtra("planReminderPath",path).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -77,4 +77,5 @@ final class ReminderScheduler {
         NotificationManagerCompat.from(c).notify(key,1701,notification.build());
     }
     private static final class UriForReminder{static android.net.Uri key(String key){return android.net.Uri.parse("plan-reminder://notice/"+key);}}
+    static boolean validPath(String path){return ReminderRoutes.valid(path);}
 }

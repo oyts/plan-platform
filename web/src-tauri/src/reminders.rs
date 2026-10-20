@@ -67,7 +67,7 @@ fn schedule(at:i64)->Result<(),String>{
 }
 fn hex(s:&str,n:usize)->bool{s.len()==n&&s.bytes().all(|b|b.is_ascii_digit()||(b'a'..=b'f').contains(&b))}
 fn uuid(s:&str)->bool{s.len()==36&&s.bytes().enumerate().all(|(i,b)|if [8,13,18,23].contains(&i){b==b'-'}else{b.is_ascii_digit()||(b'a'..=b'f').contains(&b)})}
-fn destination(path:&str)->bool{if path=="/reminders"{return true;}let Some((base,date))=path.split_once("?date=")else{return false;};(base=="/todos"||base.strip_prefix("/plans/").is_some_and(uuid))&&chrono::NaiveDate::parse_from_str(date,"%Y-%m-%d").is_ok()&&date.len()==10}
+fn destination(path:&str)->bool{if path=="/reminders"{return true;}let split=if path.starts_with("/reflection?kind="){path.split_once("&date=")}else{path.split_once("?date=")};let Some((base,date))=split else{return false;};(base=="/todos"||base.strip_prefix("/plans/").is_some_and(uuid)||matches!(base,"/reflection?kind=DAY"|"/reflection?kind=WEEK"))&&chrono::NaiveDate::parse_from_str(date,"%Y-%m-%d").is_ok()&&date.len()==10}
 pub fn refresh()->Result<(),String>{prune(&[]);if saved().is_some(){schedule(now()+15000)?;}Ok(())}
 fn prune(active:&[String]){
     #[cfg(windows)] {if let Ok(history)=windows::UI::Notifications::ToastNotificationManager::History(){if let Ok(items)=history.GetHistoryWithId(&identity().into()){for item in items{if let (Ok(tag),Ok(group))=(item.Tag(),item.Group()){if group=="plan-reminders"&&!active.iter().any(|key|hex(key,64)&&key.starts_with(&tag.to_string())){let _=history.RemoveGroupedTagWithId(&tag,&group,&identity().into());}}}}}}
@@ -157,5 +157,6 @@ pub fn probe_requested()->bool{false}
     #[test] fn schedule_contains_no_credential_or_elevated_principal(){let s=task_xml("E:\\合成 & test\\app.exe",1792450000000).unwrap();assert!(s.contains("合成 &amp; test"));assert!(s.contains("LeastPrivilege"));assert!(s.contains("InteractiveToken"));assert!(!s.contains("Password"));assert!(!s.contains("Repeat"));assert!(s.contains("--reminder-worker"));}
     #[test] fn notification_markup_is_escaped(){assert_eq!(xml("<&\"'>"),"&lt;&amp;&quot;&apos;&gt;");}
     #[test] fn invalid_calendar_time_is_rejected(){assert!(task_xml("app.exe",i64::MAX).is_err());}
+    #[test] fn review_destinations_are_fixed_and_calendar_valid(){assert!(destination("/reflection?kind=DAY&date=2026-10-20"));assert!(destination("/reflection?kind=WEEK&date=2026-10-19"));assert!(!destination("/reflection?kind=OTHER&date=2026-10-20"));assert!(!destination("/reflection?kind=DAY&date=2026-02-30"));assert!(!destination("/reflection?kind=DAY&date=2026-10-20&token=x"));}
     #[test] fn strict_destinations_reject_extra_fields_and_invalid_dates(){assert!(destination("/todos?date=2026-10-20"));assert!(!destination("/todos?date=2026-02-30"));assert!(!destination("/todos?date=2026-10-20&token=x"));assert!(!destination("/plans/not-a-uuid?date=2026-10-20"));assert!(!uuid("------------------------------------"));}
 }

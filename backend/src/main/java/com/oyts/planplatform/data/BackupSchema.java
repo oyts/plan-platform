@@ -19,7 +19,7 @@ final class BackupSchema {
     private static Table table(String name,String from,boolean owned,Field...columns){
         List<Field> fields=new ArrayList<>();fields.add(f("id",Kind.ID,false));fields.addAll(List.of(columns));
         fields.add(f("created_at",Kind.INSTANT,false));if(!name.equals("time_entries"))fields.add(f("updated_at",Kind.INSTANT,false));
-        return new Table(name,name.equals("weekly_reviews")?"restored_weekly_reviews":name,from,owned,List.copyOf(fields));
+        return new Table(name,name.equals("weekly_reviews")?"restored_weekly_reviews":name.equals("daily_reviews")?"restored_daily_reviews":name,from,owned,List.copyOf(fields));
     }
     static final List<Table> TABLES=List.of(
         table("plans","plans t where t.owner_id=?",true,title("name",120),s("description",1000),date("start_date"),date("end_date"),bool("archived"),integer("rest_days_mask",0,127),instant("deleted_at")),
@@ -34,7 +34,8 @@ final class BackupSchema {
         table("mainline_stages","mainline_stages t join mainlines l on l.id=t.mainline_id where l.owner_id=?",false,ref("mainline_id","mainlines",false),title("name",120),s("description",1000),integer("sort_order",Integer.MIN_VALUE,Integer.MAX_VALUE)),
         table("mainline_items","mainline_items t join mainlines l on l.id=t.mainline_id where l.owner_id=?",false,ref("mainline_id","mainlines",false),title("title",180),s("description",2000),f("acceptance_json",Kind.STRINGS,false),integer("planned_minutes",1,Integer.MAX_VALUE),integer("sort_order",0,Integer.MAX_VALUE),title("status",30),integer("accumulated_seconds",0,Long.MAX_VALUE),s("note",2000),instant("started_at"),instant("completed_at"),instant("deleted_at"),ref("stage_id","mainline_stages",true),title("dependency_mode",20),f("prerequisite_ids_json",Kind.IDS,false)),
         table("todos","todos t where t.owner_id=?",true,title("title",180),s("note",2000),date("due_date"),bool("done"),bool("deleted"),instant("completed_at")),
-        table("weekly_reviews","weekly_reviews t where t.owner_id=?",true,date("week_start"),s("wins",4000),s("blockers",4000),s("next_focus",4000))
+        table("weekly_reviews","weekly_reviews t where t.owner_id=?",true,date("week_start"),s("wins",4000),s("blockers",4000),s("next_focus",4000),title("energy",16),title("burden",16),bool("reviewed"),bool("open_to_increase")),
+        table("daily_reviews","daily_reviews t where t.owner_id=?",true,date("review_date"),s("wins",4000),s("blockers",4000),s("next_focus",4000),title("energy",16),title("burden",16),bool("reviewed"))
     );
     static final Set<String> NAMES=TABLES.stream().map(Table::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
     private BackupSchema(){}

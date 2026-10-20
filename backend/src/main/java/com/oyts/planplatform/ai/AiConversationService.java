@@ -11,28 +11,30 @@ import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.oyts.planplatform.reflection.ReflectionService;
+import com.oyts.planplatform.reflection.ReflectionDtos;
 
 @Service
 public class AiConversationService {
     private final JdbcTemplate db; private final AiQuotaService quotas; private final AiProperties config;
-    private final ObjectMapper mapper; private final Validator validator; private final AiDraftApplier applier; private final AiAdjustmentService adjustments;
-    AiConversationService(JdbcTemplate db,AiQuotaService quotas,AiProperties config,ObjectMapper mapper,Validator validator,AiDraftApplier applier,AiAdjustmentService adjustments) {
-        this.db=db;this.quotas=quotas;this.config=config;this.mapper=mapper;this.validator=validator;this.applier=applier;this.adjustments=adjustments;
+    private final ObjectMapper mapper; private final Validator validator; private final AiDraftApplier applier; private final AiAdjustmentService adjustments; private final ReflectionService reflections;
+    AiConversationService(JdbcTemplate db,AiQuotaService quotas,AiProperties config,ObjectMapper mapper,Validator validator,AiDraftApplier applier,AiAdjustmentService adjustments,ReflectionService reflections) {
+        this.db=db;this.quotas=quotas;this.config=config;this.mapper=mapper;this.validator=validator;this.applier=applier;this.adjustments=adjustments;this.reflections=reflections;
     }
     public record Summary(String id,String mode,long version,Instant createdAt,Instant expiresAt,boolean applied,boolean adjustment,boolean processing) {}
     public record Turn(String id,String state,String message,String reply,String error,Instant createdAt) {}
     public record Session(String id,String mode,String recommendedMode,long version,AiDrafts.Draft draft,
-                          JsonNode applied,Instant expiresAt,List<Turn> turns,AiAdjustmentService.View adjustment) {}
+                          JsonNode applied,Instant expiresAt,List<Turn> turns,AiAdjustmentService.View adjustment,JsonNode review) {}
     public record Job(String id,String state,String error) {}
     record Work(String id,String owner,String sessionId,String reservation,String context,String mode) {}
-    private record Row(String id,String mode,String recommendedMode,long version,String draft,String applied,Instant expiresAt,String adjustment) {}
+    private record Row(String id,String mode,String recommendedMode,long version,String draft,String applied,Instant expiresAt,String adjustment,String review) {}
     boolean available() { return config.enabled() && !config.apiKeyFile().isBlank(); }
     private void lock() { db.queryForObject("SELECT id FROM ai_quota_policy WHERE id=1 FOR UPDATE",Integer.class); }
     private void enabledUser(String owner) { if(db.queryForObject("SELECT COUNT(*) FROM users WHERE id=? AND enabled=true",Integer.class,owner)!=1) throw new NotFoundException("账号不存在。"); }
     private Row owned(String owner,String id,boolean locking) {
         enabledUser(owner);
-        var rows=db.query("SELECT id,selected_mode,recommended_mode,version,draft_json,applied_json,expires_at,adjustment_json FROM ai_sessions WHERE id=? AND owner_id=? AND expires_at>?"+(locking?" FOR UPDATE":""),
-            (r,n)->new Row(r.getString(1),r.getString(2),r.getString(3),r.getLong(4),r.getString(5),r.getString(6),r.getTimestamp(7).toInstant(),r.getString(8)),id,owner,now());
+        var rows=db.query("SELECT id,selected_mode,recommended_mode,version,draft_json,applied_json,expires_at,adjustment_json,review_context_json FROM ai_sessions WHERE id=? AND owner_id=? AND expires_at>?"+(locking?" FOR UPDATE":""),
+            (r,n)->new Row(r.getString(1),r.getString(2),r.getString(3),r.getLong(4),r.getString(5),r.getString(6),r.getTimestamp(7).toInstant(),r.getString(8),r.getString(9)),id,owner,now());
         if(rows.isEmpty()) throw new NotFoundException("对话不存在或已过期。");return rows.getFirst();
     }
     private void editable(Row row,long version) {
@@ -43,7 +45,7 @@ public class AiConversationService {
     @Transactional(readOnly=true)
     public List<Summary> list(String owner) {
         enabledUser(owner);
-        return db.query("SELECT s.id,s.selected_mode,s.version,s.created_at,s.expires_at,s.applied_json,s.adjustment_json IS NOT NULL,EXISTS(SELECT 1 FROM ai_jobs j WHERE j.session_id=s.id AND j.state IN ('QUEUED','RUNNING')) FROM ai_sessions s WHERE s.owner_id=? AND s.expires_at>? ORDER BY s.created_at DESC,s.id LIMIT 20",
+        return db.query("SELECT s.id,s.selected_mode,s.version,s.created_at,s.expires_at,s.applied_json,s.adjustment_json IS NOT NULL,EXISTS(SELECT 1 FROM ai_jobs j WHERE j.session_id=s.id AND j.state IN ('QUEUED','RUNNING')) FROM ai_sessions s WHERE s.owner_id=? AND s.expires_at>? AND s.review_context_json IS NULL ORDER BY s.created_at DESC,s.id LIMIT 20",
             (r,n)->new Summary(r.getString(1),r.getString(2),r.getLong(3),r.getTimestamp(4).toInstant(),r.getTimestamp(5).toInstant(),r.getString(6)!=null,r.getBoolean(7),r.getBoolean(8)),owner,now());
     }
     @Transactional
@@ -70,11 +72,12 @@ public class AiConversationService {
         var turns=db.query("SELECT id,state,user_message,reply_text,error_code,created_at FROM ai_jobs WHERE session_id=? ORDER BY created_at,id",
             (r,n)->new Turn(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getTimestamp(6).toInstant()),id);
         var snapshot=adjustments.decode(row.adjustment);
-        return new Session(id,row.mode,row.recommendedMode,row.version,row.draft==null?null:adjustments.parse(snapshot,row.draft),row.applied==null?null:json(row.applied),row.expiresAt,turns,adjustments.view(snapshot));
+        return new Session(id,row.mode,row.recommendedMode,row.version,row.draft==null?null:adjustments.parse(snapshot,row.draft),row.applied==null?null:json(row.applied),row.expiresAt,turns,adjustments.view(snapshot),row.review==null?null:json(row.review));
     }
     @Transactional
     public Session choose(String owner,String id,long version,AiDrafts.Mode mode) {
         lock();var row=owned(owner,id,true);editable(row,version);
+        analysisOnly(row);
         if(row.adjustment!=null) throw new ConflictException("已有对象的调整不能切换模式。");
         if(row.draft!=null && !mode.name().equals(row.mode)) throw new ConflictException("已有草稿不能直接换模式，请新建对话。");
         db.update("UPDATE ai_sessions SET selected_mode=?,version=version+1 WHERE id=?",mode.name(),id);return read(owner,id);
@@ -82,6 +85,7 @@ public class AiConversationService {
     @Transactional
     public Session saveDraft(String owner,String id,long version,String source) {
         lock();var row=owned(owner,id,true);editable(row,version);
+        analysisOnly(row);
         var draft=adjustments.parse(adjustments.decode(row.adjustment),source);
         if(row.mode==null || !draft.mode().name().equals(row.mode)) throw new IllegalArgumentException("请先选择草稿对应的模式。");
         draft=revision(draft,row.version+1);
@@ -91,6 +95,7 @@ public class AiConversationService {
     public JsonNode apply(String owner,String id,long version,boolean confirmed) {
         if(!confirmed) throw new IllegalArgumentException("请先确认预览内容。");
         lock();var row=owned(owner,id,true);
+        analysisOnly(row);
         // Replay returns the same result, including after a lost response. Never create twice.
         if(row.applied!=null) return json(row.applied);
         editable(row,version);
@@ -139,6 +144,7 @@ public class AiConversationService {
             context.put("intent","ADJUST_EXISTING");context.put("existingItemIds",snapshot.items().keySet());context.put("existingStageIds",snapshot.stages().keySet());context.put("protectedItemIds",snapshot.protectedItems());
             if(row.draft==null) context.put("currentDraft",snapshot.original());
         }
+        if(row.review!=null){context.put("intent","REVIEW_ANALYSIS");context.put("review",json(row.review));}
         String result=write(context);
         while(result.length()>config.maxInputChars() && !turns.isEmpty()) { turns.removeFirst();result=write(context); }
         if(result.length()>config.maxInputChars()) throw new IllegalArgumentException("消息和草稿超过当前 AI 上下文限制，请手动编辑或缩短内容后重试。");
@@ -166,6 +172,7 @@ public class AiConversationService {
         AiDrafts.Draft draft;
         try { draft=output.path("draft").isNull()?null:adjustments.parse(adjustments.decode(row.adjustment),write(output.get("draft"))); }
         catch(IllegalArgumentException invalid) { throw new AiFailure(AiFailure.Code.INVALID_OUTPUT); }
+        if(row.review!=null&&draft!=null)throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
         if(draft!=null && (work.mode==null || !draft.mode().name().equals(work.mode))) throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
         if(!"RUNNING".equals(db.queryForObject("SELECT state FROM ai_jobs WHERE id=?",String.class,work.id))) return;
         db.update("UPDATE ai_sessions SET recommended_mode=?,draft_json=?,version=version+1 WHERE id=?",recommendation,draft==null?row.draft:write(revision(draft,row.version+1)),row.id);
@@ -201,6 +208,17 @@ public class AiConversationService {
         for(String id:expired) db.update("DELETE FROM ai_quota_requests WHERE id=?",id);
     }
     private static AiDrafts.Draft revision(AiDrafts.Draft d,long revision) { return new AiDrafts.Draft(1,d.mode(),revision,d.title(),d.startDate(),d.endDate(),d.restDays(),d.stages(),d.items()); }
+    private void analysisOnly(Row row){if(row.review!=null)throw new ConflictException("复盘分析只提供建议，不能从此会话生成或修改计划。周节奏调整须另开已有对象调整并重新预览确认。");}
+    @Transactional(isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ) public Session createReview(String owner,ReflectionDtos.Analyse r){
+        if(!r.consent())throw new IllegalArgumentException("请先核对预览并同意将本次选中的汇总和文字发送给DeepSeek。");
+        lock();var preview=reflections.preview(owner,r.kind(),r.start(),r.includeNotes(),r.relatedMode(),r.relatedId());
+        if(!MessageDigest.isEqual(preview.fingerprint().getBytes(StandardCharsets.US_ASCII),r.fingerprint().getBytes(StandardCharsets.US_ASCII)))throw new ConflictException("复盘数据已变化，请重新预览后再同意；尚未调用AI或扣次数。");
+        var session=create(owner,null,true);db.update("update ai_sessions set review_context_json=? where id=?",preview.contentJson(),session.id());return read(owner,session.id());
+    }
+    @Transactional(readOnly=true) public List<Map<String,Object>> reviewList(String owner){
+        enabledUser(owner);return db.query("select id,version,created_at,expires_at,review_context_json from ai_sessions where owner_id=? and review_context_json is not null and expires_at>? order by created_at desc,id limit 20",(r,n)->{
+            JsonNode review=json(r.getString(5));return Map.<String,Object>of("id",r.getString(1),"version",r.getLong(2),"createdAt",r.getTimestamp(3).toInstant(),"expiresAt",r.getTimestamp(4).toInstant(),"kind",review.path("kind").asText(),"start",review.path("facts").path("start").asText());},owner,now());
+    }
     private JsonNode json(String source) { try { return mapper.copy().enable(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION,com.fasterxml.jackson.core.JsonParser.Feature.AUTO_CLOSE_SOURCE).enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readTree(source); } catch(Exception invalid) { throw new AiFailure(AiFailure.Code.INVALID_OUTPUT); } }
     private String write(Object value) { try{return mapper.writeValueAsString(value);}catch(Exception invalid){throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);} }
     private static String hash(String source) { try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(source.getBytes(StandardCharsets.UTF_8)));}catch(Exception impossible){throw new IllegalStateException("SHA-256 unavailable");} }
