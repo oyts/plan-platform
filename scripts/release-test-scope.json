@@ -1,12 +1,15 @@
 {
   "version": "0.1.18",
   "release0118Production": {
-    "status":"web-api-released-windows-installed-native-completion-pending",
+    "status":"three-platform-released-github-archive-pending",
     "scripts":["scripts/test-release-drill.py","scripts/test-activate-ai-workbench.py","scripts/test-activate-reflection.py","scripts/public-reflection-acceptance.py","scripts/android-reflection-formal.py","scripts/test-android-reflection-formal.py"],
     "results":{"snapshotGuardsPassed":4,"existingActivationGuardsPassed":9,"reflectionActivationGuardsPassed":5,"androidHarnessGuardsPassed":4,"httpsNewGroupsPassed":8,"snapshotTablesRestoredTwice":39,"originalBusinessTablesUnchanged":38,"windowsAppDataFilesUnchangedBeforeLaunch":524,"paidAiCalls":0,"realTestEmailsSent":0},
     "evidence":["remote release-drills/roadmap-20261020222301-5f707ee6/report.json","acceptance-results/release-0118/production-snapshot-report.json","acceptance-results/public-web/20261020-222858-316330/report.json"],
-    "limits":"Real snapshot restore compares two full independent restores of the same verified immutable dump, not a later mutable production database. Original columns projected on four extended tables. Actual prior0.1.17 image starts afterV27. Windows original account, initial0/0 queue, new readonly pages, HTTPS and cold reopen login observed; post-reopen queue waiting user after coordinate helper failure. No formal Android install, feed publication or GitHub release yet. Earlier live-table checksum and wrong route-bucket harness failures retained.",
-    "pending":["PC post-reopen queue confirmation and Windows optional source publication/verification","Formal signed Android acceptance after connection","Protected Android publication and update check","GitHub Windows-only release"]
+    "formalResults":{"windowsReopenQueueAndSourceConfirmedByUser":true,"windowsPublicPassed":5,"androidReadonlyGroupsPassed":4,"androidProtectedSourcePassed":4,"androidNativeUpdateCheck":true,"automaticDownloadChecked":false,"queueBefore":[0,0],"queueAfter":[0,0]},
+    "formalEvidence":["acceptance-results/windows-public-cloud/2026-10-20T22-40-14-032Z-8372ace8/report.json","acceptance-results/native-reflection-0118/after-20261020T224016552147Z.json","acceptance-results/invited-android/2026-10-20T22-41-05-579Z-e0bcc192/report.json"],
+    "ossCronFix":{"collectorPassed":6,"runtimeGuardsPassed":5,"minimalPathProductionBackupRoundtripPassed":true,"regularCollectionStayedRecovered":true,"naturalNextNightRunObserved":false},
+    "limits":"Real snapshot restore compares two full independent restores of the same verified immutable dump, not a later mutable production database. Original columns projected on four extended tables. Actual prior0.1.17 image starts afterV27. Windows final queue/source confirmed by user after UI helper geometry failure; other readonly checks automated. Formal Android exact APK and empty0/0 queue/reopen passed. No nonempty-queue upgrade or fresh application-internal cross-version install claim. Earlier live-table checksum, route-bucket and missing-browser harness failures retained.",
+    "pending":["GitHub Windows-only release"]
   },
   "release0117Candidate": {
     "activationGuardsPassed":9,

@@ -15,6 +15,8 @@ def collector_body(root,backups):
     validate(root,backups)
     return '''#!/bin/sh
 set -eu
+PATH=/usr/local/bin:/usr/bin:/bin
+export PATH
 umask 077
 root='ROOT'
 test -f "$root/production-operations.yml" || exit 0

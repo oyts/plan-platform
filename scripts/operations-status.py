@@ -62,12 +62,17 @@ def collect(args):
             with tempfile.TemporaryDirectory(prefix='plan-oss-proof-') as temporary:
                 destination=Path(temporary)/newest['name'];remote='oss://zj-ecs-server/plan-console-backups/mysql/'+newest['name']
                 for suffix in ['', '.sha256']:
-                    subprocess.run(['ossutil','cp',remote+suffix,str(destination)+suffix,'--mode','EcsRamRole','--region','cn-hangzhou','--endpoint','https://oss-cn-hangzhou-internal.aliyuncs.com'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=300)
+                    executable=shutil.which('ossutil',path='/usr/local/bin:/usr/bin:/bin') or 'ossutil'
+                    subprocess.run([executable,'cp',remote+suffix,str(destination)+suffix,'--mode','EcsRamRole','--region','cn-hangzhou','--endpoint','https://oss-cn-hangzhou-internal.aliyuncs.com'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=300)
                 digest=verify_local(destination,[64*1024*1024,256*1024*1024])
                 if digest!=newest['sha256']:raise ValueError('OSS downloaded hash mismatch.')
             oss={'sha256':digest,'verifiedAt':now(),'verified':True};write(output_path(str(target.parent/'oss.json'),'oss.json'),oss,args.group_readable)
             failed=[code for code in failed if code!='OSS_FAILED']
         except (OSError,ValueError,subprocess.SubprocessError):oss={};failed=list(set(failed+['OSS_FAILED']))
+        # Ordinary five-minute collections must not resurrect an old failure
+        # after a real roundtrip succeeded, nor erase a genuine failed attempt.
+        failure_state={code:code in failed for code in FAILURES}
+        write(output_path(str(target.parent/'failures.json'),'failures.json'),failure_state,args.group_readable)
     disk=shutil.disk_usage(directory)
     result={'schemaVersion':1,'observedAt':now(),'catalogComplete':len(files)<=200,'backups':backups,'oss':oss,'drill':drill,'disk':{'freeBytes':disk.free,'totalBytes':disk.total},'failures':sorted(failed)}
     if len(json.dumps(result).encode())>65536:raise ValueError('Metadata cap exceeded; old status retained.')

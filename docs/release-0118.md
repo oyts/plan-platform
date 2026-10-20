@@ -1,6 +1,6 @@
-# 提醒与日周复盘 0.1.18 发布准备
+# 提醒与日周复盘 0.1.18 发布记录
 
-2026年10月21日，正式Web/API已启用0.1.18，Windows已在原目录保留数据升级到0.1.18。Windows官网／更新源和Android受限源仍为0.1.17／22；Android0.1.18／23签名候选尚未正式安装验收，不进入更新源。官网APK及公开注册继续关闭。
+2026年10月21日，正式Web/API、Windows官网／可选更新源及Android登录受限源均已升级到0.1.18／Android构建23。正式双端同身份覆盖并保留原登录及空队列，新入口定向检查通过。系统通知和自动下载默认关闭，官网APK／二维码及公开注册继续关闭。
 
 ## 已完成验收
 
@@ -20,7 +20,7 @@ Windows独立包6组联测通过：默认关闭、本人确认后的UI开启、�
 - Android：`android/PlanCabin-0.1.18-release.apk`，SHA256 `82adbb9dfc58caeeccbca3a45e07f2b69dee2a4bea91a278141db4304e526699`。同包名`cn.zijun701.plan.app`、同长期证书、构建23、非debug、禁止明文网络。首轮依赖下载403保留失败记录，使用已有官方Maven直连选项单独重试成功，不改依赖或TLS校验。
 - `metadata/candidate.json`原签名、证书、版本和哈希核验成功；状态仍为LOCAL_SIGNED_CANDIDATE，不作为已安装验收或可公开下载的证明。
 - 云端归档`production-artifacts/plan-platform-0.1.18.tar.gz`，SHA256 `b7654985d3349c6d220881e350883f1138eabbc1cc91cb06426e5514f5ac18fb`；API SHA256 `0e4f00684fb04468b75fe8cc6577fe971d330225a8574d09bea0f8ddb1fd4ce5`。
-- 归档已上传`/home/oyts/plan-platform/releases/0.1.18-b7654985/release.tar.gz`并核对哈希。116个归档成员均为允许目录内的普通文件／目录，无路径越界或符号链接。已解压并核对API哈希，仅构建新标签镜像，未写`.env`、启动容器或激活。API镜像`270968eace02…`，Web镜像`233897aaabae…`；旧镜像与服务保留。
+- 归档已上传`/home/oyts/plan-platform/releases/0.1.18-b7654985/release.tar.gz`并核对哈希。116个归档成员均为允许目录内的普通文件／目录，无路径越界或符号链接；该目录随后按下方流程正式激活。API镜像`270968eace02…`，Web镜像`233897aaabae…`；旧镜像与服务保留。激活／演练工具及下方运维脚本修复另外受管部署，业务镜像和正式客户端字节不变。
 
 ## 本轮生产与安装结果
 
@@ -32,16 +32,29 @@ Windows独立包6组联测通过：默认关闭、本人确认后的UI开启、�
 
 正式HTTPS定向8组通过（桌面与手机网页各4组）：三模式日周事实／分页与默认设置、本机复盘草稿重开和布局、提醒界面与默认关闭、只预览不调用AI／权限／公开APK限制。证据`acceptance-results/public-web/20261020-222858-316330/report.json`。首轮测试错误地用ARRANGED查询路线，接口按设计返回400；工具改为ACTUAL后重测通过，失败记录保留，无产品代码更改。没有提交云端复盘或真实任务，没有付费AI调用或主动测试邮件。
 
-Windows正式安装由维护者本轮保存关闭后授权，原目录`E:\PlannedCabin\Plan Cabin`使用`/UPDATE`覆盖。安装前后524个原数据文件逐文件哈希一致，凭据未导出／修改；安装器及原长期更新签名核验通过。实际原账号仍登录，初次队列0/0，日周复盘事实／编辑入口、系统提醒默认关闭、0.1.18版本及真实HTTPS连接成功，正常关闭重开后原账号仍登录。后续队列点击两次遇到电脑工具`coordinate input geometry is unavailable`，停止自动操作，等待维护者只读确认。尚未声称非空队列升级保留或本轮应用内跨版本安装。
+Windows正式安装由维护者本轮保存关闭后授权，原目录`E:\PlannedCabin\Plan Cabin`使用`/UPDATE`覆盖。安装前后524个原数据文件逐文件哈希一致，凭据未导出／修改；安装器及原长期更新签名核验通过。实际原账号仍登录，初次队列0/0，日周复盘事实／编辑入口、系统提醒默认关闭、0.1.18版本及真实HTTPS连接成功，正常关闭重开后原账号仍登录。后续队列点击两次遇到电脑工具`coordinate input geometry is unavailable`，停止自动操作，由维护者本人确认重开后仍0/0且无异常；发布后本人确认检查更新为最新、自动下载未勾选。自动观察与人工补验分开记录，不冒充全部自动点击通过。尚未声称非空队列升级保留或本轮应用内跨版本安装。
 
-Android正式验收工具`android-reflection-formal.py`及4项保护检查已准备；未检测到授权连接设备，尚未运行正式升级。之前独立包的真机业务／后台提醒结果不替代正式APK安装和数据保留验收。
+Android正式0.1.17／22原登录和0/0队列已记录，维护者授权后同包名、同证书`adb install --no-streaming -r`返回Success，实际0.1.18／23安装APK哈希等于候选。只读4组通过：原登录及精确APK／队列、复盘事实和编辑入口、提醒默认关闭且未改变权限、关闭重开后的原登录及队列。证据`acceptance-results/native-reflection-0118/after-20261020T224016552147Z.json`；此前不在前台的首次尝试安全停止，无业务写入。
 
-## 剩余发布门槛
+Windows公网5组通过，重新下载的两条EXE地址签名／哈希一致、旧安装包不变、清单no-store与下载immutable、桌面及手机官网下载、公共APK／二维码和注册限制正常。证据`acceptance-results/windows-public-cloud/2026-10-20T22-40-14-032Z-8372ace8/report.json`。首轮工具未指定已有浏览器目录，3组HTTP检查通过后缺浏览器失败；指定项目已有运行时再执行5组全部通过，失败记录保留，没有下载新依赖。
 
-1. Windows补确认重开后0/0队列，完成官网／可选更新源发布与HTTPS签名／哈希验证、原生检查更新。工具无法点击时由维护者本人补看，不绕过。
-2. 维护者连接并解锁手机，记录正式0.1.17／22原登录和队列，同身份覆盖0.1.18／23并确认系统安装。只读检查新入口、默认关闭及重开。
-3. Android通过后发布登录受限源并核对匿名拒绝、受邀账号绑定、完整APK哈希及原生检查更新；不开放公共APK或二维码。
-4. 最后提交推送、创建不可变标签和Windows-only GitHub附件。源码可先同步，但不把未完成的Android门槛写成三端已发布。
+Android受限源4组通过：匿名／无效凭据拒绝、公共渠道关闭、两个既有受邀普通账号的账号绑定清单及完整APK哈希校验。证据`acceptance-results/invited-android/2026-10-20T22-41-05-579Z-e0bcc192/report.json`。APK不作为GitHub公共附件；本版实际应用内跨版本下载／安装不重复声称已测。
+
+## 夜间OSS告警修复
+
+原夜间任务北京时间03:15运行，本地备份成功后连续报`ossutil: command not found`。OSS工具位于root持有的`/usr/local/bin/ossutil`，cron最小PATH不包含该目录，因而新快照缺少上传和对应下载校验证据，触发OSS_FAILED与OSS_UNVERIFIED；白天人工成功核对后事件显示已恢复。故障是真实上传失败，不是数据库备份损坏，也不应关闭告警掩盖。
+
+定时入口、上传工具和采集模板改用固定系统PATH，Python采集也通过固定路径查找OSS工具。真实校验成功后只清除OSS失败结果并持久保存，失败同样持久记录，防止普通采集读回旧失败标记。后端与客户端未变，不需要重新签名或重启业务服务。
+
+采集器6项、运行模板5项通过。用`PATH=/usr/bin:/bin`真实执行完整定时入口，新备份`plan_platform-mysql-20261020-223940.sql.gz`上传、独立下载及哈希一致；再次普通采集后`failures=[]`、OSS证明仍匹配最新备份。03:15每日备份与5分钟采集条目保持原样，未建立Codex自动任务。修复前脚本及受限日志保留在`maintenance/oss-cron-20261021`，运行模板回退副本在`operations-runtime-20261020T223904727750Z`。历史告警事件保留，不自动删除或代管理员确认；下一次自然夜间任务尚未发生，不提前声称已观察通过。
+
+## 版本归档与回退
+
+Android发布后原生检查更新通过，显示当前最新、自动下载未勾选，原登录与0/0队列不变，证据`acceptance-results/native-reflection-0118/update-check-20261020T224233583832Z.json`。它是本轮已安装版本的源检查，不是再做了一次跨版本安装。
+
+下一步只剩提交推送及创建不可变`v0.1.18`和Windows-only GitHub附件；不上传APK、私密验收资料、数据库或签名备份。
+
+Windows静态入口回退：`sh /home/oyts/plan-platform/client-public/releases/windows-0118-FG6Qh2/publish.sh rollback windows-0118-FG6Qh2`。Android受限源回退：`sh /home/oyts/plan-platform/android-private/staging/android-23-df23ed2f/rollback.sh`。两者只恢复清单／下载入口，不降级已安装应用、不改变数据库。
 
 应用回退须先执行新版`check-governance-rollback.py --target-supports-generation yes`，再通过新版`production-compose.sh`启动保留的`0.1.17-cd635586`目录，核对HTTPS后原子恢复current；不回灌旧库。切换失败时激活脚本会执行这一守卫流程。
 

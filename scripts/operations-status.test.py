@@ -30,5 +30,23 @@ class CollectorTest(unittest.TestCase):
             backups,operations=self.setup_tree(Path(name))
             with self.assertRaises(ValueError):collector.output_path(str(backups/'status.json'),'status.json')
             with self.assertRaises(ValueError):collector.output_path(str(operations/'private-key.pem'),'status.json')
+    def test_success_clears_only_oss_failure_and_stays_recovered_on_regular_collection(self):
+        with tempfile.TemporaryDirectory(prefix='plan-ops-fixture-') as name:
+            backups,operations=self.setup_tree(Path(name));path,digest=self.backup(backups)
+            (operations/'failures.json').write_text(json.dumps({'OSS_FAILED':True,'BACKUP_FAILED':True,'RESTORE_FAILED':True}))
+            def download(command,**kwargs):
+                Path(command[3]).write_bytes(Path(str(path)+('.sha256' if command[2].endswith('.sha256') else '')).read_bytes())
+            with patch.object(collector.subprocess,'run',side_effect=download):result=collector.collect(self.args(backups,operations,True))
+            self.assertNotIn('OSS_FAILED',result['failures']);self.assertIn('BACKUP_FAILED',result['failures']);self.assertIn('RESTORE_FAILED',result['failures'])
+            later=collector.collect(self.args(backups,operations))
+            self.assertNotIn('OSS_FAILED',later['failures']);self.assertEqual(later['oss']['sha256'],digest)
+    def test_failure_is_durable_until_real_verify_and_uses_bounded_tool_path(self):
+        with tempfile.TemporaryDirectory(prefix='plan-ops-fixture-') as name:
+            backups,operations=self.setup_tree(Path(name));self.backup(backups)
+            with patch.object(collector.shutil,'which',return_value='/usr/local/bin/ossutil') as which, patch.object(collector.subprocess,'run',side_effect=OSError('synthetic outage')) as run:
+                result=collector.collect(self.args(backups,operations,True))
+            which.assert_called_with('ossutil',path='/usr/local/bin:/usr/bin:/bin')
+            self.assertEqual(run.call_args[0][0][0],'/usr/local/bin/ossutil')
+            self.assertIn('OSS_FAILED',result['failures']);self.assertIn('OSS_FAILED',collector.collect(self.args(backups,operations))['failures'])
 
 if __name__=='__main__':unittest.main()

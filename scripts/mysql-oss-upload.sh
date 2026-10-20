@@ -1,5 +1,7 @@
 #!/bin/sh
 set -eu
+PATH=/usr/local/bin:/usr/bin:/bin
+export PATH
 cd "$(dirname "$0")/.."
 backup=${1:?Pass a verified MySQL backup}
 gzip -t "$backup"

@@ -1,6 +1,9 @@
 #!/bin/sh
 # User-owned cron entry; no sudo and no deletion of historical backups.
 set -eu
+# cron does not load the interactive user's PATH; ossutil is root-installed here.
+PATH=/usr/local/bin:/usr/bin:/bin
+export PATH
 umask 077
 # This helper is installed at the deployment root, beside the current symlink.
 root=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
