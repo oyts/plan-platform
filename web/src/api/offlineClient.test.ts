@@ -21,6 +21,10 @@ describe('offline API safety', () => {
     await expect(api.put('/mainlines/l/paused',{paused:true,version:0},{adapter:disconnected})).rejects.not.toBeInstanceOf(OfflineQueuedError);
     connectionState.reachable=true;
     await expect(api.post('/organize/copy/apply',{confirmed:true},{adapter:disconnected})).rejects.not.toBeInstanceOf(OfflineQueuedError);
+    connectionState.reachable=true;
+    await expect(api.post('/structure-templates/capture',{confirmed:true},{adapter:disconnected})).rejects.not.toBeInstanceOf(OfflineQueuedError);
+    connectionState.reachable=true;
+    await expect(api.post('/structure-templates/00000000-0000-0000-0000-000000000001/apply',{confirmed:true},{adapter:disconnected})).rejects.not.toBeInstanceOf(OfflineQueuedError);
     expect(await listOperations('one')).toHaveLength(0);
   });
   it('queues standalone todo completion and deletion with a retained version', async () => {

@@ -13,10 +13,10 @@
 ## 待核实和续做
 
 1. 最终网页18例全部通过，结果位于 `acceptance-results/templates-browser-accepted.json`；包括时间断言、结果未知原样重试、409保留输入、备份及未提交表单离开／重开，不自动保存为模板。最终前端单元为 `templates-frontend-final.log`，构建为 `templates-web-final-build-second.log`。此前时间断言和未等待登录恢复即再次刷新的测试失败证据保留。
-2. MySQL脚本 `scripts/templates-mysql.py`：首次目录 `/home/oyts/plan-platform/template-candidates/20261020T232300Z-2e0b8539` 使用较早JAR，Asia时区复制时间断言失败。最终程序在新目录 `/home/oyts/plan-platform/template-candidates/20261020T233000Z-d8337116` 演练，结果待核实。各时区通过正常API创建合成时间来源，与正常任务读取比较，再验证复制；不据此声称切换JVM时区会迁移历史时间。保留失败目录，不删标记重跑。
+2. MySQL脚本 `scripts/templates-mysql.py`：首次目录 `/home/oyts/plan-platform/template-candidates/20261020T232300Z-2e0b8539` 使用较早JAR，Asia时区复制时间断言失败。最终程序在新目录 `/home/oyts/plan-platform/template-candidates/20261020T233000Z-d8337116` 的 `report.json` 为PASS：V27→V28、46张原业务表不变、UTC及北京时间逻辑时间、旧0.1.18镜像读取、49表全库恢复校验均通过。合成数据库 `template_acceptance_d8337116`、恢复库 `template_restore_d8337116` 及备份保留，测试容器已停止，生产仍0.1.18。各时区通过正常API创建合成来源，不据此声称切换JVM时区会迁移历史时间。
 3. Windows独立包与Android真机尚未验收；本轮没有覆盖正式应用。签名候选需要新统一版本，正式PC覆盖须保存关闭确认，Android系统安装和授权由本人操作。
 4. 正式发布前对当时生产快照演练、核对回退守卫、签名／哈希、原账号／队列保留、HTTPS及更新源。官网APK、公众注册保持关闭。
-5. 敏感审查后提交推送已验证源码；额度剩余10%停止并直接通知，不开自动任务。
+5. 源码提交 `96109cd` 已推送；后续记录补提交。Web、desktop-web、android-web资源构建通过，但不是EXE／APK验收。补充定向离线安全用例1项通过（同文件其余8项按范围跳过），连同原11项单元合计12项；证据 `templates-no-offline-replay.log`。本轮本机测试服务已停止。额度剩余10%停止并直接通知，不开自动任务。
 
 后端定向命令：
 
