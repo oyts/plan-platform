@@ -13,14 +13,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.oyts.planplatform.reflection.ReflectionService;
 import com.oyts.planplatform.reflection.ReflectionDtos.Kind;
+import com.oyts.planplatform.plan.repository.PlanTaskRepository;
+import org.springframework.data.domain.PageRequest;
 import static com.oyts.planplatform.reminders.ReminderDtos.*;
 
 /** Only fresh server state authorizes delivery. A lost claim response is not replayed. */
 @Service @Transactional
 public class ReminderService {
-    private final JdbcTemplate db; private final ObjectMapper json;private final ReflectionService reflections;
+    private final JdbcTemplate db; private final ObjectMapper json;private final ReflectionService reflections;private final PlanTaskRepository taskRepository;
     @Autowired(required=false) private Clock clock=Clock.systemUTC();
-    public ReminderService(JdbcTemplate db,ObjectMapper json,ReflectionService reflections) { this.db=db;this.json=json;this.reflections=reflections; }
+    public ReminderService(JdbcTemplate db,ObjectMapper json,ReflectionService reflections,PlanTaskRepository taskRepository) { this.db=db;this.json=json;this.reflections=reflections;this.taskRepository=taskRepository; }
     private record Account(String password,long generation,boolean enabled) {}
     private Account lock(String owner) {
         var rows=db.query("select password_hash,auth_generation,enabled from users where id=? for update",(r,n)->new Account(r.getString(1),r.getLong(2),r.getBoolean(3)),owner);
@@ -85,16 +87,16 @@ public class ReminderService {
         if(p.primaryDeviceId()!=null&&!p.primaryDeviceId().isBlank()&&!p.primaryDeviceId().equals(parts[0]))return new Poll(now.toEpochMilli(),now.plusSeconds(900).toEpochMilli(),List.of(),List.of(),false);
         ZoneId zone=ZoneId.of(p.zone());LocalDate date=now.atZone(zone).toLocalDate();
         List<Event> events=new ArrayList<>();
-        List<Map<String,Object>> tasks=List.of();
+        List<PlanTaskRepository.ReminderCandidate> tasks=List.of();
         if(p.advanceEnabled()||p.startEnabled()) {
-            tasks=db.queryForList("select t.id,t.title,p.id as plan_id,coalesce(g.defer_to,t.task_date) as effective_date,t.start_time from plan_tasks t join plans p on p.id=t.plan_id left join task_progress g on g.task_id=t.id where p.owner_id=? and p.deleted_at is null and p.archived=false and t.deleted_at is null and t.start_time is not null and coalesce(g.status,'PENDING') in ('PENDING','DEFERRED') and coalesce(g.ever_started,false)=false and not exists(select 1 from time_entries e where e.progress_id=g.id) and coalesce(g.defer_to,t.task_date) between ? and ? order by effective_date,t.start_time,t.id limit 2001",credential.owner(),date.minusDays(1),date.plusDays(1));
+            tasks=taskRepository.findReminderCandidates(credential.owner(),date.minusDays(1),date.plusDays(1),PageRequest.of(0,2001));
             for(var t:tasks.stream().limit(2000).toList()) {
-                LocalDate day=LocalDate.parse(t.get("effective_date").toString().substring(0,10));
-                LocalTime time=LocalTime.parse(t.get("start_time").toString());
+                LocalDate day=t.getEffectiveDate();
+                LocalTime time=t.getStartTime();
                 Instant start=day.atTime(time).atZone(zone).toInstant();
-                String path="/plans/"+t.get("plan_id")+"?date="+day;
-                if(p.advanceEnabled()&&start.isAfter(now))events.add(new Event("ADVANCE:"+t.get("id")+":"+start,start.minusSeconds(p.advanceMinutes()*60L),"周期任务即将开始",p.hideDetails()?"请打开计划舱查看安排。":t.get("title")+"：计划于"+time+"开始。",path));
-                if(p.startEnabled())events.add(new Event("START:"+t.get("id")+":"+start,start,"到计划开始时间了，是否开始？",p.hideDetails()?"请打开计划舱核对并开始。":String.valueOf(t.get("title")),path));
+                String path="/plans/"+t.getPlanId()+"?date="+day;
+                if(p.advanceEnabled()&&start.isAfter(now))events.add(new Event("ADVANCE:"+t.getId()+":"+start,start.minusSeconds(p.advanceMinutes()*60L),"周期任务即将开始",p.hideDetails()?"请打开计划舱查看安排。":t.getTitle()+"：计划于"+time+"开始。",path));
+                if(p.startEnabled())events.add(new Event("START:"+t.getId()+":"+start,start,"到计划开始时间了，是否开始？",p.hideDetails()?"请打开计划舱核对并开始。":t.getTitle(),path));
             }
         }
         if(p.todoEnabled()) {

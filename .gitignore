@@ -26,6 +26,7 @@ web/playwright-report/
 acceptance-results/
 backend/target-reminders/
 backend/target-reflection/
+backend/target-reminder-timezone/
 android-artifacts/
 .android-signing/
 *.keystore

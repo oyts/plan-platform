@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties="app.security.registration-enabled=true") @AutoConfigureMockMvc
+@SpringBootTest(properties={"app.security.registration-enabled=true","spring.jpa.properties.hibernate.jdbc.time_zone=UTC"}) @AutoConfigureMockMvc
 @Import(NativeReminderIntegrationTest.TimeConfig.class)
 class NativeReminderIntegrationTest {
     static class Time extends Clock {Instant value;public ZoneId getZone(){return ZoneOffset.UTC;}public Clock withZone(ZoneId z){return this;}public Instant instant(){return value;}}

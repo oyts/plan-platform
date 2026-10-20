@@ -8,7 +8,7 @@
 
 ## 已取得的证据
 
-- 最终后端29项通过：提醒9、限流3、数据中心10、日常体验7。JAR在`backend/target-reminders/plan-platform-api.jar`，报告在同目录`surefire-reports`。H2验证不是MySQL演练。
+- 原提醒候选后端29项通过：提醒9、限流3、数据中心10、日常体验7。JAR在`backend/target-reminders/plan-platform-api.jar`，报告在同目录`surefire-reports`。H2验证不是MySQL演练；后续时间修正的验证范围见下文。
 - 前端提醒及账号／队列／数据中心25项通过；API直接受影响15项通过，共40个独立用例。Windows提醒Rust4项通过。
 - 浏览器4个场景乘桌面／手机视口共8项通过；409响应在浏览器中由模拟API提供，真实409另外由后端用例验证。证据在`acceptance-results/reminders/browser/`。
 - Windows独立安装包修复了Task Scheduler XML必须使用UTF16LE BOM的真实兼容问题。系统任务实际唤醒，LastTaskResult为0，通知API接受合成通知，状态随后为SYSTEM_SETTING_0；未把该结果称为肉眼看到横幅或完整业务UI通过。证据已复制到`acceptance-results/reminders/windows-probe/`。自有测试任务已用`--reminder-clear`清理，正式计划舱不动。
@@ -16,7 +16,7 @@
 
 ## Android真机补验
 
-维护者此前仅延期手机真机，随后已连接并授权与第四阶段复盘合并补测。最终复盘独立APK安装、真实Java接口、复盘草稿／版本比较／预览门槛已验证，见[复盘阶段续做记录](reflection-progress.md)。后台冻结限制仍未解除。
+维护者此前仅延期手机真机，随后已连接并授权与第四阶段复盘合并补测。最终复盘独立APK安装、真实Java接口、复盘草稿／版本比较／预览门槛已验证，见[复盘阶段续做记录](reflection-progress.md)。冻结与空通知的早期失败过程保留下述记录；最终结果见“最终补验与时间读取修正”。
 
 ## 尚未通过的设备检查
 
@@ -30,15 +30,21 @@ Android系统Alarm诊断出现过`Reason=frozen`；须按真实设备结果判�
 
 2026年10月20日17:35补验：使用最终复盘独立包，已有通知权限和精确提醒授权均通过，但退到后台后的原生核对等待180秒超时。系统记录本测试包的`REMINDER_TICK`于17:35:29被标记`Reason=frozen`。证据在`acceptance-results/reflection/android/2026-10-20T09-34-53-118Z/report.json`；结果为FAIL，未进入后续断网关闭用例，未用前台补发替代后台断言。测试进程及自有转发已结束；下一次进入独立包先清理上一轮本地测试提醒授权。用户正被询问是否检查该测试包的后台运行／自启动设置，正式应用与系统保护保持不变。
 
-用户17:39截图确认自启动和闹钟与提醒开启，返回测试包后使用`--reminders-followup`仅补提醒，不重复复盘。17:41:40仍记录冻结，180秒后台核对超时，见`acceptance-results/reflection/android/2026-10-20T09-41-08-659Z/`的报告及`background-observation.json`；测试服务和自有转发已清理，没有自动修改系统设置。后续需要查看用户提供的该测试包电池／耗电管理截图，再决定是否有必要调整具体选项，不能以自启动已开推断后台投递通过。
+用户17:39截图确认自启动和闹钟与提醒开启，返回测试包后使用`--reminders-followup`仅补提醒，不重复复盘。17:41:40仍记录冻结，180秒后台核对超时，见`acceptance-results/reflection/android/2026-10-20T09-41-08-659Z/`的报告及`background-observation.json`；测试服务和自有转发已清理，没有自动修改系统设置。随后用户提供电池管理截图并自行允许后台高耗电，下一轮系统唤醒成功；不能以自启动已开单独推断后台投递通过。
 
 ## 剩余发布门槛
 
-1. 完成Android最新包的实际后台投递、完成后撤回、断网不发旧状态、关闭及重开；必要时增加安全的分类诊断，不读取原始Key或其他应用通知。
+1. Android最新独立包的后台活动系统通知、完成后原生实时核对撤回、断网关闭及WebView刷新保持关闭已通过。锁屏准点、完整进程冷启动、通知点击跳转和离线有待发通知时的独立抑制场景未在本轮设备检查中证明。
 2. Windows最新撤回逻辑虽已通过编译及Rust定向测试，原生最小授权请求与业务条件的完整联测仍待补齐；现有系统唤醒探针只证明OS能力。正式账号无需切换，优先独立合成环境。
 3. 复核在线刷新并发、原生请求总时限、异常及通知点击跳转；不要削弱失败断言来追求通过。
 4. 独立MySQL V26迁移、旧数据开始证据回填、V27复盘扩展、47表整库恢复及实际旧镜像读取兼容已在第四阶段合并通过，见[复盘阶段记录](reflection-progress.md)。真实生产快照及发布切换仍须另行执行。
 5. 统一正式候选版本、同身份签名打包、正式覆盖前重新确认用户已保存关闭，完成本阶段定向升级后再发布。当前未授权自动切生产或发布未验收原生包。
+
+## 最终补验与时间读取修正
+
+用户自行将独立包改为允许后台高耗电后，原生后台核对成功，但09:46和09:49两轮无通知。定位到原始JDBC TIME读取与Hibernate UTC写入映射不一致；仅测试配置未使用生产UTC映射，因而旧单元结果没有覆盖该组合。现改用有类型的Hibernate候选投影，保留原有权限、执行历史和条数限制。9项提醒测试已在北京时间与UTC的JVM中分别通过；新JAR为`backend/target-reminder-timezone/plan-platform-api.jar`，SHA256 `a2bd2d078a25fba3faf41b5e166a9f11b21553b65f94d01faf3f696fd164f41d`。该查询的新MySQL补验尚待执行，先前MySQL报告属于旧JAR。
+
+最终独立Android报告`acceptance-results/reflection/android/2026-10-20T09-56-40-013Z/report.json`为PASS，共5组：真实Java默认关闭、既有通知／精确授权与设备开启、真实后台新鲜核对及活动通知、任务完成后原生核对撤回、断网关闭与刷新保持关闭。后台活动通知数为1，完成后为0；撤回用调试入口执行同一原生实现，不声称另一次系统唤醒。未用前台补发替代后台断言，未声称看到横幅或完成冷启动。测试提醒已关闭，服务及转发已清理；系统后台耗电设置由用户决定是否恢复。
 
 ## 续做命令
 
@@ -46,10 +52,11 @@ Android系统Alarm诊断出现过`Reason=frozen`；须按真实设备结果判�
 cd E:\Ai\假期计划\plan-platform
 $env:JAVA_HOME='E:\biancheng\JDK21'
 $env:PATH="$env:JAVA_HOME\bin;$env:PATH"
-mvn -f backend/pom.xml '-Dplan.build.directory=target-reminders' '-Dtest=NativeReminderIntegrationTest,PersonalDataIntegrationTest,DailyExperienceIntegrationTest,ReminderPollLimiterTest' package
+mvn -f backend/pom.xml '-Dplan.build.directory=target-reminder-timezone' '-Dtest=NativeReminderIntegrationTest' '-DargLine=-Duser.timezone=Asia/Shanghai' test
+mvn -f backend/pom.xml '-Dplan.build.directory=target-reminder-timezone' '-Dtest=NativeReminderIntegrationTest' '-DargLine=-Duser.timezone=UTC' package
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop.ps1 -Action test -NativeTestFilter reminders::tests
 # USB已授权、用户允许独立包安装并已核对APK哈希后：
-.desktop-tools/node22/node-v22.23.3-win-x64/node.exe scripts/android-reminders-acceptance.mjs
+.desktop-tools/node22/node-v22.23.3-win-x64/node.exe scripts/android-reminders-acceptance.mjs --reminders-followup
 ```
 
 自动续做保持关闭。额度不足时保存并通知用户，不设置自动任务，不使用重置券。

@@ -18,7 +18,7 @@ const run=join(root,combined?'acceptance-results/reflection/android':'acceptance
 const adbPath=join(root,'.desktop-tools/android-sdk/platform-tools/adb.exe'),exec=promisify(execFile);
 const ports={api:43150,proxy:43151,cdp:43152},password='SyntheticReminder123!';
 const report={status:'FAIL',cases:[],scope:'Android independent debug / real Java bridge / isolated H2; no production account or paid API'};
-let serial,child,proxy,browser,page;
+let serial,child,proxy,browser,page,reminderTask;
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 async function adb(...args){return(await exec(adbPath,[...(serial?['-s',serial]:[]),...args],{windowsHide:true,timeout:15000,maxBuffer:2*1024*1024})).stdout.trim();}
 async function wait(fn,label,ms=60000){const end=Date.now()+ms;while(Date.now()<end){if(await fn())return;await delay(500);}throw Error('Timed out: '+label);}
@@ -33,7 +33,9 @@ try{
  const location=(await adb('shell','pm','path',pkg)).match(/^package:(\/data\/app\/[^\r\n]+\/base.apk)$/m)?.[1];if(!location)throw Error('Test APK not installed');
  const apk=await readFile(join(root,combined?'acceptance-results/reflection/android-final/PlanCabin-0.1.17-debug.apk':'.desktop-tools/reminder-android-candidate/PlanCabin-0.1.17-debug.apk'));
  if(!(await adb('shell','sha256sum',location)).startsWith(createHash('sha256').update(apk).digest('hex')))throw Error('Installed test APK differs');
- const args=['-Duser.timezone=Asia/Shanghai','-jar',join(root,combined?'backend/target-reflection/plan-platform-api.jar':'backend/target-reminders/plan-platform-api.jar'),'--spring.profiles.active=acceptance','--server.address=127.0.0.1',`--server.port=${ports.api}`,`--spring.datasource.url=jdbc:h2:mem:reminder_${randomUUID().replaceAll('-','')};MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1`,'--spring.datasource.driver-class-name=org.h2.Driver','--spring.datasource.username=sa','--spring.datasource.password=','--app.security.registration-enabled=true','--app.security.invitation-enabled=false','--app.security.email-verification-enabled=false','--app.security.refresh-cookie-secure=false','--app.jwt.secret=isolated-reminder-tests-not-production-at-least-32-bytes','--app.ai.enabled=false','--spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration','--app.operations.mail-alerts-enabled=false','--app.operations.scheduler-enabled=false'];
+ const apiJar=join(root,remindersOnly?'backend/target-reminder-timezone/plan-platform-api.jar':combined?'backend/target-reflection/plan-platform-api.jar':'backend/target-reminders/plan-platform-api.jar');
+ report.apiSha256=createHash('sha256').update(await readFile(apiJar)).digest('hex');report.apkSha256=createHash('sha256').update(apk).digest('hex');
+ const args=['-Duser.timezone=Asia/Shanghai','-jar',apiJar,'--spring.profiles.active=acceptance','--server.address=127.0.0.1',`--server.port=${ports.api}`,`--spring.datasource.url=jdbc:h2:mem:reminder_${randomUUID().replaceAll('-','')};MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1`,'--spring.datasource.driver-class-name=org.h2.Driver','--spring.datasource.username=sa','--spring.datasource.password=','--app.security.registration-enabled=true','--app.security.invitation-enabled=false','--app.security.email-verification-enabled=false','--app.security.refresh-cookie-secure=false','--app.jwt.secret=isolated-reminder-tests-not-production-at-least-32-bytes','--app.ai.enabled=false','--spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration','--app.operations.mail-alerts-enabled=false','--app.operations.scheduler-enabled=false'];
  const log=createWriteStream(join(run,'api.log'));child=spawn('E:/biancheng/JDK21/bin/java.exe',args,{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe']});child.stdout.pipe(log);child.stderr.pipe(log);
  await wait(async()=>{if(child.exitCode!==null)throw Error('Isolated API stopped');try{return(await fetch(`http://127.0.0.1:${ports.api}/actuator/health`)).ok;}catch{return false;}},'API health',90000);
  proxy=await createFaultProxy(ports.proxy,ports.api);await adb('reverse',`tcp:${ports.proxy}`,`tcp:${ports.proxy}`);
@@ -57,8 +59,9 @@ try{
  await scenario('后台系统唤醒前的新鲜状态核对',async()=>{
   const now=new Date(Date.now()+120000),date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(now),hm=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit'}).format(now);
   const p=await api('/plans',{name:'合成提醒计划',startDate:date,endDate:date,restDays:[]},user.accessToken,'POST',201);
-  await api(`/plans/${p.id}/tasks`,{date,startTime:hm,endTime:null,plannedMinutes:15,title:'合成提醒任务',category:'STUDY',required:true,sortOrder:0,acceptance:[]},user.accessToken,'POST',201);
+  reminderTask=await api(`/plans/${p.id}/tasks`,{date,startTime:hm,endTime:null,plannedMinutes:15,title:'合成提醒任务',category:'STUDY',required:true,sortOrder:0,acceptance:[]},user.accessToken,'POST',201);
   const prefs=await api('/reminders/preferences',null,user.accessToken);await api('/reminders/preferences',{...prefs,advanceEnabled:true,advanceMinutes:1},user.accessToken,'PUT');
+  report.syntheticSchedule={date,startTime:hm,configuredAt:Date.now(),task:reminderTask,preferences:await api('/reminders/preferences',null,user.accessToken)};
   // Re-enable schedules a new near-term live check. No system permission is changed.
   await guard();await page.getByRole('button',{name:'关闭本设备提醒',exact:true}).click();await expect(page.getByRole('button',{name:'开启本设备提醒',exact:true})).toBeVisible();await page.getByRole('button',{name:'开启本设备提醒',exact:true}).click();await expect(page.getByRole('button',{name:'关闭本设备提醒',exact:true})).toBeVisible();
   await adb('shell','input','keyevent','3');console.log('BACKGROUND_WAIT: 等待原生系统唤醒；不使用 JS 定时器投递。');
@@ -70,11 +73,25 @@ try{
   while(Date.now()<alertAt+15000)await delay(1000);
   await adb('shell','am','start','-n',pkg+'/cn.zijun701.plan.mobile.MainActivity');await wait(foreground,'return after native alarm');
   report.nativeDiagnostics=await bridge('reminder_test_diagnostics');report.backgroundActiveCount=(await bridge('reminder_test_active')).length;
-  if(!report.backgroundActiveCount){await bridge('reminder_test_tick');report.foregroundDiagnostics=await bridge('reminder_test_diagnostics');report.foregroundActiveCount=(await bridge('reminder_test_active')).length;}
+  if(!report.backgroundActiveCount){
+   await bridge('reminder_test_tick');report.foregroundDiagnostics=await bridge('reminder_test_diagnostics');report.foregroundActiveCount=(await bridge('reminder_test_active')).length;
+   // A separate synthetic device can inspect eligibility without consuming the tested device's claim.
+   const probe=await api('/reminders/devices',{platform:'ANDROID',label:'合成只读条件诊断'},user.accessToken);
+   try{const response=await fetch(`http://127.0.0.1:${ports.api}/api/reminders/poll`,{method:'POST',headers:{'X-Reminder-Key':probe.token},signal:AbortSignal.timeout(15000)});expect(response.status).toBe(200);const data=await response.json();report.eligibilityProbe={serverTime:data.serverTime,nextWakeAt:data.nextWakeAt,notices:data.notices.length,activeKeys:data.activeKeys.length};}
+   finally{await api(`/reminders/devices/${probe.id}`,null,user.accessToken,'DELETE',204);}
+   report.syntheticSchedule.currentTasks=await api(`/plans/${p.id}/tasks`,null,user.accessToken);report.syntheticSchedule.currentPreferences=await api('/reminders/preferences',null,user.accessToken);
+  }
   expect(report.backgroundActiveCount,'Actual background notification, not foreground fallback').toBeGreaterThan(0);
   report.osActiveNotificationObserved=true;
  });
  await adb('shell','am','start','-n',pkg+'/cn.zijun701.plan.mobile.MainActivity');await wait(foreground,'return to regression app');await guard();
+ await scenario('合成任务完成后原生实时核对撤回通知',async()=>{
+  await guard();expect((await bridge('reminder_test_active')).length).toBeGreaterThan(0);
+  await api(`/tasks/${reminderTask.id}/complete`,{note:'',acceptanceChecks:[],version:reminderTask.progress.version},user.accessToken,'POST');
+  // Debug entry executes the actual native live-check implementation; this is not an OS wake assertion.
+  await bridge('reminder_test_tick');report.completionDiagnostics=await bridge('reminder_test_diagnostics');
+  expect(report.completionDiagnostics.http).toBe(200);expect((await bridge('reminder_test_active')).length).toBe(0);
+ });
  await scenario('断网关闭与重开保持关闭',async()=>{proxy.setOnline(false);await bridge('reminder_clear');expect((await bridge('reminder_status')).enabled).toBe(false);proxy.setOnline(true);await page.reload();expect((await bridge('reminder_status')).enabled).toBe(false);});
  report.status='PASS';
 }catch(e){report.error=String(e.message).replaceAll(password,'[redacted]');console.error(report.error);process.exitCode=1;}
