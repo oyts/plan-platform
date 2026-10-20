@@ -1,8 +1,8 @@
 {
-  "status":"three-platform-released-github-archive-pending",
+  "status":"complete-three-platform-released-and-github-archived",
   "candidateVersion":"0.1.18","androidVersionCode":23,
   "productionVersion":"0.1.18","productionWindowsFeedVersion":"0.1.18","productionAndroidVersionCode":23,
-  "productionChanged":true,"formalClientsInstalled":true,"formalWindowsInstalled":true,"formalAndroidInstalled":true,"feedsPublished":true,"githubReleaseCreated":false,
+  "productionChanged":true,"formalClientsInstalled":true,"formalWindowsInstalled":true,"formalAndroidInstalled":true,"feedsPublished":true,"githubReleaseCreated":true,
   "clientCandidate":"production-artifacts/client-release/0.1.18/20261020T101604Z-e2ed7fab",
   "archive":"production-artifacts/plan-platform-0.1.18.tar.gz",
   "archiveSha256":"b7654985d3349c6d220881e350883f1138eabbc1cc91cb06426e5514f5ac18fb",
@@ -25,7 +25,8 @@
   "androidFormal":{"passedGroups":4,"queueBefore":[0,0],"queueAfter":[0,0],"evidence":"acceptance-results/native-reflection-0118/after-20261020T224016552147Z.json","nonemptyQueueUpgradeProven":false},
   "androidPublication":{"stage":"production-artifacts/invited-android/0.1.18/candidate-N9tkNj","remoteRun":"android-23-df23ed2f","passedGroups":4,"evidence":"acceptance-results/invited-android/2026-10-20T22-41-05-579Z-e0bcc192/report.json","nativeUpdateCheck":true,"automaticDownloadChecked":false,"updateCheckEvidence":"acceptance-results/native-reflection-0118/update-check-20261020T224233583832Z.json"},
   "ossCronFix":{"deployed":true,"cause":"cron PATH excludes root-installed /usr/local/bin/ossutil","collectorTestsPassed":6,"runtimeTestsPassed":5,"minimalPathFullBackupRoundtripPassed":true,"ordinaryCollectionStayedRecovered":true,"backup":"plan_platform-mysql-20261020-223940.sql.gz","rollbackDirectory":"/home/oyts/plan-platform/maintenance/oss-cron-20261021","naturalNextNightRunObserved":false},
-  "next":["Commit/push verified source after sensitive review; create immutable v0.1.18 and GitHub Windows-only release","Record GitHub final result without moving the immutable tag; no additional feature work or automation"],
+  "github":{"url":"https://github.com/oyts/plan-platform/releases/tag/v0.1.18","tagCommit":"0af761f2a97a28a4c7680c9e37cfb7e1d7fc94a3","windowsOnlyAssets":true,"immutableTag":true},
+  "next":[],
   "stopWhenFiveHourRemainingPercentAtMost":10,"automationEnabled":false,
   "paidAiCalls":0,"realEmailsSent":0
 }

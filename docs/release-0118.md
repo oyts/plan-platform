@@ -52,7 +52,7 @@ Android受限源4组通过：匿名／无效凭据拒绝、公共渠道关闭、
 
 Android发布后原生检查更新通过，显示当前最新、自动下载未勾选，原登录与0/0队列不变，证据`acceptance-results/native-reflection-0118/update-check-20261020T224233583832Z.json`。它是本轮已安装版本的源检查，不是再做了一次跨版本安装。
 
-下一步只剩提交推送及创建不可变`v0.1.18`和Windows-only GitHub附件；不上传APK、私密验收资料、数据库或签名备份。
+已发布[GitHub v0.1.18](https://github.com/oyts/plan-platform/releases/tag/v0.1.18)，不可变标签指向`0af761f2a97a28a4c7680c9e37cfb7e1d7fc94a3`。仅公开Windows EXE、原更新签名及SHA256SUMS，附件摘要和大小逐项核验。APK、私密验收资料、数据库和签名备份不上传。后续状态文档提交不移动标签，不改变已验收业务源码。
 
 Windows静态入口回退：`sh /home/oyts/plan-platform/client-public/releases/windows-0118-FG6Qh2/publish.sh rollback windows-0118-FG6Qh2`。Android受限源回退：`sh /home/oyts/plan-platform/android-private/staging/android-23-df23ed2f/rollback.sh`。两者只恢复清单／下载入口，不降级已安装应用、不改变数据库。
 
