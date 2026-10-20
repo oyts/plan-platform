@@ -20,11 +20,11 @@ Windows独立包6组联测通过：默认关闭、本人确认后的UI开启、�
 - Android：`android/PlanCabin-0.1.18-release.apk`，SHA256 `82adbb9dfc58caeeccbca3a45e07f2b69dee2a4bea91a278141db4304e526699`。同包名`cn.zijun701.plan.app`、同长期证书、构建23、非debug、禁止明文网络。首轮依赖下载403保留失败记录，使用已有官方Maven直连选项单独重试成功，不改依赖或TLS校验。
 - `metadata/candidate.json`原签名、证书、版本和哈希核验成功；状态仍为LOCAL_SIGNED_CANDIDATE，不作为已安装验收或可公开下载的证明。
 - 云端归档`production-artifacts/plan-platform-0.1.18.tar.gz`，SHA256 `b7654985d3349c6d220881e350883f1138eabbc1cc91cb06426e5514f5ac18fb`；API SHA256 `0e4f00684fb04468b75fe8cc6577fe971d330225a8574d09bea0f8ddb1fd4ce5`。
-- 归档已上传`/home/oyts/plan-platform/releases/0.1.18-b7654985/release.tar.gz`并核对哈希，仅暂存，未解压、配置或激活。
+- 归档已上传`/home/oyts/plan-platform/releases/0.1.18-b7654985/release.tar.gz`并核对哈希。116个归档成员均为允许目录内的普通文件／目录，无路径越界或符号链接。已解压并核对API哈希，仅构建新标签镜像，未写`.env`、启动容器或激活。API镜像`270968eace02…`，Web镜像`233897aaabae…`；旧镜像与服务保留。
 
 ## 剩余发布门槛
 
-1. 安全解压已核对归档，按当前实际0.1.17运行配置准备0.1.18；不可直接运行硬编码旧版本的激活脚本。
+1. 归档已解压且镜像已构建；按当前实际0.1.17运行配置准备0.1.18受限环境及叠加文件。不可直接运行硬编码旧版本的激活脚本。
 2. 真实生产新快照在隔离库演练V25→V27、核对原业务数据及实际旧镜像读取兼容，保留快照与可执行回退；不覆盖或清空真实库。
 3. 最终候选正式Windows／Android同身份保留数据覆盖前，再确认用户已保存关闭及手机可用。原登录、计划、队列、提醒默认值与复盘入口分别记录，不能用独立包替代。
 4. 有足够额度完成验证及回退时才切生产；保留AI／SMTP／治理／运维／时区及私有更新挂载，失败恢复已验证入口，不回灌数据库。
