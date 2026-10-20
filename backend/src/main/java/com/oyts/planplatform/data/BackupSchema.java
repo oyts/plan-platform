@@ -35,7 +35,8 @@ final class BackupSchema {
         table("mainline_items","mainline_items t join mainlines l on l.id=t.mainline_id where l.owner_id=?",false,ref("mainline_id","mainlines",false),title("title",180),s("description",2000),f("acceptance_json",Kind.STRINGS,false),integer("planned_minutes",1,Integer.MAX_VALUE),integer("sort_order",0,Integer.MAX_VALUE),title("status",30),integer("accumulated_seconds",0,Long.MAX_VALUE),s("note",2000),instant("started_at"),instant("completed_at"),instant("deleted_at"),ref("stage_id","mainline_stages",true),title("dependency_mode",20),f("prerequisite_ids_json",Kind.IDS,false)),
         table("todos","todos t where t.owner_id=?",true,title("title",180),s("note",2000),date("due_date"),bool("done"),bool("deleted"),instant("completed_at")),
         table("weekly_reviews","weekly_reviews t where t.owner_id=?",true,date("week_start"),s("wins",4000),s("blockers",4000),s("next_focus",4000),title("energy",16),title("burden",16),bool("reviewed"),bool("open_to_increase")),
-        table("daily_reviews","daily_reviews t where t.owner_id=?",true,date("review_date"),s("wins",4000),s("blockers",4000),s("next_focus",4000),title("energy",16),title("burden",16),bool("reviewed"))
+        table("daily_reviews","daily_reviews t where t.owner_id=?",true,date("review_date"),s("wins",4000),s("blockers",4000),s("next_focus",4000),title("energy",16),title("burden",16),bool("reviewed")),
+        table("personal_templates","personal_templates t where t.owner_id=?",true,title("kind",8),title("name",120),s("description",1000),s("category",60),bool("favorite"),s("blueprint_json",262144))
     );
     static final Set<String> NAMES=TABLES.stream().map(Table::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
     private BackupSchema(){}

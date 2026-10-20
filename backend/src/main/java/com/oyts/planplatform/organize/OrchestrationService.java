@@ -31,7 +31,7 @@ class OrchestrationService {
     record Preview(String checksum,int tasks,int stages,int tags,int milestones,List<Change> changes,List<Protected> protectedItems,List<String> warnings){}
     record Result(String id,int changed,String kind){}
     record RouteSummary(String id,String name,String description,String color,long version,boolean paused,boolean archived,String deletedAt,String executionMode,long total,long completed){}
-    private record Snapshot(Map<String,Object> parent,Map<String,List<Map<String,Object>>> rows){}
+    record Snapshot(Map<String,Object> parent,Map<String,List<Map<String,Object>>> rows){}
     private final JdbcTemplate db;private final EntityManager em;private final ObjectMapper mapper;
     OrchestrationService(JdbcTemplate db,EntityManager em,ObjectMapper mapper){this.db=db;this.em=em;this.mapper=mapper;}
 
@@ -50,7 +50,12 @@ class OrchestrationService {
         lockOwner(owner);String fingerprint=hash(List.of("COPY",apply.request(),apply.checksum()));
         Result replay=replay(owner,apply.operationKey(),fingerprint);if(replay!=null)return replay;
         Copy r=apply.request();Snapshot s=snapshot(owner,r.kind(),r.sourceId(),true);Preview preview=copyPreview(r,s);
-        check(preview.checksum(),apply.checksum());String target=id();Map<String,String> ids=new HashMap<>();ids.put(text(s.parent(),"id"),target);
+        check(preview.checksum(),apply.checksum());
+        Result result=copyStructure(owner,r,s);save(owner,apply.operationKey(),fingerprint,result);return result;
+    }
+    // Personal templates reuse the exact same new-record writer as live copies.
+    Result copyStructure(String owner,Copy r,Snapshot s){
+        Preview preview=copyPreview(r,s);String target=id();Map<String,String> ids=new HashMap<>();ids.put(text(s.parent(),"id"),target);
         for(var rows:s.rows().values())for(var row:rows)ids.put(text(row,"id"),id());
         if(r.kind().equals("PLAN")){
             long shift=ChronoUnit.DAYS.between(date(s.parent(),"start_date"),r.startDate());
@@ -62,10 +67,16 @@ class OrchestrationService {
             }
             Map<String,String> batches=new HashMap<>();
             for(var row:s.rows().get("plan_tasks")){
-                var copy=structural(row,List.of("start_time","end_time","planned_minutes","category","title","description","acceptance_json","resource_url","required_task","sort_order","template_id"));
+                var copy=structural(row,List.of("planned_minutes","category","title","description","acceptance_json","resource_url","required_task","sort_order","template_id"));
                 String taskId=ids.get(text(row,"id"));copy.putAll(Map.of("id",taskId,"plan_id",target,"task_date",date(row,"task_date").plusDays(shift)));
                 copy.put("tag_id",row.get("tag_id")==null?null:ids.get(text(row,"tag_id")));
                 copy.put("recurrence_id",row.get("recurrence_id")==null?null:batches.computeIfAbsent(text(row,"recurrence_id"),ignored->id()));insert("plan_tasks",copy);
+                // Keep logical clock times on Hibernate's mapping, identical to normal task writes.
+                // Raw JDBC TIME uses the JVM zone rather than Hibernate's configured JDBC zone.
+                em.createQuery("update PlanTask t set t.startTime=:start,t.endTime=:end where t.id=:id")
+                    .setParameter("start",row.get("start_time")==null?null:LocalTime.parse(text(row,"start_time")))
+                    .setParameter("end",row.get("end_time")==null?null:LocalTime.parse(text(row,"end_time")))
+                    .setParameter("id",taskId).executeUpdate();
                 var progress=structural(Map.of(),List.of());progress.putAll(Map.of("id",id(),"task_id",taskId,"status","PENDING","accumulated_seconds",0,"acceptance_json","[]","note","","skip_reason",""));insert("task_progress",progress);
             }
             for(var row:s.rows().get("plan_milestones")){
@@ -84,8 +95,10 @@ class OrchestrationService {
                 copy.put("stage_id",row.get("stage_id")==null?null:ids.get(text(row,"stage_id")));insert("mainline_items",copy);
             }
         }
-        Result result=new Result(target,preview.tasks(),r.kind());save(owner,apply.operationKey(),fingerprint,result);return result;
+        return new Result(target,preview.tasks(),r.kind());
     }
+    Snapshot templateSource(String owner,String kind,String source){return snapshot(owner,kind,source,true);}
+    Preview templatePreview(Copy request,Snapshot snapshot){return copyPreview(request,snapshot);}
     Preview batchPreview(String owner,Batch r){return batchPreview(r,snapshot(owner,"PLAN",r.planId(),false));}
     @Transactional(isolation=Isolation.READ_COMMITTED)
     Result batch(String owner,BatchApply apply){
@@ -142,10 +155,16 @@ class OrchestrationService {
             records.put("mainline_items",rows("select * from mainline_items where mainline_id=? and deleted_at is null order by id limit 1001"+suffix,id));
         }
         if(records.values().stream().anyMatch(value->value.size()>(kind.equals("PLAN")?2000:1000)))throw new IllegalArgumentException("此结构过大，请先按阶段拆分；原数据未修改。");
+        if(kind.equals("PLAN")){
+            Map<String,Object[]> times=new HashMap<>();
+            em.createQuery("select t.id,t.startTime,t.endTime from PlanTask t where t.plan.id=:plan and t.plan.owner.id=:owner and t.deletedAt is null",Object[].class)
+                .setParameter("plan",id).setParameter("owner",owner).setMaxResults(2001).getResultList().forEach(row->times.put((String)row[0],row));
+            for(var task:records.get("plan_tasks")){var time=times.get(text(task,"id"));if(time==null)throw new ConflictException("任务已变化，请保留输入并重新预览。");task.put("start_time",time[1]==null?null:time[1].toString());task.put("end_time",time[2]==null?null:time[2].toString());}
+        }
         return new Snapshot(parents.getFirst(),records);
     }
     private List<Map<String,Object>> rows(String query,Object...args){return db.query(query,(rs,n)->{Map<String,Object> row=new TreeMap<>();var meta=rs.getMetaData();for(int i=1;i<=meta.getColumnCount();i++){
-        Object value=rs.getObject(i);if(value instanceof Clob clob)value=clob.getSubString(1,(int)clob.length());else if(value instanceof Timestamp time)value=time.toInstant().toString();else if(value instanceof java.sql.Date day)value=day.toLocalDate().toString();else if(value instanceof Time time)value=time.toLocalTime().toString();
+        Object value=rs.getObject(i);if(value instanceof Clob clob)value=clob.getSubString(1,(int)clob.length());else if(value instanceof Timestamp time)value=time.toInstant().toString();else if(value instanceof java.sql.Date day)value=day.toLocalDate().toString();else if(value instanceof Time)value=rs.getString(i);
         row.put(meta.getColumnLabel(i).toLowerCase(Locale.ROOT),value);
     }return row;},args);}
     private Map<String,Object> structural(Map<String,Object> source,List<String> fields){Map<String,Object> result=new LinkedHashMap<>();for(String field:fields)result.put(field,source.get(field));result.put("version",0);result.put("created_at",Timestamp.from(Instant.now()));result.put("updated_at",Timestamp.from(Instant.now()));return result;}

@@ -36,7 +36,7 @@ class PersonalDataService {
 
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
     ObjectNode backup(String owner){
-        ObjectNode result=mapper.createObjectNode();result.put("format",FORMAT);result.put("schemaVersion",3);result.put("sourceVersion",version);result.put("exportedAt",Instant.now().toString());
+        ObjectNode result=mapper.createObjectNode();result.put("format",FORMAT);result.put("schemaVersion",4);result.put("sourceVersion",version);result.put("exportedAt",Instant.now().toString());
         result.set("records",queryRecords(owner,NAMES));validate(result);return result;
     }
     private ObjectNode queryRecords(String owner,Set<String> requested){
@@ -117,6 +117,7 @@ class PersonalDataService {
         }
         var same=jdbc.queryForList("select report_json from personal_restore_batches where owner_id=? and checksum=?",owner,checksum);
         if(!same.isEmpty())return report((String)same.getFirst().get("report_json"));
+        if(jdbc.queryForObject("select count(*) from personal_templates where owner_id=?",Long.class,owner)+validated.rows().get("personal_templates").size()>100)throw new ConflictException("恢复后个人整套模板会超过100份，整批未恢复；请保留备份并先整理现有模板。");
         String batch=UUID.randomUUID().toString();Instant now=Instant.now();
         Map<String,String> ids=new HashMap<>();
         validated.rows().forEach((table,rows)->rows.forEach(row->ids.put(table+":"+row.path("id").asText(),UUID.randomUUID().toString())));
@@ -167,16 +168,16 @@ class PersonalDataService {
     private RestoreReport report(String value){try{return mapper.readValue(value,RestoreReport.class);}catch(JsonProcessingException e){throw new IllegalStateException("恢复记录无法读取。");}}
 
     private Validated validate(JsonNode payload){
-        if(payload==null||!payload.isObject()||!keys(payload).equals(Set.of("format","schemaVersion","sourceVersion","exportedAt","records"))||!FORMAT.equals(payload.path("format").asText())||!payload.path("schemaVersion").isIntegralNumber()||!payload.path("schemaVersion").canConvertToInt()||!Set.of(1,2,3).contains(payload.path("schemaVersion").asInt()))
-            throw new IllegalArgumentException("仅支持计划舱私有备份 schemaVersion 1至3，不能使用旧版迁移或其他软件的文件。");
+        if(payload==null||!payload.isObject()||!keys(payload).equals(Set.of("format","schemaVersion","sourceVersion","exportedAt","records"))||!FORMAT.equals(payload.path("format").asText())||!payload.path("schemaVersion").isIntegralNumber()||!payload.path("schemaVersion").canConvertToInt()||!Set.of(1,2,3,4).contains(payload.path("schemaVersion").asInt()))
+            throw new IllegalArgumentException("仅支持计划舱私有备份 schemaVersion 1至4，不能使用旧版迁移或其他软件的文件。");
         if(json(payload).getBytes(StandardCharsets.UTF_8).length>MAX_BYTES)throw new IllegalArgumentException("备份文件不能超过 5 MiB。");
         if(!payload.path("sourceVersion").isTextual()||!payload.path("sourceVersion").asText().matches("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}([+-][A-Za-z0-9.-]{1,24})?"))throw new IllegalArgumentException("备份版本无效。");
         instant(payload.path("exportedAt"),true);
-        boolean oldReview=payload.path("schemaVersion").asInt()<3;Set<String> expectedNames=new HashSet<>(NAMES);if(oldReview)expectedNames.remove("daily_reviews");
+        boolean oldReview=payload.path("schemaVersion").asInt()<3,oldTemplates=payload.path("schemaVersion").asInt()<4;Set<String> expectedNames=new HashSet<>(NAMES);if(oldReview)expectedNames.remove("daily_reviews");if(oldTemplates)expectedNames.remove("personal_templates");
         JsonNode records=payload.path("records");if(!records.isObject()||!keys(records).equals(expectedNames))throw new IllegalArgumentException("备份记录类型缺失或包含未允许的内容。");
         Map<String,List<ObjectNode>> rows=new LinkedHashMap<>();Map<String,Map<String,ObjectNode>> indexes=new HashMap<>();Map<String,Integer> counts=new LinkedHashMap<>();int total=0,running=0;
         for(Table table:TABLES){
-            var values=oldReview&&table.name().equals("daily_reviews")?mapper.createArrayNode():records.path(table.name());if(!values.isArray())throw invalid(table.name(),"必须是记录数组");
+            var values=(oldReview&&table.name().equals("daily_reviews")||oldTemplates&&table.name().equals("personal_templates"))?mapper.createArrayNode():records.path(table.name());if(!values.isArray())throw invalid(table.name(),"必须是记录数组");
             total+=values.size();if(total>MAX_ROWS)throw new IllegalArgumentException("备份不能超过 20000 条记录。");
             List<ObjectNode> list=new ArrayList<>();Map<String,ObjectNode> index=new HashMap<>();
             var allowed=table.fields().stream().map(Field::name).collect(java.util.stream.Collectors.toSet());
@@ -229,6 +230,8 @@ class PersonalDataService {
         }catch(DateTimeException e){throw invalid(table,"日期或时间格式无效");}
     }
     private void relations(Map<String,List<ObjectNode>> rows,Map<String,Map<String,ObjectNode>> indexes){
+        if(rows.get("personal_templates").size()>100)throw invalid("personal_templates","单次最多100份整套模板");
+        for(var row:rows.get("personal_templates"))com.oyts.planplatform.organize.TemplateBlueprint.validate(parseArray(row.path("blueprint_json").asText()),row.path("kind").asText());
         for(var row:rows.get("plans"))if(LocalDate.parse(row.path("end_date").asText()).isBefore(LocalDate.parse(row.path("start_date").asText())))throw invalid("plans","结束日期早于开始日期");
         unique(rows.get("plan_tags"),"plan_id","name");unique(rows.get("daily_reflections"),"plan_id","reflection_date");unique(rows.get("mainline_items"),"mainline_id","sort_order");unique(rows.get("task_progress"),"task_id");
         if(rows.get("task_progress").size()!=rows.get("plan_tasks").size())throw invalid("task_progress","每个任务必须有且仅有一份进度");

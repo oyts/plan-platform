@@ -236,6 +236,18 @@
   },
   "reason": "0.1.18 combines stages3/4 reminders and day/week reflection. Shared-source and independent-native evidence below retain their original tested artifacts. Later real snapshot migration, formal signed preserve-data upgrades, production switch and public/protected feed verification are recorded separately in release0118Production. Only new/directly affected scope, no unrelated full suite, paid AI or real test mail.",
   "frontendUnit": ["src/reflection.test.ts","src/reminders.test.ts","src/personalData.test.ts","src/weeklyDraft.test.ts","src/api/client.test.ts","src/offlineCache.test.ts"],
+  "personalTemplateLibrary": {
+    "status":"unreleased-stage5-on-0.1.18-baseline",
+    "reason":"Private whole-structure PLAN/ROUTE and saved new-AI-draft templates; common copy writer, strict nested whitelist, V28, schema4 backup, manual pending replay. Typed task-time reads/writes affect structural copies directly. No unrelated full regression.",
+    "backend":["PersonalTemplateIntegrationTest","TemplateBlueprintTest","PersonalDataIntegrationTest","OrchestrationIntegrationTest#planCopyRemapsStructureShiftsDatesAndDropsAllExecutionHistory+routeCopyRemapsStagesAndExplicitDependenciesWithoutCompletionOrPause+copiesRejectForeignOwnerExpiredPreviewAndShortenedPeriod","ReflectionIntegrationTest#privateV4BackupRestoresReviewsAsReadonlyAndAcceptsV2"],
+    "frontendUnit":["src/personalTemplates.test.ts","src/personalData.test.ts","src/privateDrafts.test.ts"],
+    "browser":["e2e/personal-templates.spec.ts","e2e/personal-data.spec.ts"],
+    "results":{"backendPassed":24,"frontendPassed":11,"browserPassed":18,"paidAiCalls":0,"realEmailsSent":0,"androidDeviceTested":false,"windowsNativeTested":false},
+    "evidence":["acceptance-results/templates-backend-typed-time-final.log","acceptance-results/templates-frontend-final.log","acceptance-results/templates-browser-accepted.json"],
+    "finalJarSha256":"d8337116cc33621e19b0d32ab4e3d4559c3a0b3ae4b02daa0b03a710f5b400ce",
+    "pending":["Final MySQL V28 migration/time/restore rehearsal","Signed new-version native builds and targeted acceptance","Production snapshot, upgrade retention and publication gates"],
+    "details":"docs/templates-progress.md"
+  },
   "reflectionWorkspace": {
     "status":"released-0.1.18-see-release0118Production-for-final-gates",
     "results":{"backendPassed":66,"frontendUnitPassed":41,"browserPassed":20,"windowsRustPassed":5,"androidRouteUnitPassed":5,"mysqlCasesPassed":6,"mysqlTablesRestored":47,"independentWindowsUiGroupsPassed":6,"androidDistinctReviewGroupsPassed":4,"androidDeviceTested":true,"paidAiCalls":0,"realEmailsSent":0},

@@ -20,6 +20,8 @@
 
 0.1.4 已完成 HTTPS 新版部署、MySQL 备份恢复、加密签名备份、Windows 官网下载及更新源发布，见 [Windows 发布记录](docs/windows-public-release.md)。Android 继续只提供受邀测试 APK，官网下载等待 APP 备案，公开注册保持关闭，见 [受邀客户端测试](docs/invited-client-testing.md)。成员页手机卡片与底部编辑面板已进入共享源码，桌面保留表格，详见 [成员邀请手机验收](docs/mobile-members.md)。
 
+第五阶段[个人整套模板库](docs/personal-template-library.md)已进入共享源码，支持个人结构快照、分类收藏、预览确认建立新副本和私有备份格式4。当前尚未发布，线上及正式原生仍为0.1.18；验收和剩余门槛见[阶段记录](docs/templates-progress.md)。
+
 ## 当前状态
 
 AI 支持官方 DeepSeek 异步对话、模式推荐与确认、草稿多次修订和手工编辑、三模式确认后原子生成、外部 AI JSON 导入，以及对明确选择的已有周期计划、目标路线和待办提出调整建议。修改前逐项展示差异，保护历史和所有权，冲突保留草稿，不删除后重建原计划。管理员每日额度热生效，调用幂等预占，未知结果不自动重复付费，手动业务不依赖 AI。独立 MySQL V14—V17、生产备份恢复和旧镜像回退通过；前两阶段 5 次、本轮 3 次官方合成验收均成功，未反复重跑付费脚本。Web、Windows 和 Android 新增功能已通过定向验收；Android 真机补测不重复付费调用。见 [AI 对话说明](docs/ai-conversations.md) 和 [额度基础](docs/ai-foundation.md)。

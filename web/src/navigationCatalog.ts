@@ -16,6 +16,7 @@ export function navigationGroups(mode:WorkspaceMode,admin:boolean,native:boolean
       {path:'/weekly-review',label:'周复盘',description:'本周推进与下周重点'},
       {path:'/reflection',label:'日周复盘',description:'三模式事实、自述与AI分析'},
       {path:'/organize',label:'编排与历史',description:'整套复制、未来调整与分页查询'},
+      {path:'/templates',label:'个人模板库',description:'收藏与复用整套计划或路线'},
     ]},
     {title:'数据与连接',items:[
       {path:'/exports',label:'数据中心',description:'三模式导出与私有备份恢复'},

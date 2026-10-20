@@ -23,6 +23,7 @@ const router = createRouter({ history: isDesktop() ? createWebHashHistory() : cr
   { path: '/reflection', component: () => import('@/views/ReflectionView.vue') },
   { path: '/feedback', component: () => import('@/views/FeedbackView.vue') },
   { path: '/organize', component: () => import('@/views/OrganizeView.vue') },
+  { path: '/templates', component: () => import('@/views/PersonalTemplatesView.vue') },
   { path: '/offline', component: () => import('@/views/OfflineView.vue') },
   { path: '/operations', component: () => import('@/views/OperationsView.vue') },
   { path: '/schedule', component: () => import('@/views/ScheduleView.vue') },
