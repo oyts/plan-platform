@@ -1,5 +1,5 @@
 {
-  "version": "0.1.17",
+  "version": "0.1.18",
   "release0117Candidate": {
     "activationGuardsPassed":9,
     "finalDirectoryMysqlRehearsalPassed":true,
@@ -225,21 +225,22 @@
   "reason": "Unreleased roadmap stage4 on the 0.1.17 baseline, with user-authorized deferred stage3 Android followup: day/week factual review, private drafts/conflict comparison, optional self-report, readonly consent-scoped AI, conservative trend/cooldown, merged review reminders and private schema3 backup. Only new/directly affected tests; independent native synthetic accounts, no formal overwrite, production switch, paid AI or real email.",
   "frontendUnit": ["src/reflection.test.ts","src/reminders.test.ts","src/personalData.test.ts","src/weeklyDraft.test.ts","src/api/client.test.ts","src/offlineCache.test.ts"],
   "reflectionWorkspace": {
-    "status":"bounded-independent-native-review-and-android-reminders-accepted-final-query-mysql-and-windows-reminder-gates-pending",
+    "status":"independent-native-mysql-and-windows-background-accepted-signed0118-candidate-not-released",
     "results":{"backendPassed":66,"frontendUnitPassed":41,"browserPassed":20,"windowsRustPassed":5,"androidRouteUnitPassed":5,"mysqlCasesPassed":6,"mysqlTablesRestored":47,"independentWindowsUiGroupsPassed":6,"androidDistinctReviewGroupsPassed":4,"androidDeviceTested":true,"paidAiCalls":0,"realEmailsSent":0},
     "evidence":["acceptance-results/reflection/backend-final.log","backend/target-reflection/surefire-reports/","acceptance-results/reflection/frontend-final.log","acceptance-results/reflection/browser-final/","acceptance-results/reflection/rust-final.log","acceptance-results/reflection/android-final.log","remote reflection-candidates/20261020T061810Z-3c32df69/report.json"],
     "nativeEvidence":["acceptance-results/reflection/pc/2026-10-20T06-05-12-982Z/pc-ui-observations.json","acceptance-results/reflection/android/2026-10-20T09-31-32-027Z/report.json","acceptance-results/reflection/android/2026-10-20T09-34-53-118Z/report.json"],
     "nativeLimits":"Windows actual UI and native bridge; Ctrl+R only, not cold executable restart or offline transport test. Android review locator corrected and rechecked separately; native cloud-version comparison did not submit stale PUT. Actual HTTP409 has separate backend/browser proof. Android later five-group reminder followup passed after user battery policy choice and backend typed-time fix; OS active notification is not a visible-banner or locked-screen guarantee. Prior 66 backend and MySQL results belong to c5271064 JAR, not the new time-query JAR.",
-    "pending":["MySQL targeted verification of final typed-time reminder query","Windows scoped-key live-API reminder integration","Signed candidates, formal retention and production release gates"],
+    "pending":["Final0118-directory real production snapshot rehearsal","Formal signed-client retention and production release gates"],
     "details":"docs/reflection-progress.md"
   },
   "nativeReminders": {
     "status":"unreleased-native-acceptance-in-progress",
     "results":{"backendPassed":29,"frontendUnitPassed":40,"browserPassed":8,"windowsRustPassed":4,"windowsOsWakeAndShowAccepted":true,"androidBackgroundPassed":true,"androidCompletionNativeRecheckPassed":true,"androidOfflineDisableReloadPassed":true,"androidFinalFollowupGroupsPassed":5,"paidAiCalls":0,"realTestEmails":0},
     "evidence":["backend/target-reminders/surefire-reports/","acceptance-results/reminders/browser/","acceptance-results/reminders/windows-probe/","acceptance-results/reminders/android/"],
-    "pending":["Final typed-time query on isolated MySQL","Windows scoped-key live-API integration","signed release and formal upgrade acceptance"],
+    "pending":["Final0118 real production snapshot / signed formal upgrade acceptance / release"],
+    "windowsLiveFollowup":{"passedGroups":6,"rustPassed":5,"evidence":"acceptance-results/reflection/pc/2026-10-20T10-11-37-811Z/windows-reminder-report.json","osShowAccepted":true,"historyBefore":1,"historyAfter":0,"testTaskCleared":true,"visibleBannerClaimed":false},
     "androidLatestFollowup":"acceptance-results/reflection/android/2026-10-20T09-56-40-013Z/report.json",
-    "timeMappingFix":{"distinctReminderTests":9,"asiaShanghaiPassed":9,"utcPassed":9,"finalJarSha256":"a2bd2d078a25fba3faf41b5e166a9f11b21553b65f94d01faf3f696fd164f41d","evidence":["acceptance-results/reflection/timezone-asia-final.log","acceptance-results/reflection/timezone-utc-final.log","acceptance-results/reflection/timezone-reproduction.json"],"finalMysqlVerified":false},
+    "timeMappingFix":{"distinctReminderTests":9,"asiaShanghaiPassed":9,"utcPassed":9,"finalJarSha256":"a2bd2d078a25fba3faf41b5e166a9f11b21553b65f94d01faf3f696fd164f41d","evidence":["acceptance-results/reflection/timezone-asia-final.log","acceptance-results/reflection/timezone-utc-final.log","acceptance-results/reflection/timezone-reproduction.json","remote reminder-query-candidates/20261020T100823Z-be55c78a/report.json"],"finalMysqlVerified":true,"mysqlRestoredTables":47},
     "mysqlFollowup":"V25 to V27 plus prior-start backfill, 47-table restore and actual 0.1.17 read compatibility passed in reflectionWorkspace; production unchanged",
     "details":"docs/native-reminders-progress.md"
   },
@@ -250,11 +251,7 @@
   "backend": [
     "ReflectionIntegrationTest",
     "ReflectionAiIntegrationTest",
-    "NativeReminderIntegrationTest",
-    "PersonalDataIntegrationTest",
-    "DailyExperienceIntegrationTest",
-    "AiAdjustmentIntegrationTest",
-    "AiConversationIntegrationTest"
+    "NativeReminderIntegrationTest"
   ],
   "android": ["cn.zijun701.plan.mobile.ReminderRoutesTest"],
   "dailyExperience": {

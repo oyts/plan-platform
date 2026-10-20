@@ -1,6 +1,6 @@
 # 复盘阶段续做记录
 
-更新时间：2026年10月20日。第四阶段PC／Android复盘定向检查已完成；第三阶段Android后台投递、完成后撤回及离线关闭刷新已通过。真机发现的后端时间读取问题已修复并单独验证，新JAR的MySQL查询补验和Windows提醒完整联测仍待完成。正式Web、Windows、Android仍为0.1.17／22；没有切换生产、覆盖正式客户端或发布APK。
+更新时间：2026年10月20日。新查询MySQL补验与Windows真实后台联测已通过，0.1.18／23签名候选及云端归档已准备。正式三端仍为0.1.17／22；真实生产快照演练、正式覆盖保留验收及发布尚未执行。精确交接见[0.1.18发布准备](release-0118.md)。
 
 ## 完成范围
 
@@ -22,9 +22,9 @@
 
 ## 正在执行和待办
 
-1. 原候选MySQL迁移恢复门槛已通过。首轮脚本恢复操作键格式错误被400拒绝；第二轮复制JAR时权限过窄，容器无法读取非敏感应用包。这两轮失败证据保留；第三轮使用正确UUID与私有目录内可读JAR完成全部检查。时间修正未改数据库结构，但新Hibernate查询尚需在MySQL独立库补验，旧JAR报告不能代替此项。
+1. 原候选MySQL迁移恢复及时间修正后的查询补验均已通过。新报告`reminder-query-candidates/20261020T100823Z-be55c78a/report.json`验证UTC／北京时间、权限、完成／暂停过滤、防重和47表恢复；原合成库与生产健康不变。0.1.18版本化JAR的335个业务class与查询补验JAR完全相同；正式激活前仍需最终目录的真实生产快照演练。
 2. 独立PC包已完成上述复盘UI检查。合成服务使用43153、故障转发43154和一小时自动退出保护；运行目录为`acceptance-results/reflection/pc/2026-10-20T06-05-12-982Z`，持久合成库与登录文件留在本机，不上传GitHub。正式账号和客户端未改变。
-3. Android复盘和仅提醒定向检查已通过。早期冻结失败及后续空通知失败分别保留在09:34、09:41、09:46和09:49的运行目录，不能删去或合称一次全绿。用户自行修改自启动／电池设置；自动化未开启权限。Windows提醒的最小授权、实时条件与后台通知完整业务联测仍待补齐。
+3. Android复盘和仅提醒定向检查已通过，早期失败均保留。Windows独立包最新6组通过：用户确认后真实UI开启、关闭GUI、系统任务唤醒及真实API投递、下一次系统核对撤回、离线关闭与固定测试任务清理。证据`acceptance-results/reflection/pc/2026-10-20T10-11-37-811Z/windows-reminder-report.json`；不声称可见横幅、锁屏准点或正式升级保留。
 4. 正式同身份签名、版本统一、真实生产快照／恢复、升级数据保留和生产部署均未执行，发布前重新确认。未验收APK不进入受限源，官网APK与公开注册继续关闭。
 
 ## 续做方式
@@ -46,4 +46,4 @@ mvn -f backend/pom.xml '-Dplan.build.directory=target-reminder-timezone' '-Dtest
 .desktop-tools/node22/node-v22.23.3-win-x64/node.exe scripts/android-reminders-acceptance.mjs --reminders-followup
 ```
 
-浏览器专用配置为`web/playwright.reflection.config.ts`，显式使用target-reflection JAR；Windows只通过电脑操作技能验收，认证由用户自行完成。自动任务保持关闭，剩余额度不超过5%时保存并通知。
+浏览器专用配置为`web/playwright.reflection.config.ts`，显式使用target-reflection JAR；Windows只通过电脑操作技能验收，认证由用户自行完成。自动任务保持关闭，按维护者最新要求，剩余额度不超过10%时保存并通知。

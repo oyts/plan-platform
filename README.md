@@ -16,7 +16,7 @@
 
 日常小版本仅验证新增和受影响功能，大版本才执行全面回归；签名、版本、升级数据保留、生产备份与云端健康仍为发布门槛。见 [发布流程](docs/release-process.md) 与 [导航体验优化](docs/navigation-experience.md)。
 
-后续次序与验收边界见[整合开发规划](docs/next-development-roadmap.md)。第一阶段邮件安全及第二阶段[AI工作台与手机输入体验](docs/ai-workbench.md)均已交付；第三阶段[系统提醒](docs/native-reminders-progress.md)与第四阶段[日周复盘和AI分析](docs/reflection-workspace.md)已实现候选，共享源码与网页定向验收已完成，PC及MySQL门槛见[复盘续做记录](docs/reflection-progress.md)。按维护者要求，仅Android真机延期到两阶段合并补测，未发布候选不进入更新源。正式0.1.17准确范围见[发布记录](docs/release-0117.md)。上一轮六阶段目标保留在[历史规划](docs/development-roadmap.md)，已实现[反馈与脱敏诊断](docs/feedback-and-diagnostics.md)、[个人数据中心](docs/personal-data-center.md)、[编排与长期历史](docs/orchestration-and-history.md)、[离线范围及冲突体验](docs/offline-experience.md)、帮助／本地演示和[运行证据与成员治理](docs/operations-and-governance.md)。历史验收见[续做记录](docs/roadmap-progress.md)。清理仅预览，真实删除仍须另行确认。
+后续次序与验收边界见[整合开发规划](docs/next-development-roadmap.md)。第一阶段邮件安全及第二阶段[AI工作台与手机输入体验](docs/ai-workbench.md)均已交付；第三阶段[系统提醒](docs/native-reminders-progress.md)与第四阶段[日周复盘和AI分析](docs/reflection-workspace.md)已完成共享源码、网页、独立原生及MySQL定向检查，含双端真实后台提醒。0.1.18／23签名候选已准备，正式升级保留、真实生产快照及发布尚待完成，见[0.1.18交接](docs/release-0118.md)；未发布候选不进入更新源。正式0.1.17准确范围见[发布记录](docs/release-0117.md)。上一轮六阶段目标保留在[历史规划](docs/development-roadmap.md)，已实现[反馈与脱敏诊断](docs/feedback-and-diagnostics.md)、[个人数据中心](docs/personal-data-center.md)、[编排与长期历史](docs/orchestration-and-history.md)、[离线范围及冲突体验](docs/offline-experience.md)、帮助／本地演示和[运行证据与成员治理](docs/operations-and-governance.md)。历史验收见[续做记录](docs/roadmap-progress.md)。清理仅预览，真实删除仍须另行确认。
 
 0.1.4 已完成 HTTPS 新版部署、MySQL 备份恢复、加密签名备份、Windows 官网下载及更新源发布，见 [Windows 发布记录](docs/windows-public-release.md)。Android 继续只提供受邀测试 APK，官网下载等待 APP 备案，公开注册保持关闭，见 [受邀客户端测试](docs/invited-client-testing.md)。成员页手机卡片与底部编辑面板已进入共享源码，桌面保留表格，详见 [成员邀请手机验收](docs/mobile-members.md)。
 

@@ -35,14 +35,14 @@ Android系统Alarm诊断出现过`Reason=frozen`；须按真实设备结果判�
 ## 剩余发布门槛
 
 1. Android最新独立包的后台活动系统通知、完成后原生实时核对撤回、断网关闭及WebView刷新保持关闭已通过。锁屏准点、完整进程冷启动、通知点击跳转和离线有待发通知时的独立抑制场景未在本轮设备检查中证明。
-2. Windows最新撤回逻辑虽已通过编译及Rust定向测试，原生最小授权请求与业务条件的完整联测仍待补齐；现有系统唤醒探针只证明OS能力。正式账号无需切换，优先独立合成环境。
+2. Windows最新独立包6组真实联测已通过，包含系统唤醒、实时API、系统接受通知、完成后下一次系统核对撤回及离线清理；Rust5项通过。证据`acceptance-results/reflection/pc/2026-10-20T10-11-37-811Z/windows-reminder-report.json`。正式账号未切换，不把独立包视为正式升级保留验收。
 3. 复核在线刷新并发、原生请求总时限、异常及通知点击跳转；不要削弱失败断言来追求通过。
 4. 独立MySQL V26迁移、旧数据开始证据回填、V27复盘扩展、47表整库恢复及实际旧镜像读取兼容已在第四阶段合并通过，见[复盘阶段记录](reflection-progress.md)。真实生产快照及发布切换仍须另行执行。
 5. 统一正式候选版本、同身份签名打包、正式覆盖前重新确认用户已保存关闭，完成本阶段定向升级后再发布。当前未授权自动切生产或发布未验收原生包。
 
 ## 最终补验与时间读取修正
 
-用户自行将独立包改为允许后台高耗电后，原生后台核对成功，但09:46和09:49两轮无通知。定位到原始JDBC TIME读取与Hibernate UTC写入映射不一致；仅测试配置未使用生产UTC映射，因而旧单元结果没有覆盖该组合。现改用有类型的Hibernate候选投影，保留原有权限、执行历史和条数限制。9项提醒测试已在北京时间与UTC的JVM中分别通过；新JAR为`backend/target-reminder-timezone/plan-platform-api.jar`，SHA256 `a2bd2d078a25fba3faf41b5e166a9f11b21553b65f94d01faf3f696fd164f41d`。该查询的新MySQL补验尚待执行，先前MySQL报告属于旧JAR。
+用户自行将独立包改为允许后台高耗电后，原生后台核对成功，但09:46和09:49两轮无通知。定位到原始JDBC TIME读取与Hibernate UTC写入映射不一致；仅测试配置未使用生产UTC映射，因而旧单元结果没有覆盖该组合。现改用有类型的Hibernate候选投影，保留原有权限、执行历史和条数限制。9项提醒测试已在北京时间与UTC的JVM中分别通过；新JAR为`backend/target-reminder-timezone/plan-platform-api.jar`，SHA256 `a2bd2d078a25fba3faf41b5e166a9f11b21553b65f94d01faf3f696fd164f41d`。该查询的MySQL双时区补验及47表恢复随后通过，报告`reminder-query-candidates/20261020T100823Z-be55c78a/report.json`；不以旧JAR报告替代。
 
 最终独立Android报告`acceptance-results/reflection/android/2026-10-20T09-56-40-013Z/report.json`为PASS，共5组：真实Java默认关闭、既有通知／精确授权与设备开启、真实后台新鲜核对及活动通知、任务完成后原生核对撤回、断网关闭与刷新保持关闭。后台活动通知数为1，完成后为0；撤回用调试入口执行同一原生实现，不声称另一次系统唤醒。未用前台补发替代后台断言，未声称看到横幅或完成冷启动。测试提醒已关闭，服务及转发已清理；系统后台耗电设置由用户决定是否恢复。
 
@@ -59,4 +59,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop.ps1 -Action 
 .desktop-tools/node22/node-v22.23.3-win-x64/node.exe scripts/android-reminders-acceptance.mjs --reminders-followup
 ```
 
-自动续做保持关闭。额度不足时保存并通知用户，不设置自动任务，不使用重置券。
+0.1.18／23签名候选与云端归档已准备，新的MySQL查询补验通过（两种时区及47表恢复），见[发布交接](release-0118.md)。正式三端仍0.1.17，未切换或发布。自动续做保持关闭；剩余额度不超过10%时保存并通知，不设置自动任务，不使用重置券。

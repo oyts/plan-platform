@@ -96,6 +96,7 @@ pub async fn worker(){
     let Ok(server)=validate_server(&s.server) else{let _=clear();return};
     let Ok(client)=reqwest::Client::builder().timeout(Duration::from_secs(8)).redirect(reqwest::redirect::Policy::none()).build()else{return};
     let response=client.post(server.join("api/reminders/poll").unwrap()).header("X-Reminder-Key",&s.registration.token).send().await;
+    let mut accepted=0usize;let mut delivered=0usize;
     let next=match response {
         Ok(response) if response.status()==401=>{let _=clear();return},
         Ok(mut response) if response.status().is_success()=>{
@@ -104,19 +105,35 @@ pub async fn worker(){
             loop {match response.chunk().await {Ok(Some(chunk)) if bytes.len()+chunk.len()<=65536=>bytes.extend_from_slice(&chunk),Ok(None)=>{complete=true;break},_=>break}}
             if !complete {if saved().is_some_and(|current|current.registration.token==s.registration.token){let _=schedule(now()+900000);}return;}
             if let Ok(poll)=serde_json::from_slice::<Poll>(&bytes){
+                delivered=poll.notices.len();
                 prune(&poll.active_keys);
                 for notice in poll.notices.iter().take(20){
                     if saved().is_none_or(|current|current.registration.token!=s.registration.token){return;}
                     if notice.expires_at<=poll.server_time||!hex(&notice.key,64)||notice.title.len()>512||notice.body.len()>2048{continue;}
-                    let _=show(&s.server,notice);
+                    if show(&s.server,notice).is_ok(){accepted+=1;}
                 }
                 now()+(poll.next_wake_at-poll.server_time).clamp(15000,900000)
             }else{now()+900000}
         },
         _=>now()+900000,
     };
+    live_trace(accepted,delivered);
     if saved().is_some_and(|current|current.registration.token==s.registration.token){let _=schedule(next);}
 }
+#[cfg(all(windows,debug_assertions,feature="native-regression"))]
+fn history_count()->Option<u32>{
+    windows::UI::Notifications::ToastNotificationManager::History().and_then(|h|h.GetHistoryWithId(&identity().into())).and_then(|items|items.Size()).ok()
+}
+#[cfg(all(not(windows),debug_assertions,feature="native-regression"))]
+fn history_count()->Option<u32>{None}
+#[cfg(all(debug_assertions,feature="native-regression"))]
+fn live_trace(accepted:usize,delivered:usize){
+    let directory=std::env::temp_dir().join("PlanCabin-Reminder-Probe");let _=std::fs::create_dir_all(&directory);
+    let data=serde_json::json!({"at":now(),"identity":identity(),"showAccepted":accepted,"serverNotices":delivered,"historyCount":history_count(),"permissionDetail":permission_detail()});
+    let _=std::fs::write(directory.join("live-worker.json"),data.to_string());
+}
+#[cfg(not(all(debug_assertions,feature="native-regression")))]
+fn live_trace(_accepted:usize,_delivered:usize){}
 fn show(server:&str,n:&Notice)->Result<(),String>{
     if !destination(&n.path){return Err("提醒跳转无效。".into());}
     #[cfg(windows)] {
@@ -137,6 +154,11 @@ pub fn worker_requested()->bool {std::env::args().any(|a|a=="--reminder-worker")
 /// Capability probe exists only in the isolated debug identity. It has no login or server request.
 #[cfg(all(debug_assertions,feature="native-regression"))]
 pub fn probe_requested()->bool{
+    if std::env::args().any(|a|a=="--reminder-live-status"){
+        let directory=std::env::temp_dir().join("PlanCabin-Reminder-Probe");let _=std::fs::create_dir_all(&directory);
+        let data=serde_json::json!({"at":now(),"identity":identity(),"historyCount":history_count(),"enabled":saved().is_some(),"permissionDetail":permission_detail()});
+        let _=std::fs::write(directory.join("live-status.json"),data.to_string());return true;
+    }
     let deliver=std::env::args().any(|a|a=="--reminder-probe-deliver");
     let prepare=std::env::args().any(|a|a=="--reminder-probe");
     if !deliver&&!prepare{return false;}

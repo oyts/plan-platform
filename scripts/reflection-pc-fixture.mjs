@@ -6,15 +6,17 @@ import {createHash,randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {join,resolve,sep} from 'node:path';
 import {assertPortsFree,sourceFingerprint,createFaultProxy} from './native-regression-support.mjs';
-const root=fileURLToPath(new URL('../',import.meta.url)),port=43153,proxyPort=43154;
+const root=fileURLToPath(new URL('../',import.meta.url));
 const resume=process.argv[2]==='--resume'&&process.argv.length===4;
-if(process.argv.length>2&&!resume)throw Error('Only --resume with an existing synthetic run is supported.');
+const reminders=process.argv.length===3&&process.argv[2]==='--reminders';
+const port=reminders?43157:43153,proxyPort=reminders?43158:43154;
+if(process.argv.length>2&&!resume&&!reminders)throw Error('Only --reminders or --resume with an existing synthetic run is supported.');
 await assertPortsFree([port,proxyPort]);
 const allowed=resolve(root,'acceptance-results/reflection/pc')+sep;
 const out=resume?resolve(process.argv[3]):join(allowed,new Date().toISOString().replace(/[:.]/g,'-'));
 if(!out.startsWith(allowed))throw Error('Resume is limited to reflection synthetic output.');
 await mkdir(out,{recursive:true});
-const jar=join(root,'backend/target-reflection/plan-platform-api.jar'),exe=join(root,'.desktop-tools/native-regression/plan-regression.exe');
+const jar=join(root,reminders?'backend/target-reminder-timezone/plan-platform-api.jar':'backend/target-reflection/plan-platform-api.jar'),exe=join(root,'.desktop-tools/native-regression/plan-regression.exe');
 const hash=async file=>createHash('sha256').update(await readFile(file)).digest('hex');
 const manifest={sourceSha256:await sourceFingerprint(root),apiSha256:await hash(jar),desktopSha256:await hash(exe),formalApplicationTouched:false,paidAiCalls:0,realEmailsSent:0,port,proxyPort};
 const args=['-Duser.timezone=Asia/Shanghai','-jar',jar,'--server.address=127.0.0.1',`--server.port=${port}`,'--spring.profiles.active=acceptance',
@@ -27,7 +29,7 @@ const args=['-Duser.timezone=Asia/Shanghai','-jar',jar,'--server.address=127.0.0
 // Resume must preserve the preceding run's startup/failure evidence.
 const log=createWriteStream(join(out,'api.log'),{flags:resume?'a':'w'});
 const child=spawn(join(process.env.JAVA_HOME||'E:/biancheng/JDK21','bin/java.exe'),args,{cwd:join(root,'backend'),windowsHide:true,stdio:['ignore','pipe','pipe']});
-child.stdout.pipe(log);child.stderr.pipe(log);let stopping=false,proxy;
+child.stdout.pipe(log);child.stderr.pipe(log);let stopping=false,proxy,reminderToken,reminderTask,commandBusy=false;
 const stop=async()=>{if(stopping)return;stopping=true;clearTimeout(ttl);process.stdin.pause();if(proxy)await proxy.close();if(child.exitCode===null)child.kill();};
 const ttl=setTimeout(()=>void stop(),3600_000);process.on('SIGINT',()=>void stop());process.on('SIGTERM',()=>void stop());
 child.on('exit',()=>{log.end();clearTimeout(ttl);process.stdin.pause();if(proxy)void proxy.close();});
@@ -38,7 +40,8 @@ try{
  if(resume){const prior=JSON.parse(await readFile(join(out,'state.json'),'utf8'));if(prior.apiSha256!==manifest.apiSha256||prior.desktopSha256!==manifest.desktopSha256)throw Error('Resume requires identical verified bytes.');}
  else{
   const email=`reflection-pc-${randomUUID()}@example.test`,password=`Reflection-${randomUUID()}!`;
-  const user=await api('/auth/register',{email,password,displayName:'日周复盘合成验收'},null,'POST',201),token=user.accessToken;
+  const user=await api('/auth/register',{email,password,displayName:reminders?'Windows提醒合成验收':'日周复盘合成验收'},null,'POST',201),token=user.accessToken;
+  if(reminders)reminderToken=token;
   const date=new Date(Date.now()+8*3600_000).toISOString().slice(0,10);
   await api('/todos',{title:'合成复盘待办',dueDate:date,note:'仅用于本机隔离验收'},token,'POST',201);
   await api(`/reflection/days/${date}`,{version:null,wins:'合成云端收获',blockers:'',nextFocus:'小步推进',energy:'STEADY',burden:'MANAGEABLE',reviewed:false},token,'PUT');
@@ -46,5 +49,20 @@ try{
  }
  await writeFile(join(out,'state.json'),JSON.stringify({...manifest,status:'READY',processId:child.pid},null,2));
  console.log(`READY: ${out}`);console.log('Commands: offline | online | stop. Authentication must be entered by the user.');
- process.stdin.setEncoding('utf8');process.stdin.on('data',text=>{const command=text.trim();if(command==='stop')void stop();else if(command==='offline'||command==='online'){proxy.setOnline(command==='online');console.log(`Synthetic proxy ${command}`);}});
+ process.stdin.setEncoding('utf8');process.stdin.on('data',text=>{const command=text.trim();if(command==='stop')void stop();else if(command==='offline'||command==='online'){proxy.setOnline(command==='online');console.log(`Synthetic proxy ${command}`);}else if(reminders&&['schedule','complete','status'].includes(command))void control(command);});
+ async function control(command){
+  if(commandBusy){console.log('A synthetic command is still running.');return;}commandBusy=true;
+  try{
+   if(command==='schedule'){
+    if(reminderTask)throw Error('This run already has a scheduled synthetic task.');
+    const at=new Date(Date.now()+180000),date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(at),hm=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit'}).format(at);
+    const p=await api('/plans',{name:'Windows合成提醒',startDate:date,endDate:date,restDays:[]},reminderToken,'POST',201);
+    reminderTask=await api(`/plans/${p.id}/tasks`,{date,startTime:hm,plannedMinutes:15,title:'Windows合成提醒任务',category:'STUDY',required:true,sortOrder:0,acceptance:[]},reminderToken,'POST',201);
+    const prefs=await api('/reminders/preferences',undefined,reminderToken,'GET');await api('/reminders/preferences',{...prefs,advanceEnabled:true,advanceMinutes:5},reminderToken,'PUT');
+    await writeFile(join(out,'reminder-fixture.json'),JSON.stringify({task:reminderTask,createdAt:new Date().toISOString(),apiSha256:manifest.apiSha256},null,2));console.log('SCHEDULE_READY: one synthetic task; enable the test device now.');
+   }else if(command==='complete'){
+    if(!reminderTask)throw Error('No synthetic task in this run.');await api(`/tasks/${reminderTask.id}/complete`,{note:'',acceptanceChecks:[],version:reminderTask.progress.version},reminderToken);console.log('SYNTHETIC_TASK_COMPLETED');
+   }else{const devices=await api('/reminders/devices',undefined,reminderToken,'GET');console.log(JSON.stringify({enabledDevices:devices.filter(d=>d.enabled).length,backgroundSeen:devices.some(d=>d.enabled&&d.lastSeenAt)}));}
+  }catch(e){console.error(e.message);}finally{commandBusy=false;}
+ }
 }catch(e){console.error(e.message);await stop();process.exitCode=1;}
