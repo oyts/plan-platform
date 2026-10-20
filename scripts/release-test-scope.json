@@ -222,20 +222,23 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Unreleased roadmap stage4 on the 0.1.17 baseline, with deferred stage3 Android tests: day/week factual review, private drafts/conflict comparison, optional self-report, readonly consent-scoped AI, conservative trend/cooldown, merged review reminders and private schema3 backup. Only new/directly affected tests; no production switch, paid AI, real email or Android device actions.",
+  "reason": "Unreleased roadmap stage4 on the 0.1.17 baseline, with user-authorized deferred stage3 Android followup: day/week factual review, private drafts/conflict comparison, optional self-report, readonly consent-scoped AI, conservative trend/cooldown, merged review reminders and private schema3 backup. Only new/directly affected tests; independent native synthetic accounts, no formal overwrite, production switch, paid AI or real email.",
   "frontendUnit": ["src/reflection.test.ts","src/reminders.test.ts","src/personalData.test.ts","src/weeklyDraft.test.ts","src/api/client.test.ts","src/offlineCache.test.ts"],
   "reflectionWorkspace": {
-    "status":"shared-source-browser-and-mysql-accepted-pc-awaiting-user-login-android-deferred",
-    "results":{"backendPassed":66,"frontendUnitPassed":41,"browserPassed":20,"windowsRustPassed":5,"androidRouteUnitPassed":5,"mysqlCasesPassed":6,"mysqlTablesRestored":47,"androidDeviceTested":false,"paidAiCalls":0,"realEmailsSent":0},
+    "status":"shared-source-mysql-and-bounded-independent-native-review-accepted-reminder-gates-pending",
+    "results":{"backendPassed":66,"frontendUnitPassed":41,"browserPassed":20,"windowsRustPassed":5,"androidRouteUnitPassed":5,"mysqlCasesPassed":6,"mysqlTablesRestored":47,"independentWindowsUiGroupsPassed":6,"androidDistinctReviewGroupsPassed":4,"androidDeviceTested":true,"paidAiCalls":0,"realEmailsSent":0},
     "evidence":["acceptance-results/reflection/backend-final.log","backend/target-reflection/surefire-reports/","acceptance-results/reflection/frontend-final.log","acceptance-results/reflection/browser-final/","acceptance-results/reflection/rust-final.log","acceptance-results/reflection/android-final.log","remote reflection-candidates/20261020T061810Z-3c32df69/report.json"],
-    "pending":["Independent Windows UI after user authentication","Combined stages3/4 Android physical-device acceptance","Signed candidates, formal retention and production release gates"],
+    "nativeEvidence":["acceptance-results/reflection/pc/2026-10-20T06-05-12-982Z/pc-ui-observations.json","acceptance-results/reflection/android/2026-10-20T09-31-32-027Z/report.json","acceptance-results/reflection/android/2026-10-20T09-34-53-118Z/report.json"],
+    "nativeLimits":"Windows actual UI and native bridge; Ctrl+R only, not cold executable restart or offline transport test. Android first three review groups passed, fourth locator failed then corrected followup passed; not one green combined run. Native cloud-version comparison did not submit a stale PUT; actual HTTP409 is proven by separate backend/browser tests. Android background alarm still frozen, timed out; later shutdown branch not reached.",
+    "pending":["Android real background reminder, cancellation and offline shutdown","Windows scoped-key live-API reminder integration","Signed candidates, formal retention and production release gates"],
     "details":"docs/reflection-progress.md"
   },
   "nativeReminders": {
     "status":"unreleased-native-acceptance-in-progress",
     "results":{"backendPassed":29,"frontendUnitPassed":40,"browserPassed":8,"windowsRustPassed":4,"windowsOsWakeAndShowAccepted":true,"androidBackgroundPassed":false,"paidAiCalls":0,"realTestEmails":0},
     "evidence":["backend/target-reminders/surefire-reports/","acceptance-results/reminders/browser/","acceptance-results/reminders/windows-probe/","acceptance-results/reminders/android/"],
-    "pending":["Android real background notification and cancellation (deferred with stage4)","Windows scoped-key live-API integration","signed release and formal upgrade acceptance"],
+    "pending":["Android real background notification and cancellation (still frozen after user-confirmed self-start/alarm settings; awaiting battery-management screenshot)","Windows scoped-key live-API integration","signed release and formal upgrade acceptance"],
+    "androidLatestFollowup":"acceptance-results/reflection/android/2026-10-20T09-41-08-659Z/",
     "mysqlFollowup":"V25 to V27 plus prior-start backfill, 47-table restore and actual 0.1.17 read compatibility passed in reflectionWorkspace; production unchanged",
     "details":"docs/native-reminders-progress.md"
   },
