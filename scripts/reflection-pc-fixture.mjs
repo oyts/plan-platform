@@ -24,7 +24,8 @@ const args=['-Duser.timezone=Asia/Shanghai','-jar',jar,'--server.address=127.0.0
  '--app.security.refresh-cookie-secure=false','--app.jwt.secret=reflection-isolated-only-not-production-32-bytes','--app.jwt.issuer=reflection-pc-synthetic',
  '--app.ai.enabled=false','--app.ai.worker-enabled=false','--app.operations.enabled=false','--app.governance.enabled=false',
  '--spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration'];
-const log=createWriteStream(join(out,'api.log'));
+// Resume must preserve the preceding run's startup/failure evidence.
+const log=createWriteStream(join(out,'api.log'),{flags:resume?'a':'w'});
 const child=spawn(join(process.env.JAVA_HOME||'E:/biancheng/JDK21','bin/java.exe'),args,{cwd:join(root,'backend'),windowsHide:true,stdio:['ignore','pipe','pipe']});
 child.stdout.pipe(log);child.stderr.pipe(log);let stopping=false,proxy;
 const stop=async()=>{if(stopping)return;stopping=true;clearTimeout(ttl);process.stdin.pause();if(proxy)await proxy.close();if(child.exitCode===null)child.kill();};
