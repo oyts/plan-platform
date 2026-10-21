@@ -40,6 +40,7 @@ class PersonalTemplateIntegrationTest {
  JsonNode apply(Account a,String id,Object r)throws Exception{return send(post("/api/structure-templates/"+id+"/apply"),a,confirmation(r,usePreview(a,id,r)),200);}
 
  @Test void planTemplateIsDetachedAndCopiesFullStructureWithoutExecutionHistory()throws Exception{
+  mvc.perform(get("/api/health")).andExpect(status().isOk()).andExpect(jsonPath("$.capabilities.structureTemplates").value(true));
   var a=account();String p=plan(a);var t=task(a,p,"第一步",0);String oldTask=t.path("id").asText();
   send(post("/api/tasks/"+oldTask+"/manual-time"),a,Map.of("seconds",60,"version",0),200);
   create(a,"/plans/"+p+"/milestones",Map.of("name","检查点","date",today.plusDays(4).toString(),"acceptance",List.of("结构验收")));

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 class ReleaseController {
     @Value("${app.version}") private String version;
     @GetMapping("/api/health") Map<String, Object> release() {
-        return Map.of("ok", true, "service", "plan-platform-api", "version", version, "apiVersion", 1);
+        return Map.of("ok", true, "service", "plan-platform-api", "version", version, "apiVersion", 1,
+            "capabilities",Map.of("structureTemplates",true));
     }
 }

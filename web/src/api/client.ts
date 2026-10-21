@@ -49,7 +49,7 @@ api.interceptors.request.use(async (config) => {
     }
   }
   if (!['GET', 'HEAD'].includes(config.method?.toUpperCase() ?? 'GET') && !config.url?.startsWith('/auth/') && requiresConnection()) {
-    throw new OfflineUnavailableError('计时、完成、删除及此项操作需要联网确认，请先恢复连接。');
+    throw new OfflineUnavailableError('此项操作需要联网确认，请先恢复连接；本机已有内容和队列未被清除。');
   }
   return config;
 });

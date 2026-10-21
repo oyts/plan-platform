@@ -6,6 +6,8 @@ import { workspaceEntry } from '@/workspace';
 import { useRouter } from 'vue-router';
 import { parseProductDownloads, downloadSize, type ProductDownloads } from '@/productDownloads';
 import AppSheet from '@/components/AppSheet.vue';
+import {supportsPersonalTemplates} from '@/helpModel';
+const templatesAvailable=ref(false);
 const auth = useAuthStore(); const router = useRouter();
 const selected = ref(0); const open = ref(false); const qr = ref(''); const error = ref(''); const loading = ref(true);
 const downloads = ref<ProductDownloads>({ windows: null, android: null });
@@ -27,7 +29,7 @@ const example = computed(() => examples[selected.value]!);
 const aiSteps = [
   { title: '说说你想做什么', description: '用自己的话说明目标、可用时间和期限。不确定怎么开始，也可以直接聊。' },
   { title: '选一种合适的方式', description: 'AI 可以先推荐模式，由你确认；也可以从周期计划、目标路线或待办直接开始。' },
-  { title: '一起把草稿改好', description: '先看结构和细节，再手工调整，或继续对话修改。不满意，不必从头填写。' },
+  { title: '一起把草稿改好', description: '对话与草稿分开查看。未发送输入可留在本机，完整规划可独立保存到云端草稿箱，回来接着改。' },
   { title: '确认以后，再生成', description: '核对内容后，一次生成到对应模式。AI 的回复和草稿不会自行变成真实计划。' },
 ];
 const modes = [
@@ -44,7 +46,13 @@ async function mobileDownload() {
     catch { error.value = '二维码生成失败，请使用直接下载链接。'; }
   }
 }
+async function loadTemplateCapability(){
+  const controller=new AbortController(),timer=window.setTimeout(()=>controller.abort(),5000);
+  try{const response=await fetch('/api/health',{cache:'no-store',signal:controller.signal});templatesAvailable.value=response.ok&&supportsPersonalTemplates(await response.json());}
+  catch{templatesAvailable.value=false;}finally{window.clearTimeout(timer);}
+}
 onMounted(async () => {
+  void loadTemplateCapability();
   try {
     const response = await fetch('/downloads/manifest.json', { cache: 'no-store' });
     if (!response.ok) throw new Error('下载清单暂不可用。');
@@ -93,25 +101,35 @@ onMounted(async () => {
       <div class="ai-adjustment"><div><p class="adjustment-label">已有计划，也能继续聊</p><h3>最近太忙？把节奏放慢一点。</h3><p>从具体计划、路线或待办进入“AI 调整”，只载入你选择的内容。先看前后差异，再决定是否应用；已完成事项和执行历史受到保护，不会把原计划删掉重建。</p></div><ol><li>选择要调整的对象</li><li>说明新的时间或要求</li><li>核对差异，确认应用</li></ol></div>
       <p class="product-service-note">内置 AI 使用 DeepSeek 官方 API，发送前需要你的同意。AI 需要联网，每日可用次数以账号页面为准；暂时不可用时，仍可手动规划，也可导入符合格式的外部 AI 草稿。</p>
     </section>
+    <section id="daily-use" class="product-section" aria-labelledby="daily-use-title">
+      <header><span>03</span><div><h2 id="daily-use-title">规划之后，也照顾每天的推进。</h2><p>需要时提醒，做完再回顾，把适合自己的方法留住。</p></div></header>
+      <div class="product-follow-grid">
+        <article><h3>提醒，由你主动开启</h3><p>Windows和Android支持任务提前、到点及每日待办收尾提醒，默认关闭。网页保留站内提醒；系统权限、节电策略、关机或强停会影响投递，不承诺必达。</p></article>
+        <article><h3>日周复盘，先看真实记录</h3><p>分别汇总周期计划、目标路线与待办的已同步事实，再写收获、阻塞和精力。AI分析须先同意；周节奏调整也要另行预览确认，不会因一天没完成就自动重排。</p></article>
+        <article><h3>私人备份，恢复为新副本</h3><p>在数据中心导出已同步内容。私有JSON先预检、再确认恢复，不覆盖在用的计划和路线；本机未提交队列不在文件中，备份请自行妥善保存。</p></article>
+        <article v-if="templatesAvailable" data-testid="published-templates"><h3>好用的方法，存成整套模板</h3><p>保存本人的周期计划、目标路线或完整AI新建草稿，按分类和收藏找回。先预览再建立独立副本，阶段与依赖保留，执行历史不复制，已有副本不随模板改动。</p></article>
+      </div>
+    </section>
     <section class="product-section" aria-labelledby="devices-title">
-      <header><span>03</span><div><h2 id="devices-title">电脑上规划，手机上接着做。</h2><p>同一个云端账号，在网页、Windows 和 Android 继续自己的行动。</p></div></header>
+      <header><span>04</span><div><h2 id="devices-title">电脑上规划，手机上接着做。</h2><p>同一个云端账号，在网页、Windows 和 Android 继续自己的行动。</p></div></header>
       <div class="product-feature-grid"><article><h3>同一个账号，同一份进度</h3><p>三端连接同一服务器后同步数据。每个用户的计划独立保存；需要时可导出 CSV 或 Markdown。</p></article><article><h3>没网时，先把想法留住</h3><p>已缓存内容可离线浏览，支持部分新增与编辑。操作先留在本机，联网后在同步中心继续；未缓存的内容和 AI 对话仍需联网。</p></article><article><h3>两端改了，也不会悄悄覆盖</h3><p>同一条记录发生冲突时，保留本地操作，交给你比较处理。更新安装也需要确认，自动下载默认关闭。</p></article></div>
     </section>
     <section class="product-section product-learning" aria-labelledby="learning-title">
-      <header><span>04</span><div><h2 id="learning-title">第一次用，先亲手做一个小案例。</h2><p>不必对着空白页面摸索。跟着步骤试一遍，忘记了随时回来重练。</p></div></header>
-      <div class="learning-layout"><div class="learning-copy"><h3>在独立练习区里，放心试。</h3><p>教学不会改动真实计划。AI 教学使用模拟过程，不调用模型、不消耗对话次数；练习进度保存在当前账号与设备中。</p><button class="btn" @click="router.push('/learn')">{{ auth.user ? '打开使用教学' : '登录后开始教学' }}</button></div><ol class="learning-courses"><li><span>01</span>周期计划<small>安排周期与休息日</small></li><li><span>02</span>目标路线<small>拆出阶段与步骤</small></li><li><span>03</span>今日待办<small>记录并完成一件事</small></li><li><span>04</span>离线与同步<small>理解本地保存与冲突</small></li><li><span>05</span>AI 规划<small>从说明目标到确认生成</small></li></ol></div>
+      <header><span>05</span><div><h2 id="learning-title">第一次用，先亲手做一个小案例。</h2><p>不必对着空白页面摸索。跟着步骤试一遍，忘记了随时回来重练。</p></div></header>
+      <div class="learning-layout"><div class="learning-copy"><h3>在独立练习区里，放心试。</h3><p>教学不会改动真实计划。AI 教学使用模拟过程，不调用模型、不消耗对话次数；练习进度保存在当前账号与设备中。</p><button class="btn" @click="router.push('/learn')">{{ auth.user ? '打开使用教学' : '登录后开始教学' }}</button></div><ol class="learning-courses"><li><span>01</span>周期计划<small>安排周期与休息日</small></li><li><span>02</span>目标路线<small>拆出阶段与步骤</small></li><li><span>03</span>今日待办<small>记录并完成一件事</small></li><li><span>04</span>离线与同步<small>理解本地保存与冲突</small></li><li><span>05</span>AI 规划<small>从说明目标到确认生成</small></li><li v-if="templatesAvailable"><span>06</span>整套模板<small>保存方法，建立独立副本</small></li></ol></div>
     </section>
     <section id="clients" class="product-section" aria-labelledby="clients-title">
-      <header><span>05</span><div><h2 id="clients-title">选一个入口，开始使用。</h2><p>网页版直接登录；Windows 可下载安装；Android 目前仅供受邀测试。</p></div></header>
+      <header><span>06</span><div><h2 id="clients-title">选一个入口，开始使用。</h2><p>网页版直接登录；Windows 可下载安装；Android 目前仅供受邀测试。</p></div></header>
       <p v-if="error" class="error-text" role="status">{{ error }}</p>
       <div class="product-client-grid"><article><span class="client-label">无需安装</span><h3>网页版</h3><p>电脑和手机浏览器均可访问。已有账号可直接登录，新成员请先联系管理员获取邀请。</p><button class="btn primary" @click="enter">进入网页版</button></article><article><span class="client-label">桌面客户端</span><h3>Windows 电脑</h3><p>独立客户端，支持缓存与离线编辑。新版本在应用内提示，由你决定何时下载和安装。</p><a v-if="downloads.windows" class="btn primary" :href="downloads.windows.url" download>下载 Windows 安装包</a><button v-else class="btn" disabled>{{ loading ? '检查发布状态…' : '正式安装包尚未发布' }}</button><small v-if="downloads.windows">{{ downloads.windows.version }} · {{ downloadSize(downloads.windows.bytes) }}</small></article><article><span class="client-label">{{ downloads.android ? '手机客户端' : '受邀测试' }}</span><h3>Android 手机</h3><p v-if="downloads.android">扫描二维码或直接下载安装包，登录同一个账号继续使用。</p><p v-else>暂不提供公开 APK 和二维码。首次安装请联系邀请人，已安装的受邀成员可登录后在应用内检查更新。</p><button class="btn" :disabled="loading" @click="mobileDownload">{{ downloads.android ? '扫码下载 Android' : '查看 Android 发布状态' }}</button><small v-if="downloads.android">{{ downloads.android.version }} · {{ downloadSize(downloads.android.bytes) }}</small><small v-else>目前可先使用手机浏览器访问网页版。</small></article></div>
     </section>
-    <section class="product-section product-faq" aria-labelledby="faq-title"><header><span>06</span><div><h2 id="faq-title">开始前，你可能想知道。</h2></div></header><div class="faq-list"><details><summary>现在可以直接注册吗？</summary><p>目前采用管理员邀请制，没有公众注册入口。已有账号可直接登录；忘记密码时，可从登录页通过账号邮箱找回。</p></details><details><summary>我一定要使用 AI 吗？</summary><p>不需要。三种模式都支持手动创建和修改。AI 是可选的规划助手，你可以先看草稿、继续讨论，再决定是否生成或应用。</p></details><details><summary>我的所有计划都会发给 AI 吗？</summary><p>不会自动扫描全部计划。新建时发送本次对话与草稿；调整已有内容时，先由你选择对象并同意载入必要内容。请勿输入密码、身份证件等敏感信息。</p></details><details><summary>离线时，哪些事情还能做？</summary><p>先联网加载需要的内容后，可以离线浏览已缓存页面，并对支持的事项进行新增或编辑。联网后在同步中心处理本地操作与冲突；AI、计时和完成类操作仍需要联网。</p></details></div></section>
+    <section class="product-section product-faq" aria-labelledby="faq-title"><header><span>07</span><div><h2 id="faq-title">开始前，你可能想知道。</h2></div></header><div class="faq-list"><details><summary>现在可以直接注册吗？</summary><p>目前采用管理员邀请制，没有公众注册入口。已有账号可直接登录；忘记密码时，可从登录页通过账号邮箱找回。</p></details><details><summary>我一定要使用 AI 吗？</summary><p>不需要。三种模式都支持手动创建和修改。AI 是可选的规划助手，你可以先看草稿、继续讨论，再决定是否生成或应用。</p></details><details><summary>我的所有计划都会发给 AI 吗？</summary><p>不会自动扫描全部计划。新建时发送本次对话与草稿；调整已有内容时，先由你选择对象并同意载入必要内容。请勿输入密码、身份证件等敏感信息。</p></details><details><summary>离线时，哪些事情还能做？</summary><p>先联网加载需要的内容后，可以离线浏览已缓存页面，并对支持的事项进行新增或编辑。联网后在同步中心处理本地操作与冲突；AI和计时等操作仍需联网；待办勾选可先离线入队，联网后由你核对同步。</p></details></div></section>
     <footer class="product-footer"><div><strong>计划舱</strong><span>按自己的节奏，认真做下一件事。</span></div><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备2026050813号-1</a><div class="footer-links"><a href="https://github.com/oyts/plan-platform" target="_blank" rel="noopener noreferrer">GitHub 源码</a><router-link to="/login">账号登录</router-link></div></footer>
     <AppSheet :open="open" title="Android 客户端下载" title-id="android-download-title" @close="open = false"><template v-if="downloads.android"><p>扫描二维码，在手机浏览器中下载 APK。</p><img v-if="qr" class="download-qr" :src="qr" alt="Android 安装包下载二维码" width="256" height="256"/><p><a class="btn primary" :href="downloads.android.url" download>直接下载 APK</a></p><p>{{ downloads.android.version }} · {{ downloadSize(downloads.android.bytes) }}</p><details><summary>查看 SHA-256 校验值</summary><code class="download-hash">{{ downloads.android.sha256 }}</code></details><p class="helper-text">安装时 Android 可能要求允许浏览器安装应用。只从本站获取安装包；二维码不包含账号或密码。</p></template><template v-else><p>Android 客户端目前仅供受邀测试，暂不提供公开下载及二维码。</p><p>已安装受邀测试版的成员，可登录后在“客户端更新”中检查新版本。第一次安装请联系邀请人；也可先使用网页版。</p></template></AppSheet>
   </div>
 </template>
 <style scoped>
+.product-follow-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-left:1px solid #d7dce4;border-top:1px solid #d7dce4}.product-follow-grid article{padding:28px;border-right:1px solid #d7dce4;border-bottom:1px solid #d7dce4;min-width:0}.product-follow-grid p{color:#667085;line-height:1.8;overflow-wrap:anywhere}@media(max-width:700px){.product-follow-grid{grid-template-columns:minmax(0,1fr)}.product-follow-grid article{padding:22px}}
 .product-home{background:#fff;color:#111827;font-family:"Helvetica Neue",Arial,"Microsoft YaHei",sans-serif}.product-header{max-width:1400px;margin:auto;padding:24px 40px;border-bottom:1px solid #d7dce4;display:flex;justify-content:space-between;align-items:center;gap:24px}.product-brand{font-size:24px;letter-spacing:-.05em;font-weight:900;color:#002fa7;text-decoration:none}.product-header nav{display:flex;align-items:center;gap:28px}.product-header nav>a{font-size:14px;color:#111827;text-decoration:none}.product-hero{max-width:1400px;margin:auto;display:grid;grid-template-columns:1.15fr 1fr;align-items:center;gap:56px;padding:88px 40px}.product-intro{font-size:14px;color:#002fa7;font-weight:700;margin-bottom:30px}.product-hero h1{font-size:clamp(38px,4.5vw,66px);letter-spacing:-.065em;line-height:1.2;margin-bottom:30px}.product-hero h1 span{color:#002fa7}.product-description{font-size:17px;line-height:1.8;color:#667085}.product-actions{display:flex;gap:12px;margin:30px 0 20px}.product-actions .btn{padding:14px 24px;text-decoration:none;display:inline-flex;align-items:center}.product-footnote{color:#667085;font-size:13px}.product-preview{border:1px solid #9ba3b0}.preview-heading{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:20px;border-bottom:1px solid #d7dce4}.preview-heading small{color:#667085}.preview-tabs{display:flex;border-bottom:1px solid #9ba3b0}.preview-tabs button{flex:1;min-height:52px;background:#fff;border:0;border-right:1px solid #d7dce4;cursor:pointer;font-size:14px}.preview-tabs button:last-child{border-right:0}.preview-tabs .active{background:#002fa7;color:#fff}.preview-content{padding:30px;min-height:325px}.preview-number{font-size:52px;color:#002fa7;font-weight:800;line-height:1}.preview-content h2{font-size:23px;margin:20px 0}.preview-content ol{padding:0;list-style:none;counter-reset:steps}.preview-content li{padding:12px 0;border-top:1px solid #d7dce4;font-size:15px;counter-increment:steps}.preview-content li:before{content:counter(steps,decimal-leading-zero);margin-right:18px;color:#002fa7}.preview-content p{font-size:13px;color:#667085;margin:20px 0 0}.product-section{max-width:1320px;margin:0 auto;border-top:1px solid #9ba3b0;padding:40px 0 60px;scroll-margin-top:20px}.product-section>header{display:flex;gap:28px;align-items:start;margin-bottom:32px}.product-section>header>span{font-size:42px;color:#002fa7;font-weight:800;line-height:1}.product-section h2{font-size:30px;letter-spacing:-.04em}.product-section header p{color:#667085;margin:0}.product-mode-grid,.product-feature-grid,.product-client-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid #d7dce4;border-left:1px solid #d7dce4}.product-mode-grid article,.product-feature-grid article,.product-client-grid article{padding:32px;border-right:1px solid #d7dce4;border-bottom:1px solid #d7dce4}.mode-number{color:#002fa7;font-size:15px}.product-mode-grid h3{font-size:25px;margin:22px 0 16px}.product-mode-grid p,.product-feature-grid p,.product-client-grid p{font-size:15px;color:#667085;line-height:1.8}.product-mode-grid small{font-size:13px}.product-client-grid article{display:flex;flex-direction:column;align-items:start}.product-client-grid p{flex:1}.product-client-grid a{display:inline-flex;text-decoration:none;align-items:center}.product-client-grid small{display:block;color:#667085;font-size:12px;line-height:1.6;margin-top:14px}.product-footer{max-width:1320px;margin:auto;padding:30px 0;border-top:1px solid #9ba3b0;display:flex;justify-content:space-between;align-items:center;gap:20px;font-size:13px}.product-footer>div{display:grid;gap:8px}.product-footer strong{font-size:18px;color:#002fa7}.product-footer span{color:#667085}.product-footer a{text-decoration:none}.download-qr{display:block;max-width:100%;height:auto;margin:20px auto}.download-hash{display:block;overflow-wrap:anywhere;padding:12px 0}
 @media(max-width:1400px){.product-section,.product-footer{margin-left:40px;margin-right:40px}}
 @media(max-width:900px){.product-header{padding:20px 24px}.product-header nav{gap:14px}.product-hero{grid-template-columns:1fr;gap:32px;padding:48px 24px}.product-section,.product-footer{margin-left:24px;margin-right:24px}.product-mode-grid,.product-feature-grid,.product-client-grid{grid-template-columns:1fr}.product-section h2{font-size:26px}.product-mode-grid article,.product-feature-grid article,.product-client-grid article{padding:24px}.product-footer{flex-wrap:wrap}.product-footer>div{width:100%}}

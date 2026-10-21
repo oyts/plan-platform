@@ -1,6 +1,12 @@
 # 核心接口与失败语义
 
-基础路径为 `/api`。除公开健康和账号入口外需要 Bearer Access Token，管理员端点还需要 ADMIN。公开 ID 不授予权限，子记录也必须验证归属。旧接口结构见 [OpenAPI](openapi.yaml)；以下补充六阶段候选新增接口，尚未部署到正式 0.1.14。
+基础路径为 `/api`。除公开健康和账号入口外需要Bearer Access Token，管理员端点还需要ADMIN。公开ID不授予权限，子记录也必须验证归属。正式版本为0.1.18；以下前轮接口已交付，私人整套模板是0.1.19候选扩展。旧接口结构见[OpenAPI](openapi.yaml)，本轮状态见[阶段六记录](stable-trial-progress.md)。
+
+## 整套模板候选接口
+
+`GET /health` 增加明确的 `capabilities.structureTemplates=true`；旧服务器缺失时不能推断为支持。该声明不授予权限，也不代表OS安装或后台提醒已验收。
+
+整套模板的列表、完整读取、捕获预览、确认保存、资料编辑、删除、应用预览和确认建立分别使用 `/structure-templates`、`/{id}`、`/capture/preview`、`/capture`、`/{id}/preview` 和 `/{id}/apply`。保存／应用要求明确确认、预览指纹和UUID操作键；版本冲突返回409，重试同键同内容返回原结果。旧单任务模板 `/templates` 不变。完整字段及限制见[个人模板库](personal-template-library.md)。
 
 ## 新增接口索引
 

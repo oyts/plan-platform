@@ -1,0 +1,7 @@
+{
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "shortDescription": "计划舱阶段六独立回归测试，不是正式安装包"
+  }
+}

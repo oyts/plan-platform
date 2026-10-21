@@ -10,6 +10,8 @@ import type {PageResponse} from '@/types';
 import RestDaysPicker from '@/components/RestDaysPicker.vue';
 import TemplateStructurePreview from '@/components/TemplateStructurePreview.vue';
 import {localDate} from '@/todos';
+import {supportsPersonalTemplates} from '@/helpModel';
+const supported=ref<boolean|null>(null);
 const route=useRoute(),owner=currentQueueOwner()??'',scope=serverScope();let active=true,stopQueue:(()=>void)|undefined;
 const inContext=()=>active&&owner===currentQueueOwner()&&scope===serverScope();
 const filters=reactive({search:'',kind:'ALL',category:'',favorite:false}),page=ref(0),list=ref<PageResponse<PersonalTemplate>|null>(null),selected=ref<PersonalTemplate|null>(null);
@@ -40,7 +42,7 @@ watch(form,()=>{preview.value=null;confirmed.value=false;if(!ready.value||pendin
 watch(use,()=>{preview.value=null;confirmed.value=false;},{deep:true});
 function beforeUnload(e:BeforeUnloadEvent){if(busy.value||dirtyEdit.value||inputSaving.value){e.preventDefault();e.returnValue='';}}
 onBeforeRouteLeave(async()=>{await saveChain;return !busy.value&&(!dirtyEdit.value||confirm('模板资料尚未保存，确定离开？来源保存表单仍有本机输入，预览确认不会自动恢复。'));});
-onMounted(()=>void run(async()=>{try{const saved=await readPrivateDraft<Record<string,unknown>>(scope,owner,'template-input');if(saved&&['PLAN','ROUTE','AI_DRAFT'].includes(String(saved.source))&&['sourceId','name','description','category'].every(f=>typeof saved[f]==='string')&&typeof saved.favorite==='boolean'&&typeof saved.replace==='boolean')Object.assign(form,saved,{replace:false});pending.value=templatePending(await readPrivateDraft(scope,owner,'template-pending'));}catch(e){localError.value=apiMessage(e);}await counts();stopQueue=onQueueChange(()=>void counts());await load();const savedId=form.sourceId;await loadSources();form.sourceId=savedId;ready.value=true;window.addEventListener('beforeunload',beforeUnload);}).then(()=>{if(typeof route.query.selected==='string'&&/^[a-f0-9-]{36}$/.test(route.query.selected))void choose(route.query.selected);}));
+onMounted(()=>void run(async()=>{try{const saved=await readPrivateDraft<Record<string,unknown>>(scope,owner,'template-input');if(saved&&['PLAN','ROUTE','AI_DRAFT'].includes(String(saved.source))&&['sourceId','name','description','category'].every(f=>typeof saved[f]==='string')&&typeof saved.favorite==='boolean'&&typeof saved.replace==='boolean')Object.assign(form,saved,{replace:false});pending.value=templatePending(await readPrivateDraft(scope,owner,'template-pending'));}catch(e){localError.value=apiMessage(e);}await counts();stopQueue=onQueueChange(()=>void counts());const health=(await api.get('/health',{timeout:5000})).data;if(!inContext())return;supported.value=supportsPersonalTemplates(health);if(!supported.value){error.value='当前服务器尚不支持整套模板，请联系管理员升级后重开此页。本机输入、原模板和同步队列均未更改。';return;}await load();const savedId=form.sourceId;await loadSources();form.sourceId=savedId;ready.value=true;window.addEventListener('beforeunload',beforeUnload);}).then(()=>{if(ready.value&&typeof route.query.selected==='string'&&/^[a-f0-9-]{36}$/.test(route.query.selected))void choose(route.query.selected);}));
 onUnmounted(()=>{active=false;stopQueue?.();window.removeEventListener('beforeunload',beforeUnload);});
 </script>
 <template>
@@ -66,6 +68,7 @@ onUnmounted(()=>{active=false;stopQueue?.();window.removeEventListener('beforeun
 <button v-if="result.path.startsWith('/templates')" class="btn" :disabled="locked" @click="choose(result.id)">查看保存的模板</button>
 <router-link v-else :to="result.path">打开本次结果</router-link>
 </p>
+<template v-if="supported">
 <div class="template-layout">
 <section class="section library" aria-label="我的模板">
 <h2>我的模板</h2>
@@ -187,6 +190,7 @@ onUnmounted(()=>{active=false;stopQueue?.();window.removeEventListener('beforeun
 <input v-model="confirmed" type="checkbox" :disabled="locked"/>我已核对完整结构、保存范围及新对象设置，确认继续。</label>
 <button class="btn primary" :disabled="locked||!canWrite||!confirmed" @click="apply">{{previewMode==='capture'?'确认保存模板':'确认建立新副本'}}</button>
 </section>
+</template>
 </div>
 </template>
 <style scoped>

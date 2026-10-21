@@ -1,5 +1,17 @@
 {
-  "version": "0.1.18",
+  "version": "0.1.19",
+  "stableTrialCandidate": {
+    "status":"shared-source-web-final-mysql-and-signed-candidates-accepted-pc-login-and-android-pending",
+    "reason":"Stage6 closes trial gaps: sixth local template lesson, declared server capability and old-server explanation, release-gated website content, precise offline boundaries, current engineering materials, independent PC installer/export/nonempty-queue verification. Android device explicitly deferred; no production switch or unrelated full regression.",
+    "results":{"backendPassed":11,"frontendPassed":28,"browserDistinctPassed":28,"websiteFinalRecheckPassed":4,"nativeHarnessPassed":9,"mysqlCasesPassed":5,"mysqlTablesRestored":49,"formalSignaturesVerified":true,"paidAiCalls":0,"realEmailsSent":0,"androidDeviceTested":false,"pcNativeAccepted":false},
+    "evidence":["acceptance-results/stable-trial/backend.log","acceptance-results/stable-trial/frontend-final.log","acceptance-results/stable-trial/browser.json","acceptance-results/stable-trial/home-final2.json","acceptance-results/stable-trial/native-harness.log"],
+    "apiSha256":"b77b2e0970b37225dce66cfdb776fa23aeaf363c4e356811ec9a0dc1883c91b2",
+    "mysqlEvidence":"remote template-candidates/20261021T051800Z-b77b2e09/report.json",
+    "signedCandidate":"production-artifacts/client-release/0.1.19/20261021T052104Z-c686c3c2",
+    "archiveSha256":"3293e8c573a7397337817007bd9dc3cc0fdfa4f99517efd06e60b80ce1f03ada",
+    "pending":["PC synthetic login/export/nonempty queue upgrade","Formal installation and production approval","Android device; no APK source publication"],
+    "details":"docs/stable-trial-progress.md"
+  },
   "release0118Production": {
     "status":"complete-three-platform-released-and-github-archived",
     "scripts":["scripts/test-release-drill.py","scripts/test-activate-ai-workbench.py","scripts/test-activate-reflection.py","scripts/public-reflection-acceptance.py","scripts/android-reflection-formal.py","scripts/test-android-reflection-formal.py"],
@@ -234,8 +246,8 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "0.1.18 combines stages3/4 reminders and day/week reflection. Shared-source and independent-native evidence below retain their original tested artifacts. Later real snapshot migration, formal signed preserve-data upgrades, production switch and public/protected feed verification are recorded separately in release0118Production. Only new/directly affected scope, no unrelated full suite, paid AI or real test mail.",
-  "frontendUnit": ["src/reflection.test.ts","src/reminders.test.ts","src/personalData.test.ts","src/weeklyDraft.test.ts","src/api/client.test.ts","src/offlineCache.test.ts"],
+  "reason": "0.1.19 candidate combines private templates and stage6 trial closing. Test only template/lesson/capability/offline-message changes and native packaging/retention/export gates; prior production0.1.18 evidence remains historical. Android device deferred, no paid AI or real email.",
+  "frontendUnit": ["src/learningModel.test.ts","src/helpModel.test.ts","src/personalTemplates.test.ts","src/api/offlineClient.test.ts"],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",
     "reason":"Private whole-structure PLAN/ROUTE and saved new-AI-draft templates; common copy writer, strict nested whitelist, V28, schema4 backup, manual pending replay. Typed task-time reads/writes affect structural copies directly. No unrelated full regression.",
@@ -271,15 +283,16 @@
     "details":"docs/native-reminders-progress.md"
   },
   "browser": [
-    "e2e/reflection.spec.ts",
-    "e2e/personal-data.spec.ts"
+    "e2e/stable-trial.spec.ts",
+    "e2e/personal-templates.spec.ts",
+    "e2e/product-home-refresh.spec.ts"
   ],
   "backend": [
-    "ReflectionIntegrationTest",
-    "ReflectionAiIntegrationTest",
-    "NativeReminderIntegrationTest"
+    "PersonalTemplateIntegrationTest",
+    "TemplateBlueprintTest",
+    "OrchestrationIntegrationTest#planCopyRemapsStructureShiftsDatesAndDropsAllExecutionHistory"
   ],
-  "android": ["cn.zijun701.plan.mobile.ReminderRoutesTest"],
+  "android": [],
   "dailyExperience": {
     "status": "released-0.1.14",
     "results": {"frontendUnitPassed": 32, "backendPassed": 12, "browserDistinctPassed": 20},

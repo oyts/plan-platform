@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {capabilityGuide,demoCases,healthSummary} from './helpModel';
+import {capabilityGuide,demoCases,healthSummary,supportsPersonalTemplates} from './helpModel';
 import {navigationGroups,primaryNavigation} from './navigationCatalog';
 describe('help and navigation boundaries',()=>{
   it('does not accept a legacy, failed or unknown health response as compatible',()=>{
@@ -21,6 +21,13 @@ describe('help and navigation boundaries',()=>{
   });
   it('labels synthetic content and gives all capability entries an actual destination',()=>{
     for(const sample of Object.values(demoCases)){expect(sample.name.startsWith('演示：')).toBe(true);expect(sample.items.length).toBeGreaterThan(0);}
-    expect(capabilityGuide).toHaveLength(8);expect(capabilityGuide.every(item=>item.path.startsWith('/'))).toBe(true);
+    expect(capabilityGuide).toHaveLength(10);expect(capabilityGuide.every(item=>item.path.startsWith('/'))).toBe(true);
+  });
+  it('does not advertise templates from version numbers, stale schemas or truthy strings',()=>{
+    const h={service:'plan-platform-api',ok:true,version:'0.1.19',apiVersion:1};
+    expect(supportsPersonalTemplates(h)).toBe(false);
+    for(const structureTemplates of ['true',1,false,null])expect(supportsPersonalTemplates({...h,capabilities:{structureTemplates}})).toBe(false);
+    expect(supportsPersonalTemplates({...h,capabilities:{structureTemplates:true}})).toBe(true);
+    expect(()=>supportsPersonalTemplates({...h,service:'legacy',capabilities:{structureTemplates:true}})).toThrow();
   });
 });

@@ -10,7 +10,7 @@ test('homepage explains real AI workflow and safe fallback without submitting AI
   await expect(page.locator('#ai')).toContainText('不会把原计划删掉重建');
   await expect(page.locator('#ai')).toContainText('DeepSeek 官方 API');
   await expect(page.locator('#ai')).toContainText('手动规划');
-  await expect(page.locator('.learning-courses>li')).toHaveCount(5);
+  await expect(page.locator('.learning-courses>li')).toHaveCount(6);
   await expect(page.locator('.learning-copy')).toContainText('不消耗对话次数');
   await page.getByRole('tab',{name:'目标路线',exact:true}).click();
   await expect(page.getByRole('tabpanel')).toContainText('没有截止日期');

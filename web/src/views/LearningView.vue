@@ -5,6 +5,7 @@ import { advanceLesson, bindLearning, dismissLesson, learning, practiceLesson, p
 import { freshPractice, isLesson, lessons, planPracticeValidation, stepReady, type LessonId, type Practice } from '@/learningModel';
 import RestDaysPicker from '@/components/RestDaysPicker.vue';
 import AiLearningPractice from '@/components/AiLearningPractice.vue';
+import TemplateLearningPractice from '@/components/TemplateLearningPractice.vue';
 const route = useRoute(); const busy = ref(false); const title = ref<HTMLElement>(); const draft = ref<Practice>(freshPractice());
 const lesson = computed(() => lessons.find(item => item.id === route.params.lesson));
 const progress = computed(() => lesson.value ? learning.progress[lesson.value.id] : null);
@@ -28,6 +29,7 @@ async function back() { if (!lesson.value || busy.value) return; busy.value = tr
 async function restart(id: LessonId) { busy.value = true; try { await restartLesson(id); draft.value = freshPractice(); saved.value = ''; await nextTick(); title.value?.focus(); } finally { busy.value = false; } }
 function scheduleExample() { draft.value.rescheduled = true; }
 const hints = computed(() => {
+  if (lesson.value?.id === 'template') return ['选择周期计划或目标路线作为来源，给方法起一个容易找回的名称。模板属于本人，不是公共市场。','先看完整结构、阶段及依赖。保存模板不保存已完成进度、计时、私人复盘或整段AI对话。','用模板建立新副本，先核对名称与结构。周期计划还要选新周期和休息日；容纳不下时延长周期，不静默丢弃任务。','亲手修改来源，再完成副本第一项。观察模板、来源和副本互相独立；真实模板更新也不会改掉已经建立的计划。'];
   if (lesson.value?.id === 'ai') return ['用大白话说明目标、每次有多少时间、是否有期限。先阅读说明，再由你确认模式；推荐不是自动决定。', '示例回复只是草稿。亲手修改一处标题，学习先预览再调整；此练习不会调用收费 API。', '真实生成需要核对内容、勾选确认并点击“确认生成”。在此之前，AI 回复不会自动变成真实任务。', '从具体对象进入调整，先核对保留内容和修改内容。已经完成或有执行历史的事项受到保护；确认之前不会写入原计划。'];
   if (lesson.value?.id === 'plan') return ['给练习起个名称，选一个不超过 31 天的日期范围。真实计划可以更长。', '为这次练习至少选一天休息、留一天计划日。真实计划可以不设休息日，星期六和星期日不会默认休息。', '在周期内选一个非休息日，安排一条阅读任务。真实任务在计划的任务页添加；日程会按日期显示。', '勾选完成，看看进度如何改变。真实使用时也可以记录实际用时，再在统计与复盘中回顾。'];
   if (lesson.value?.id === 'route') return ['写下长期目标，例如“学会弹奏一首歌”。路线不要求每天执行，也不用设置结束日期。', '给一组步骤起阶段名称，例如“认识吉他”。阶段把相关步骤归在一起，不等同于某一天。', '这次选择明确依赖：先认识琴弦，再练习单音。真实路线支持灵活推进；只有设了前置依赖的步骤才要等待。', '完成前置步骤后，后一个步骤就可以开始。有空做一两步，忙的时候暂停，不会变成逾期的每日任务。'];
@@ -94,6 +96,7 @@ const hints = computed(() => {
               <div v-else class="practice-record"><strong>{{ draft.task }}</strong><p>{{ draft.rescheduled ? '安排：明天 · 未完成' : '安排：今天 · 已完成' }}</p><button type="button" class="btn" @click="scheduleExample">取消完成并改到明天（练习）</button></div>
             </template>
             <AiLearningPractice v-else-if="lesson.id === 'ai'" v-model="draft" :step="step" />
+            <TemplateLearningPractice v-else-if="lesson.id === 'template'" v-model="draft" :step="step" />
             <template v-else>
               <label v-if="step === 0" class="check"><input v-model="draft.cached" type="checkbox"/>已在练习中联网打开这条任务</label>
               <template v-else-if="step === 1"><p>模拟离线：把“阅读”改为“阅读 20 分钟”。</p><button type="button" class="btn" @click="draft.queued = true">模拟离线保存</button><p aria-live="polite">{{ draft.queued ? '1 项本地操作 · 0 项冲突，其他设备尚未收到' : '0 项本地操作' }}</p></template>

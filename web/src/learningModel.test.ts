@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { freshPractice, freshProgress, isLesson, learningKey, lessonForPath, planPracticeValidation, readProgress, stepReady } from './learningModel';
+import { freshPractice, freshProgress, isLesson, learningKey, lessonForPath, planPracticeValidation, readProgress, stepReady, templateCopyValidation } from './learningModel';
 describe('isolated learning model', () => {
   it('only prompts supported business pages, never login or public website', () => {
     expect(lessonForPath('/plans/one/studio')).toBe('plan'); expect(lessonForPath('/schedule')).toBe('plan');
@@ -12,6 +12,17 @@ describe('isolated learning model', () => {
     expect(learningKey('a:b','c')).not.toBe(learningKey('a','b:c'));
     expect(learningKey('cloud','a')).not.toBe(learningKey('cloud','b'));
     expect(learningKey('cloud','a')).not.toBe(learningKey('local','a'));
+  });
+  it('adds template practice without resetting old courses and rejects skipped confirmations',()=>{
+    const old=freshProgress();old.todo.practice.task='原练习';const five:Partial<typeof old>={...old};delete five.template;
+    const restored=readProgress(JSON.stringify({version:1,progress:five}));expect(restored.todo).toEqual(old.todo);expect(restored.template).toEqual(freshProgress().template);expect(lessonForPath('/templates')).toBe('template');
+    const p={...freshPractice(),name:'阅读方法',templateKind:'PLAN',templateCopyName:'新周期',start:'2026-11-02',end:'2026-11-08'};
+    expect(stepReady('template',0,p)).toBe(true);expect(stepReady('template',1,p)).toBe(false);expect(stepReady('template',2,p)).toBe(false);
+    expect(templateCopyValidation({...p,end:'2026-11-07'}).ready).toBe(false);expect(templateCopyValidation({...p,end:'2026-11-08'}).ready).toBe(true);
+    expect(stepReady('template',2,{...p,templateCopied:true,templateCopyConfirmed:true})).toBe(true);expect(stepReady('template',3,{...p,done:true})).toBe(false);
+    expect(stepReady('template',3,{...p,done:true,templateSourceChanged:true})).toBe(true);
+    expect(templateCopyValidation({...p,templateKind:'ROUTE',start:'',end:''}).ready).toBe(true);
+    const forged=readProgress(JSON.stringify({version:1,progress:{template:{step:3,completed:true,practice:{templateKind:'other',templateCopied:'true'}}}}));expect(forged.template.step).toBe(0);expect(forged.template.completed).toBe(false);
   });
   it('validates dates and leaves weekends to explicit user choice', () => {
     const p = {...freshPractice(), name:'练习', start:'2026-10-12', end:'2026-10-18', task:'阅读', taskDate:'2026-10-17', rest:[7]};

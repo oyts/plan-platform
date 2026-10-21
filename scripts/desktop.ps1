@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('check', 'dev', 'build', 'test', 'regression', 'notification-probe')][string]$Action = 'check',
+    [ValidateSet('check', 'dev', 'build', 'test', 'regression', 'notification-probe', 'stable-trial')][string]$Action = 'check',
     [string]$UpdateUrl = '',
     [string]$PublicKeyPath = '',
     [string]$TestCertificatePath = '',
@@ -97,11 +97,13 @@ if ($Action -eq 'dev') {
     exit $LASTEXITCODE
 }
 
-if ($Action -eq 'regression' -or $Action -eq 'notification-probe') {
+if ($Action -in @('regression','notification-probe','stable-trial')) {
     if ($UpdateUrl -or $PublicKeyPath -or $TestCertificatePath -or $TestVersion) { throw 'Regression builds cannot enable updater lab overrides.' }
     foreach ($name in @('PLAN_DESKTOP_UPDATE_URL','PLAN_DESKTOP_UPDATE_PUBKEY','PLAN_DESKTOP_TEST_UPDATE_CERT','TAURI_CONFIG')) { Remove-Item "Env:$name" -ErrorAction SilentlyContinue }
     $regressionConfig = Join-Path $projectRoot 'web/src-tauri/tauri.regression.conf.json'
-    if($Action -eq 'notification-probe') {
+    if($Action -eq 'stable-trial') {
+        & npx.cmd tauri build --debug --bundles nsis --config $regressionConfig --config (Join-Path $projectRoot 'web/src-tauri/tauri.stable-trial.conf.json') --features native-regression -- --locked
+    } elseif($Action -eq 'notification-probe') {
         & npx.cmd tauri build --debug --bundles nsis --config $regressionConfig --config (Join-Path $projectRoot 'web/src-tauri/tauri.reminder-probe.conf.json') --features native-regression -- --locked
     } else {
         & npx.cmd tauri build --debug --no-bundle --config $regressionConfig --features native-regression -- --locked
@@ -110,6 +112,13 @@ if ($Action -eq 'regression' -or $Action -eq 'notification-probe') {
     $regressionOutput = Join-Path $projectRoot '.desktop-tools/native-regression'
     New-Item -ItemType Directory -Force -Path $regressionOutput | Out-Null
     Copy-Item -LiteralPath 'src-tauri/target/debug/plan-platform-desktop.exe' -Destination (Join-Path $regressionOutput 'plan-regression.exe') -Force
+    if($Action -eq 'stable-trial') {
+        $version=(Get-Content (Join-Path $projectRoot 'web/package.json') -Raw|ConvertFrom-Json).version
+        $trialOutput=Join-Path $projectRoot ('.desktop-tools/stable-trial-installer/'+[Guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $trialOutput | Out-Null
+        Copy-Item -LiteralPath (Join-Path $projectRoot ("web/src-tauri/target/debug/bundle/nsis/Plan Cabin Regression_${version}_x64-setup.exe")) -Destination (Join-Path $trialOutput 'PlanCabin-Stable-Trial-setup.exe')
+        Write-Host "Independent stable trial installer: $trialOutput"
+    }
     if($Action -eq 'notification-probe') {
         $probeOutput=Join-Path $projectRoot ('.desktop-tools/reminder-windows-installer/'+[Guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $probeOutput | Out-Null

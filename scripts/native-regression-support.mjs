@@ -23,7 +23,7 @@ export function validateManifest(manifest) {
   return manifest;
 }
 export async function sourceFingerprint(root) {
-  const files = ['web/package.json', 'web/package-lock.json', 'web/src-tauri/Cargo.toml', 'web/src-tauri/Cargo.lock', 'web/src-tauri/build.rs', 'web/src-tauri/tauri.conf.json', 'web/src-tauri/tauri.regression.conf.json', 'web/android/app/build.gradle', 'web/android/app/src/main/AndroidManifest.xml'];
+  const files = ['web/package.json', 'web/package-lock.json', 'web/src-tauri/Cargo.toml', 'web/src-tauri/Cargo.lock', 'web/src-tauri/build.rs', 'web/src-tauri/tauri.conf.json', 'web/src-tauri/tauri.regression.conf.json', 'web/src-tauri/tauri.stable-trial.conf.json', 'web/android/app/build.gradle', 'web/android/app/src/main/AndroidManifest.xml'];
   const visit = async relative => {
     for (const entry of await readdir(join(root, relative), { withFileTypes: true })) {
       const path = `${relative}/${entry.name}`;
