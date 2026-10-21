@@ -1,8 +1,8 @@
 {
   "version": "0.1.19",
   "stableTrialCandidate": {
-    "status":"shared-source-web-mysql-pc-and-android-core-accepted-system-files-pending",
-    "reason":"Stage6 closes trial gaps: template teaching, capability/legacy-server explanation, gated website content, offline boundaries and engineering materials. Independent Windows actual0.1.17 to0.1.19 queue/retention/export accepted. Independent Android0.1.19 installed, three core groups and export content verified; strict focused-return and system-picker followup remains incomplete after window/overlay changes. No production switch, paid calls, real mail or unrelated full regression.",
+    "status":"web-api-0.1.19-released-formal-native-and-feeds-pending-user-paused",
+    "reason":"Stage6 closes trial gaps; existing targeted independent evidence retained. Production V27 toV28 snapshot47-table double restore and46 original business tables unchanged, old0.1.18 startup, guarded cutover and6 affected HTTPS cases passed. Formal Windows installed with540 files unchanged before launch, UI acceptance pending. Android share cancel returned after human handoff; system picker remains unproven. No paid AI, test mail or unrelated full regression.",
     "results":{"backendPassed":11,"frontendPassed":28,"browserDistinctPassed":28,"websiteFinalRecheckPassed":4,"nativeHarnessPassed":10,"mysqlCasesPassed":5,"mysqlTablesRestored":49,"formalSignaturesVerified":true,"paidAiCalls":0,"realEmailsSent":0,"androidDeviceTested":true,"androidCoreGroupsPassed":3,"androidExportFileContentVerified":true,"androidSystemFilesAccepted":false,"pcNativeAccepted":true,"independentPcGroupsPassed":6,"pcOriginalFilesUnchanged":529,"pcNonemptyQueueRetained":true},
     "evidence":["acceptance-results/stable-trial/backend.log","acceptance-results/stable-trial/frontend-final.log","acceptance-results/stable-trial/browser.json","acceptance-results/stable-trial/home-final2.json","acceptance-results/stable-trial/native-harness.log"],
     "apiSha256":"b77b2e0970b37225dce66cfdb776fa23aeaf363c4e356811ec9a0dc1883c91b2",
@@ -13,7 +13,8 @@
     "nativeScripts":["scripts/install-stable-trial-windows.ps1","scripts/verify-stable-pc-data.mjs","scripts/native-regression.mjs --platform android --stable-trial"],
     "androidCoreEvidence":"acceptance-results/native/2026-10-21T12-26-02-410Z-62c94efc/report.json",
     "androidCoreLimits":"First three core groups accepted. Earlier fourth group verified exported file but did not assert focused return after Back; strengthened guard stops the files-only followup on window/overlay changes. Do not add reruns or claim the system picker passed.",
-    "pending":["Formal installation and production approval","Android share cancel/return and system import picker; no APK source publication","External share destination"],
+    "production0119":{"snapshotTablesRestoredTwice":47,"originalBusinessTablesUnchanged":46,"httpsNewGroupsPassed":6,"formalWindowsFilesUnchangedBeforeLaunch":540,"formalWindowsUiAccepted":false,"formalAndroidUpgraded":false,"updateSourcesChanged":false,"details":"docs/release-0119.md"},
+    "pending":["Formal Windows read-only UI/reopen and Android baseline/save/install/retention","Android system file picker readonly preview; no APK source publication","Windows public and Android protected source publication, GitHub archive","External share destination"],
     "details":"docs/stable-trial-progress.md"
   },
   "release0118Production": {

@@ -2,7 +2,7 @@ import {writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 // Android-only targeted cases. Never replaces Java transport or mocks API calls.
-export async function exerciseStableAndroid({client:c,owner,api,expect,route,restart,configure,scenario,adb,runDir,filesOnly=false}){
+export async function exerciseStableAndroid({client:c,owner,api,expect,route,restart,configure,scenario,adb,runDir,filesOnly=false,pickerOnly=false}){
  if(c.kind!=='android')throw Error('Independent Android client required');
  const p=()=>c.page,button=name=>p().getByRole('button',{name,exact:true});
  const consent='我已核对完整结构、保存范围及新对象设置，确认继续。';
@@ -53,9 +53,18 @@ export async function exerciseStableAndroid({client:c,owner,api,expect,route,res
   expect(await api('/plans',undefined,owner.token)).toHaveLength(2);expect(await api('/mainlines',undefined,owner.token)).toHaveLength(0);expect((await api('/structure-templates',undefined,owner.token)).totalElements).toBe(1);
  });
  }
- await scenario('真实Android私有备份分享面板取消，导出含新模板',async()=>{
+ if(pickerOnly){
+  exportedJson=JSON.stringify(await api('/data/backup',undefined,owner.token));
+  await route(c,'/exports');
+ }
+ if(!pickerOnly)await scenario('真实Android私有备份分享面板取消，导出含新模板',async()=>{
   await route(c,'/exports');await button('下载私有 JSON 备份').click();
   await expect.poll(async()=>(await adb('shell','dumpsys','activity','activities')).split(/\r?\n/).some(line=>/mResumedActivity|topResumedActivity/.test(line)&&/ChooserActivity|ResolverActivity/.test(line))).toBe(true);
+  if(filesOnly){
+   console.log('ANDROID_SHARE_HANDOFF: 请本人在系统分享面板取消并返回独立测试包；不需要向其他应用发送文件。');
+   await expect.poll(async()=>(await adb('shell','dumpsys','activity','activities')).split(/\r?\n/).some(line=>/mResumedActivity|topResumedActivity/.test(line)&&line.includes('cn.zijun701.plan.mobile.regression/')),{timeout:180000,intervals:[1000]}).toBe(true);
+   await writeFile(join(runDir,'share-handoff.json'),JSON.stringify({systemSheetObserved:true,cancelledByUser:true,testAppResumed:true,externalRecipientSelectedByAutomation:false},null,2));
+  }else{
   // Wait for the actual system sheet, not merely an ActivityRecord during its
   // opening animation. Only a visible Cancel control may be tapped.
   const shareXmlPath='/data/local/tmp/plan-share-'+randomUUID()+'.xml';let shareXml;
@@ -67,6 +76,7 @@ export async function exerciseStableAndroid({client:c,owner,api,expect,route,res
    const b=cancelNodes[0].bounds?.match(/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/);if(!b)throw Error('Visible cancel button bounds missing');
    await adb('shell','input','tap',String(Math.floor((+b[1]+ +b[3])/2)),String(Math.floor((+b[2]+ +b[4])/2)));
   }else await adb('shell','input','keyevent','4');
+  }
   await expect.poll(async()=>(await adb('shell','dumpsys','activity','activities')).split(/\r?\n/).some(line=>/mResumedActivity|topResumedActivity/.test(line)&&line.includes('cn.zijun701.plan.mobile.regression/'))).toBe(true);
   const files=(await adb('shell','run-as','cn.zijun701.plan.mobile.regression','ls','cache/exports')).split(/\s+/).filter(x=>/^plan-cabin-private-\d{8}T\d{6}\.json$/.test(x)).sort();
   const file=files.at(-1);expect(file).toBeTruthy();
@@ -82,9 +92,28 @@ export async function exerciseStableAndroid({client:c,owner,api,expect,route,res
   async function nodes(){
    if(!await pickerForeground())throw Error('Expected only the Android system document picker before native input');
    const path='/data/local/tmp/plan-picker-'+randomUUID()+'.xml';let xml;
-   try{await adb('shell','uiautomator','dump',path);xml=await adb('shell','cat',path);}finally{await adb('shell','rm','-f',path);}
-   if(!await pickerForeground())throw Error('System picker no longer foreground');
-   return [...xml.matchAll(/<node\b[^>]*>/g)].map(m=>Object.fromEntries([...m[0].matchAll(/([\w-]+)="([^"]*)"/g)].map(a=>[a[1],a[2]])));
+   try{
+    const deadline=Date.now()+180000;let handedOff=false;
+    do{
+     await adb('shell','uiautomator','dump',path);xml=await adb('shell','cat',path);
+     if(!xml.includes('package="com.vivo.cipherchain"'))break;
+     if(!handedOff){console.log('ANDROID_PICKER_HANDOFF: 系统密码保险箱提示需本人处理；自动化不会点击该提示。');handedOff=true;}
+     if(Date.now()>=deadline)throw Error('System credential prompt needs user handling; no native input');
+     await new Promise(resolve=>setTimeout(resolve,1000));
+    }while(true);
+   }finally{await adb('shell','rm','-f',path);}
+   if(!await pickerForeground()){
+    const activity=await adb('shell','dumpsys','activity','activities');
+    if(!activity.split(/\r?\n/).some(line=>/mResumedActivity|topResumedActivity/.test(line)&&line.includes('cn.zijun701.plan.mobile.regression/')))throw Error('System picker no longer foreground');
+    // The human may have returned to the test app after dismissing an OEM
+    // credential prompt. Reopen only our observed file input, never that prompt.
+    await p().getByLabel('选择私有 JSON 备份',{exact:true}).click();
+    await expect.poll(pickerForeground).toBe(true);
+    await adb('shell','uiautomator','dump',path);xml=await adb('shell','cat',path);
+    await adb('shell','rm','-f',path);
+    if(!await pickerForeground()||xml.includes('package="com.vivo.cipherchain"'))throw Error('Picker still blocked; no native input');
+   }
+   return [...xml.matchAll(/<node\b[^>]*>/g)].map(m=>Object.fromEntries([...m[0].matchAll(/([\w-]+)="([^"]*)"/g)].map(a=>[a[1],a[2]]))).filter(n=>/com\.(android|google\.android)\.documentsui/.test(n.package||''));
   }
   async function tapObserved(labels){
    const entries=await nodes();const matches=entries.filter(n=>labels.includes(n.text)||labels.includes(n['content-desc']));
@@ -95,10 +124,16 @@ export async function exerciseStableAndroid({client:c,owner,api,expect,route,res
   try{
    await adb('push',local,remote);pushed=true;
    await p().getByLabel('选择私有 JSON 备份',{exact:true}).click();await expect.poll(pickerForeground).toBe(true);
+   if(pickerOnly){
+    console.log('ANDROID_FILE_SELECTION_HANDOFF: 请本人处理系统提示并选择下载目录中唯一文件 '+name+'；不选择其他私人文件。');
+    await expect(p().locator('.data-file')).toHaveText(name,{timeout:180000});
+    await writeFile(join(runDir,'picker-user-handoff.json'),JSON.stringify({generatedSyntheticFile:name,selectedByUser:true,precheckAutomated:true,fixtureFromApi:true},null,2));
+   }else{
    if(!await tapObserved([name])){
     if(!await tapObserved(['显示根目录','Show roots']))throw Error('System document drawer was not uniquely observed; no guessed tap');
     if(!await tapObserved(['下载','下载内容','Downloads']))throw Error('System Downloads location was not uniquely observed');
     if(!await tapObserved([name]))throw Error('Only the generated synthetic file may be selected; it was not visible');
+   }
    }
    await expect(p().locator('.data-file')).toHaveText(name);
    await expect(button('只读预检，不恢复数据')).toBeDisabled();

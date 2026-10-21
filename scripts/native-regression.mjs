@@ -28,6 +28,7 @@ for (let i = 2; i < process.argv.length; i++) {
   else if (arg === '--ai-workbench') options.aiWorkbench = true;
   else if (arg === '--stable-trial') options.stableTrial = true;
   else if (arg === '--stable-files') {options.stableTrial=true;options.stableFiles=true;}
+  else if (arg === '--stable-picker') {options.stableTrial=true;options.stableFiles=true;options.stablePicker=true;}
   else if (arg === '--roadmap-section') options.roadmapSection = process.argv[++i];
   else throw new Error(`Unknown argument: ${arg}`);
 }
@@ -287,7 +288,7 @@ async function run() {
   if(options.stableTrial){
     report.title=options.stableFiles?'Android0.1.19系统文件两组补验':'Android0.1.19模板与试用收口定向验收';
     report.scope='独立真机debug包、真实Java桥、合成账号和隔离API。模板、教学、重开、JSON分享取消与系统文件选择后只读预检；不覆盖正式应用，不声称外部分享目的地或正式升级通过。';
-    await exerciseStableAndroid({client:first,owner,api,expect,route,restart,configure,scenario,adb,runDir,filesOnly:options.stableFiles});
+    await exerciseStableAndroid({client:first,owner,api,expect,route,restart,configure,scenario,adb,runDir,filesOnly:options.stableFiles,pickerOnly:!!options.stablePicker});
     report.status='PASS';return;
   }
   if(options.aiWorkbench){

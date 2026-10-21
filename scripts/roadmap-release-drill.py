@@ -53,24 +53,25 @@ def snapshot_restore(backup, sql, environment):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--directory', required=True)
-    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench', 'reflection'], default='roadmap')
+    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench', 'reflection', 'templates'], default='roadmap')
     parser.add_argument('--archive-sha256')
     parser.add_argument('--api-sha256')
     args = parser.parse_args()
     mail = args.profile == 'mail-operations'
     workbench = args.profile == 'ai-workbench'
     reflection = args.profile == 'reflection'
+    templates = args.profile == 'templates'
     new_version, old_version = ('0.1.16', '0.1.15') if mail else ('0.1.15', '0.1.14')
     source_schema, target_schema = (23, 24) if mail else (19, 23)
-    if workbench or reflection:
-        new_version, old_version, source_schema, target_schema = ('0.1.18', '0.1.17', 25, 27) if reflection else ('0.1.17', '0.1.16', 24, 25)
+    if workbench or reflection or templates:
+        new_version, old_version, source_schema, target_schema = ('0.1.19', '0.1.18', 27, 28) if templates else (('0.1.18', '0.1.17', 25, 27) if reflection else ('0.1.17', '0.1.16', 24, 25))
         require(all(re.fullmatch('[a-f0-9]{64}', value or '') for value in [args.archive_sha256, args.api_sha256]), 'Accepted archive and API hashes required.')
     release = Path(args.directory).resolve()
     require(re.fullmatch(r'/home/[a-zA-Z0-9_-]+/plan-platform/releases/' + re.escape(new_version) + r'-[a-f0-9]+', str(release)), 'Expected selected managed release.')
     root = release.parent.parent
     previous = (root / 'current').resolve()
     require(previous.parent == release.parent and previous != release, 'An existing previous release is required.')
-    if workbench or reflection:
+    if workbench or reflection or templates:
         require(hashlib.sha256((release / 'release.tar.gz').read_bytes()).hexdigest() == args.archive_sha256, 'Accepted archive differs.')
         require(hashlib.sha256((release / 'backend/api.jar').read_bytes()).hexdigest() == args.api_sha256, 'Accepted API differs.')
     if mail:
@@ -117,7 +118,7 @@ def main():
                 and re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+-[a-f0-9]+', backup.parent.parent.name)
                 and re.fullmatch(r'plan_platform-mysql-[0-9]{8}-[0-9]{6}\.sql\.gz', backup.name)
                 and backup.is_file(), 'Unexpected backup path.')
-        if reflection:
+        if reflection or templates:
             database, restore_proof = snapshot_restore(backup, sql, environment)
             report['snapshotRestore'] = restore_proof
         else:
@@ -132,7 +133,7 @@ def main():
         columns = {}
         # Compare every original field for tables extended by V26/V27, rather
         # than comparing a whole-table checksum whose column layout changes.
-        projected = ['task_progress', 'weekly_reviews', 'restored_weekly_reviews', 'ai_sessions'] if reflection else ([] if mail or workbench else ['users', 'task_templates', 'mainlines'])
+        projected = ['task_progress', 'weekly_reviews', 'restored_weekly_reviews', 'ai_sessions'] if reflection else ([] if mail or workbench or templates else ['users', 'task_templates', 'mainlines'])
         for table in projected:
             columns[table] = sql("SELECT column_name FROM information_schema.columns WHERE table_schema='" + database + "' AND table_name='" + table + "' ORDER BY ordinal_position;").splitlines()
             require(columns[table] and all(re.fullmatch('[a-z0-9_]+', c) for c in columns[table]), 'Invalid column projection.')
@@ -193,6 +194,9 @@ def main():
             require(sql('SELECT COUNT(*) FROM ' + database + '.ai_sessions WHERE review_context_json IS NOT NULL;') == '0', 'Unexpected AI context backfill.')
             for table in ['weekly_reviews', 'restored_weekly_reviews']:
                 require(sql('SELECT COUNT(*) FROM ' + database + '.' + table + " WHERE energy<>'UNSPECIFIED' OR burden<>'UNSPECIFIED' OR reviewed<>TRUE OR open_to_increase<>FALSE;") == '0', 'Unexpected weekly defaults.')
+        elif templates:
+            for table in ['personal_templates', 'personal_template_operations']:
+                require(sql('SELECT COUNT(*) FROM ' + database + '.' + table + ';') == '0', 'Unexpected template mutation.')
         elif workbench:
             require(sql('SELECT COUNT(*) FROM ' + database + '.ai_saved_drafts;') == '0', 'Unexpected saved-draft mutation.')
         elif not mail:
