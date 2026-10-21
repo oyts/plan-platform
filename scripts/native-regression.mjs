@@ -263,7 +263,7 @@ async function run() {
   if (options.platform !== 'android') clients.push({ kind: 'windows', proxyPort: PORTS.windowsProxy, cdp: PORTS.desktopCdp, browser: null });
   if (options.platform !== 'windows') {
     let identicalInstalled = false;
-    if (options.roadmap) {
+    if (options.roadmap || options.stableTrial) {
       const location = (await adb('shell', 'pm', 'path', ANDROID_PACKAGE)).match(/^package:(\/data\/app\/[^\r\n]+\/base\.apk)$/m)?.[1];
       if (location) {
         const hash = (await adb('shell', 'sha256sum', location)).split(/\s+/)[0];
@@ -271,7 +271,7 @@ async function run() {
       }
     }
     if (!identicalInstalled) {
-      const install = await adb('install', '-r', apk);
+      const install = await adb('install', ...(options.stableTrial ? ['--no-streaming'] : []), '-r', apk);
       if (!install.includes('Success')) throw new Error('Regression APK installation failed; do not uninstall the main app.');
     }
     report.environment.android.installPerformed = !identicalInstalled;

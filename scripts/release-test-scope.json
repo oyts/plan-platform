@@ -1,15 +1,17 @@
 {
   "version": "0.1.19",
   "stableTrialCandidate": {
-    "status":"shared-source-web-final-mysql-and-signed-candidates-accepted-pc-login-and-android-pending",
-    "reason":"Stage6 closes trial gaps: sixth local template lesson, declared server capability and old-server explanation, release-gated website content, precise offline boundaries, current engineering materials, independent PC installer/export/nonempty-queue verification. Android device explicitly deferred; no production switch or unrelated full regression.",
-    "results":{"backendPassed":11,"frontendPassed":28,"browserDistinctPassed":28,"websiteFinalRecheckPassed":4,"nativeHarnessPassed":9,"mysqlCasesPassed":5,"mysqlTablesRestored":49,"formalSignaturesVerified":true,"paidAiCalls":0,"realEmailsSent":0,"androidDeviceTested":false,"pcNativeAccepted":false},
+    "status":"shared-source-web-mysql-and-independent-pc-accepted-android-system-confirmation-pending",
+    "reason":"Stage6 closes trial gaps: sixth local template lesson, declared server capability and old-server explanation, release-gated website content, precise offline boundaries and engineering materials. Independent Windows actual0.1.17 to0.1.19 queue/retention/export gates accepted. Android authorized but installation timed out awaiting system confirmation; no new business groups ran. No production switch or unrelated full regression.",
+    "results":{"backendPassed":11,"frontendPassed":28,"browserDistinctPassed":28,"websiteFinalRecheckPassed":4,"nativeHarnessPassed":9,"mysqlCasesPassed":5,"mysqlTablesRestored":49,"formalSignaturesVerified":true,"paidAiCalls":0,"realEmailsSent":0,"androidDeviceTested":false,"pcNativeAccepted":true,"independentPcGroupsPassed":6,"pcOriginalFilesUnchanged":529,"pcNonemptyQueueRetained":true},
     "evidence":["acceptance-results/stable-trial/backend.log","acceptance-results/stable-trial/frontend-final.log","acceptance-results/stable-trial/browser.json","acceptance-results/stable-trial/home-final2.json","acceptance-results/stable-trial/native-harness.log"],
     "apiSha256":"b77b2e0970b37225dce66cfdb776fa23aeaf363c4e356811ec9a0dc1883c91b2",
     "mysqlEvidence":"remote template-candidates/20261021T051800Z-b77b2e09/report.json",
     "signedCandidate":"production-artifacts/client-release/0.1.19/20261021T052104Z-c686c3c2",
     "archiveSha256":"3293e8c573a7397337817007bd9dc3cc0fdfa4f99517efd06e60b80ce1f03ada",
-    "pending":["PC synthetic login/export/nonempty queue upgrade","Formal installation and production approval","Android device; no APK source publication"],
+    "nativeEvidence":"acceptance-results/stable-trial/pc/2026-10-21T05-12-54-605Z/pc-ui-observations.json",
+    "nativeScripts":["scripts/install-stable-trial-windows.ps1","scripts/verify-stable-pc-data.mjs","scripts/native-regression.mjs --platform android --stable-trial"],
+    "pending":["Formal installation and production approval","Android system confirmation and new-business acceptance; no APK source publication","System import picker and external share destination"],
     "details":"docs/stable-trial-progress.md"
   },
   "release0118Production": {
