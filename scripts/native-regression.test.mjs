@@ -4,6 +4,11 @@ import net from 'node:net';
 import { PORTS, selectDevice, validateManifest, createFaultProxy, assertPortsFree, reportHtml, junitXml } from './native-regression-support.mjs';
 import { exerciseAndroidRoadmap } from './roadmap-android-acceptance.mjs';
 import { exerciseAndroidAiWorkbench } from './ai-workbench-android-acceptance.mjs';
+import {exerciseStableAndroid} from './stable-android-acceptance.mjs';
+
+test('stable template and files-only suites refuse Windows before any input',async()=>{
+  for(const filesOnly of [false,true])await assert.rejects(exerciseStableAndroid({client:{kind:'windows'},filesOnly}),/Independent Android client required/);
+});
 
 test('AI workbench suite refuses Windows before any UI or API operation',async()=>{
   await assert.rejects(()=>exerciseAndroidAiWorkbench({client:{kind:'windows'}}),/Independent Android client required/);

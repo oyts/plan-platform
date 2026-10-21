@@ -1,9 +1,22 @@
+import {writeFile} from 'node:fs/promises';
+import {join} from 'node:path';
+import {randomUUID} from 'node:crypto';
 // Android-only targeted cases. Never replaces Java transport or mocks API calls.
-export async function exerciseStableAndroid({client:c,owner,api,expect,route,restart,configure,scenario,adb}){
+export async function exerciseStableAndroid({client:c,owner,api,expect,route,restart,configure,scenario,adb,runDir,filesOnly=false}){
  if(c.kind!=='android')throw Error('Independent Android client required');
  const p=()=>c.page,button=name=>p().getByRole('button',{name,exact:true});
  const consent='我已核对完整结构、保存范围及新对象设置，确认继续。';
- const day='2026-11-01';let plan,templateId;
+ const day='2026-11-01';let plan,templateId,exportedJson;
+ if(filesOnly){
+  await configure(c,owner);
+  plan=await api('/plans',{name:'安卓文件补验合成来源',startDate:day,endDate:'2026-11-07',restDays:[7]},owner.token,'POST',201);
+  await api(`/plans/${plan.id}/tasks`,{title:'安卓文件补验合成任务',date:'2026-11-02',startTime:'09:30',endTime:'10:00',plannedMinutes:30,category:'STUDY',required:true,sortOrder:0,acceptance:[]},owner.token,'POST',201);
+  const request={source:'PLAN',sourceId:plan.id,name:'文件补验合成模板',description:'仅本机测试',category:'',favorite:false,targetId:null,version:null};
+  const preview=await api('/structure-templates/capture/preview',request,owner.token,'POST');
+  await api('/structure-templates/capture',{request,checksum:preview.checksum,operationKey:randomUUID(),confirmed:true},owner.token,'POST');
+  templateId=(await api('/structure-templates',undefined,owner.token)).content[0].id;
+ }
+ if(!filesOnly){
  await scenario('真实Java桥加载新能力与合成模板来源',async()=>{
   await configure(c,owner);
   plan=await api('/plans',{name:'安卓合成模板来源',startDate:day,endDate:'2026-11-07',restDays:[7]},owner.token,'POST',201);
@@ -23,7 +36,7 @@ export async function exerciseStableAndroid({client:c,owner,api,expect,route,res
   const preview=p().getByRole('region',{name:'模板提交预览'});await expect(preview).toContainText('2026-12-02');await expect(button('确认建立新副本')).toBeDisabled();
   await preview.getByLabel(consent,{exact:true}).check();await button('确认建立新副本').click();await expect(p().getByRole('link',{name:'打开本次结果',exact:true})).toBeVisible();
   const plans=await api('/plans',undefined,owner.token);expect(plans).toHaveLength(2);const copy=plans.find(x=>x.name==='安卓模板独立新周期');expect(copy.restDays).toEqual([7]);
-  const tasks=await api(`/plans/${copy.id}/tasks`,undefined,owner.token);expect(tasks).toHaveLength(1);expect(tasks[0].startTime).toBe('09:30');expect(tasks[0].status).toBe('PENDING');
+  const tasks=await api(`/plans/${copy.id}/tasks`,undefined,owner.token);expect(tasks).toHaveLength(1);expect(tasks[0].startTime).toMatch(/^09:30(?::00)?$/);expect(tasks[0].progress).toMatchObject({status:'PENDING',accumulatedSeconds:0,startedAt:null,completedAt:null});
   expect((await api(`/plans/${plan.id}/tasks`,undefined,owner.token))[0].date).toBe('2026-11-02');
   templateId=(await api('/structure-templates',undefined,owner.token)).content[0].id;
   expect(await p().evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -39,14 +52,61 @@ export async function exerciseStableAndroid({client:c,owner,api,expect,route,res
   await button('修改来源标题（练习）').click();await button('完成副本第一项（练习）').click();await button('完成教学').click();await expect(p().getByRole('heading',{name:'整套模板教学已完成',exact:true})).toBeVisible();
   expect(await api('/plans',undefined,owner.token)).toHaveLength(2);expect(await api('/mainlines',undefined,owner.token)).toHaveLength(0);expect((await api('/structure-templates',undefined,owner.token)).totalElements).toBe(1);
  });
+ }
  await scenario('真实Android私有备份分享面板取消，导出含新模板',async()=>{
   await route(c,'/exports');await button('下载私有 JSON 备份').click();
   await expect.poll(async()=>(await adb('shell','dumpsys','activity','activities')).split(/\r?\n/).some(line=>/mResumedActivity|topResumedActivity/.test(line)&&/ChooserActivity|ResolverActivity/.test(line))).toBe(true);
-  await adb('shell','input','keyevent','4');
+  // Wait for the actual system sheet, not merely an ActivityRecord during its
+  // opening animation. Only a visible Cancel control may be tapped.
+  const shareXmlPath='/data/local/tmp/plan-share-'+randomUUID()+'.xml';let shareXml;
+  try{await adb('shell','uiautomator','dump',shareXmlPath);shareXml=await adb('shell','cat',shareXmlPath);}finally{await adb('shell','rm','-f',shareXmlPath);}
+  const shareFocus=await adb('shell','dumpsys','window');
+  if(!shareFocus.split(/\r?\n/).some(line=>/mCurrentFocus=/.test(line)&&/ChooserActivity|ResolverActivity/.test(line)))throw Error('System share sheet no longer focused; no native input');
+  const cancelNodes=[...shareXml.matchAll(/<node\b[^>]*>/g)].map(m=>Object.fromEntries([...m[0].matchAll(/([\w-]+)="([^"]*)"/g)].map(a=>[a[1],a[2]]))).filter(n=>['取消','Cancel','CANCEL'].includes(n.text));
+  if(cancelNodes.length===1){
+   const b=cancelNodes[0].bounds?.match(/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/);if(!b)throw Error('Visible cancel button bounds missing');
+   await adb('shell','input','tap',String(Math.floor((+b[1]+ +b[3])/2)),String(Math.floor((+b[2]+ +b[4])/2)));
+  }else await adb('shell','input','keyevent','4');
+  await expect.poll(async()=>(await adb('shell','dumpsys','activity','activities')).split(/\r?\n/).some(line=>/mResumedActivity|topResumedActivity/.test(line)&&line.includes('cn.zijun701.plan.mobile.regression/'))).toBe(true);
   const files=(await adb('shell','run-as','cn.zijun701.plan.mobile.regression','ls','cache/exports')).split(/\s+/).filter(x=>/^plan-cabin-private-\d{8}T\d{6}\.json$/.test(x)).sort();
   const file=files.at(-1);expect(file).toBeTruthy();
-  const backup=JSON.parse(await adb('shell','run-as','cn.zijun701.plan.mobile.regression','cat','cache/exports/'+file));
+  exportedJson=await adb('shell','run-as','cn.zijun701.plan.mobile.regression','cat','cache/exports/'+file);const backup=JSON.parse(exportedJson);
   expect(backup.schemaVersion).toBe(4);expect(backup.records.personal_templates).toHaveLength(1);expect(backup.records.personal_templates[0].id).toBe(templateId);
   await expect(p().getByRole('heading',{name:'个人数据中心',exact:true})).toBeVisible();
+ });
+ await scenario('真实Android系统文件选择器读取合成备份并只读预检',async()=>{
+  if(!owner.email.endsWith('@example.test')||!exportedJson)throw Error('Only this run synthetic export may be selected');
+  const name='PlanCabin-synthetic-'+randomUUID()+'.json',local=join(runDir,name),remote='/sdcard/Download/'+name;
+  await writeFile(local,exportedJson,{flag:'wx'});let pushed=false;
+  const pickerForeground=async()=>(await adb('shell','dumpsys','activity','activities')).split(/\r?\n/).some(line=>/mResumedActivity|topResumedActivity/.test(line)&&/com\.(android|google\.android)\.documentsui\//.test(line));
+  async function nodes(){
+   if(!await pickerForeground())throw Error('Expected only the Android system document picker before native input');
+   const path='/data/local/tmp/plan-picker-'+randomUUID()+'.xml';let xml;
+   try{await adb('shell','uiautomator','dump',path);xml=await adb('shell','cat',path);}finally{await adb('shell','rm','-f',path);}
+   if(!await pickerForeground())throw Error('System picker no longer foreground');
+   return [...xml.matchAll(/<node\b[^>]*>/g)].map(m=>Object.fromEntries([...m[0].matchAll(/([\w-]+)="([^"]*)"/g)].map(a=>[a[1],a[2]])));
+  }
+  async function tapObserved(labels){
+   const entries=await nodes();const matches=entries.filter(n=>labels.includes(n.text)||labels.includes(n['content-desc']));
+   if(matches.length!==1)return false;
+   const b=matches[0].bounds?.match(/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/);if(!b||+b[3]<=+b[1]||+b[4]<=+b[2])throw Error('Picker item has no visible bounds');
+   await adb('shell','input','tap',String(Math.floor((+b[1]+ +b[3])/2)),String(Math.floor((+b[2]+ +b[4])/2)));return true;
+  }
+  try{
+   await adb('push',local,remote);pushed=true;
+   await p().getByLabel('选择私有 JSON 备份',{exact:true}).click();await expect.poll(pickerForeground).toBe(true);
+   if(!await tapObserved([name])){
+    if(!await tapObserved(['显示根目录','Show roots']))throw Error('System document drawer was not uniquely observed; no guessed tap');
+    if(!await tapObserved(['下载','下载内容','Downloads']))throw Error('System Downloads location was not uniquely observed');
+    if(!await tapObserved([name]))throw Error('Only the generated synthetic file may be selected; it was not visible');
+   }
+   await expect(p().locator('.data-file')).toHaveText(name);
+   await expect(button('只读预检，不恢复数据')).toBeDisabled();
+   await p().getByLabel('我确认这是获准使用的私有备份，同意将文件发送到当前登录服务器进行只读预检。',{exact:true}).check();
+   await button('只读预检，不恢复数据').click();await expect(p().getByRole('region',{name:'备份预检结果'})).toContainText('预检通过');
+   expect(await api('/plans',undefined,owner.token)).toHaveLength(filesOnly?1:2);expect((await api('/structure-templates',undefined,owner.token)).totalElements).toBe(1);
+  }finally{
+   if(pushed)await adb('shell','rm','-f',remote);
+  }
  });
 }

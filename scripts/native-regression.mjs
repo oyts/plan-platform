@@ -18,7 +18,7 @@ const exe = join(artifactDir, 'plan-regression.exe');
 const adbPath = join(process.env.ANDROID_HOME || join(root, '.desktop-tools/android-sdk'), 'platform-tools/adb.exe');
 const java = join(process.env.JAVA_HOME || '', 'bin/java.exe');
 const exec = promisify(execFile);
-const options = { platform: 'both', check: false, serial: '', roadmap: false, roadmapSection: 'all', aiWorkbench:false, stableTrial:false };
+const options = { platform: 'both', check: false, serial: '', roadmap: false, roadmapSection: 'all', aiWorkbench:false, stableTrial:false,stableFiles:false };
 for (let i = 2; i < process.argv.length; i++) {
   const arg = process.argv[i];
   if (arg === '--platform') options.platform = process.argv[++i];
@@ -27,6 +27,7 @@ for (let i = 2; i < process.argv.length; i++) {
   else if (arg === '--roadmap') options.roadmap = true;
   else if (arg === '--ai-workbench') options.aiWorkbench = true;
   else if (arg === '--stable-trial') options.stableTrial = true;
+  else if (arg === '--stable-files') {options.stableTrial=true;options.stableFiles=true;}
   else if (arg === '--roadmap-section') options.roadmapSection = process.argv[++i];
   else throw new Error(`Unknown argument: ${arg}`);
 }
@@ -259,6 +260,8 @@ async function startApi() {
 async function run() {
   const apk = await preflight();
   if (options.check) { console.log('Preflight passed; no app was launched or installed.'); return; }
+  const requireStableForeground=async()=>{if(options.stableTrial){const activity=await adb('shell','dumpsys','activity','activities');if(!activity.split(/\r?\n/).some(line=>/mResumedActivity|topResumedActivity/.test(line)&&line.includes(`${ANDROID_PACKAGE}/`)))throw Error('Return to the independent Android test app before starting; unrelated app left untouched.');}};
+  await requireStableForeground();
   await startApi();
   if (options.platform !== 'android') clients.push({ kind: 'windows', proxyPort: PORTS.windowsProxy, cdp: PORTS.desktopCdp, browser: null });
   if (options.platform !== 'windows') {
@@ -278,13 +281,13 @@ async function run() {
     await adb('reverse', `tcp:${PORTS.androidProxy}`, `tcp:${PORTS.androidProxy}`); reverseOwned = true;
     clients.push({ kind: 'android', proxyPort: PORTS.androidProxy, cdp: PORTS.androidCdp, browser: null });
   }
-  for (const client of clients) { client.proxy = await createFaultProxy(client.proxyPort, PORTS.api); await launch(client); }
+  for (const client of clients) { client.proxy = await createFaultProxy(client.proxyPort, PORTS.api); await requireStableForeground();await launch(client); }
   const owner = await account('原生回归账号'); const other = await account('隔离回归账号');
   const first = clients[0]; const editor = clients.at(-1);
   if(options.stableTrial){
-    report.title='Android0.1.19模板与试用收口定向验收';
-    report.scope='独立真机debug包、真实Java桥、合成账号和隔离API。仅模板、模板教学、重开及私有JSON分享取消；不覆盖正式应用，不声称系统导入文件选择或正式升级通过。';
-    await exerciseStableAndroid({client:first,owner,api,expect,route,restart,configure,scenario,adb});
+    report.title=options.stableFiles?'Android0.1.19系统文件两组补验':'Android0.1.19模板与试用收口定向验收';
+    report.scope='独立真机debug包、真实Java桥、合成账号和隔离API。模板、教学、重开、JSON分享取消与系统文件选择后只读预检；不覆盖正式应用，不声称外部分享目的地或正式升级通过。';
+    await exerciseStableAndroid({client:first,owner,api,expect,route,restart,configure,scenario,adb,runDir,filesOnly:options.stableFiles});
     report.status='PASS';return;
   }
   if(options.aiWorkbench){
