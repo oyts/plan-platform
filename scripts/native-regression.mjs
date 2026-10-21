@@ -10,6 +10,7 @@ import { PORTS, ANDROID_PACKAGE, selectDevice, validateManifest, verifyHash, sou
 import { exerciseLearning } from './learning-acceptance.mjs';
 import { exerciseAndroidRoadmap } from './roadmap-android-acceptance.mjs';
 import { exerciseAndroidAiWorkbench } from './ai-workbench-android-acceptance.mjs';
+import {exerciseStableAndroid} from './stable-android-acceptance.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const artifactDir = join(root, '.desktop-tools/native-regression');
@@ -17,7 +18,7 @@ const exe = join(artifactDir, 'plan-regression.exe');
 const adbPath = join(process.env.ANDROID_HOME || join(root, '.desktop-tools/android-sdk'), 'platform-tools/adb.exe');
 const java = join(process.env.JAVA_HOME || '', 'bin/java.exe');
 const exec = promisify(execFile);
-const options = { platform: 'both', check: false, serial: '', roadmap: false, roadmapSection: 'all', aiWorkbench:false };
+const options = { platform: 'both', check: false, serial: '', roadmap: false, roadmapSection: 'all', aiWorkbench:false, stableTrial:false };
 for (let i = 2; i < process.argv.length; i++) {
   const arg = process.argv[i];
   if (arg === '--platform') options.platform = process.argv[++i];
@@ -25,12 +26,14 @@ for (let i = 2; i < process.argv.length; i++) {
   else if (arg === '--check') options.check = true;
   else if (arg === '--roadmap') options.roadmap = true;
   else if (arg === '--ai-workbench') options.aiWorkbench = true;
+  else if (arg === '--stable-trial') options.stableTrial = true;
   else if (arg === '--roadmap-section') options.roadmapSection = process.argv[++i];
   else throw new Error(`Unknown argument: ${arg}`);
 }
 if (!['both', 'windows', 'android'].includes(options.platform)) throw new Error('Invalid --platform.');
 if (options.roadmap && options.platform !== 'android') throw new Error('--roadmap is Android-only; it does not authorize Windows UI automation.');
 if(options.aiWorkbench && (options.platform!=='android'||options.roadmap))throw new Error('--ai-workbench requires only --platform android.');
+if(options.stableTrial&&(options.platform!=='android'||options.roadmap||options.aiWorkbench))throw new Error('--stable-trial requires only --platform android.');
 if (!['all','help'].includes(options.roadmapSection) || (!options.roadmap && options.roadmapSection !== 'all')) throw new Error('Invalid --roadmap-section.');
 const runId = new Date().toISOString().replace(/[:.]/g, '-') + '-' + randomUUID().slice(0, 8);
 const resultsRoot = join(root, 'acceptance-results/native');
@@ -166,7 +169,7 @@ async function capture(row, suffix = '') {
     if (!client.page || client.page.isClosed()) continue;
     try {
       if (await client.page.locator('input[type=password]').count()) continue;
-      if (options.roadmap || options.aiWorkbench) {
+      if (options.roadmap || options.aiWorkbench || options.stableTrial) {
         const activity = await adb('shell', 'dumpsys', 'activity', 'activities');
         if (!activity.split(/\r?\n/).some(line => /mResumedActivity|topResumedActivity/.test(line) && line.includes(`${ANDROID_PACKAGE}/`))) continue;
       }
@@ -190,7 +193,7 @@ async function scenario(name, action) {
   const started = Date.now(); const row = { name, status: 'PASS', durationMs: 0, screenshots: [] };
   report.cases.push(row);
   try {
-    if (options.roadmap || options.aiWorkbench) {
+    if (options.roadmap || options.aiWorkbench || options.stableTrial) {
       const activity = await adb('shell', 'dumpsys', 'activity', 'activities');
       if (!activity.split(/\r?\n/).some(line => /mResumedActivity|topResumedActivity/.test(line) && line.includes(`${ANDROID_PACKAGE}/`)))
         throw new Error('Independent Android test app is no longer foreground; UI automation stopped.');
@@ -278,6 +281,12 @@ async function run() {
   for (const client of clients) { client.proxy = await createFaultProxy(client.proxyPort, PORTS.api); await launch(client); }
   const owner = await account('原生回归账号'); const other = await account('隔离回归账号');
   const first = clients[0]; const editor = clients.at(-1);
+  if(options.stableTrial){
+    report.title='Android0.1.19模板与试用收口定向验收';
+    report.scope='独立真机debug包、真实Java桥、合成账号和隔离API。仅模板、模板教学、重开及私有JSON分享取消；不覆盖正式应用，不声称系统导入文件选择或正式升级通过。';
+    await exerciseStableAndroid({client:first,owner,api,expect,route,restart,configure,scenario,adb});
+    report.status='PASS';return;
+  }
   if(options.aiWorkbench){
     report.title='Android AI工作台定向验收';
     report.scope='独立真机包、真实Java桥、合成账号与隔离API；无模型调用、真实邮件或正式应用写入。';
