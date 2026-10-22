@@ -5,6 +5,7 @@ info:
   x-roadmap-contract: ./core-api.md
   x-implementation-version: 0.1.19
   x-contract-coverage: partial
+  x-current-route-and-declared-dto-index: ./openapi-current.json
   description: 本文件保留0.1.16时期的部分接口契约，不是当前0.1.19全部端点清单；AI工作台、设备提醒、日周复盘及整套模板等扩展见core-api.md和实际控制器。普通业务需Bearer Access Token，公开入口和专用授权的提醒轮询另按各自规则。客户端可为支持的普通写操作提供X-Idempotency-Key；相同用户、键和请求内容在24小时内重放已完成响应，不表示AI付费或所有接口可自动离线重试。
 servers:
   - url: /api

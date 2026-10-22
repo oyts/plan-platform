@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import axios from 'axios';
-const native = vi.hoisted(() => ({ android: true, invoke: vi.fn() }));
-vi.mock('@/desktop', () => ({ isAndroid: () => native.android, nativeInvoke: native.invoke }));
+const native = vi.hoisted(() => ({ android: true, desktop: false, invoke: vi.fn() }));
+vi.mock('@/desktop', () => ({ isAndroid: () => native.android, isDesktop:()=>native.desktop, nativeInvoke: native.invoke }));
 import { downloadFile, downloadErrorMessage } from './download';
 import { desktopAdapter } from './api/desktopAdapter';
-beforeEach(() => { native.invoke.mockReset(); native.android = true; });
+beforeEach(() => { native.invoke.mockReset(); native.android = true; native.desktop=false; });
 describe('Android exports', () => {
   it('shares UTF-8 contents through the native file provider', async () => {
     await downloadFile(new Blob(['日期,计划\n2026-10-02,学习'], { type: 'text/csv' }), 'plan-ledger.csv');
@@ -54,5 +54,22 @@ describe('Android exports', () => {
   it('surfaces sharing failures to the caller', async () => {
     native.invoke.mockRejectedValue(new Error('导出目录不可用'));
     await expect(downloadFile(new Blob(['复盘']), 'review.md')).rejects.toThrow('导出目录不可用');
+  });
+});
+
+describe('Windows native save-as',()=>{
+  it('uses a user-selected native destination and preserves UTF-8 BOM',async()=>{
+    native.android=false;native.desktop=true;native.invoke.mockResolvedValue(true);
+    const body='\uFEFF日期,计划\r\n2026-10-22,合成🎸';
+    expect(await downloadFile(new Blob([body]),'合成.csv')).toBe(true);
+    expect(native.invoke).toHaveBeenCalledWith('desktop_save_file',{fileName:'合成.csv',body});
+  });
+  it('returns cancellation without claiming a saved file or retrying',async()=>{
+    native.android=false;native.desktop=true;native.invoke.mockResolvedValue(false);
+    expect(await downloadFile(new Blob(['{}']),'backup.json')).toBe(false);expect(native.invoke).toHaveBeenCalledTimes(1);
+  });
+  it('rejects invalid UTF-8 instead of silently changing private backups',async()=>{
+    native.android=false;native.desktop=true;
+    await expect(downloadFile(new Blob([new Uint8Array([0xff])]),'backup.json')).rejects.toThrow();expect(native.invoke).not.toHaveBeenCalled();
   });
 });

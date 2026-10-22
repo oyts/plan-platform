@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 public interface MainlineItemRepository extends JpaRepository<MainlineItem, String>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<MainlineItem> {
+    @org.springframework.data.jpa.repository.Query("select max(i.sortOrder) from MainlineItem i where i.mainline.id = :line")
+    Integer maximumOrder(@org.springframework.data.repository.query.Param("line") String line);
     List<MainlineItem> findByMainlineIdOrderBySortOrderAsc(String mainlineId);
     List<MainlineItem> findByMainlineIdAndDeletedAtIsNullOrderBySortOrderAsc(String mainlineId);
     List<MainlineItem> findByMainlineOwnerIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(String ownerId);

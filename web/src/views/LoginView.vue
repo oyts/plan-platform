@@ -15,6 +15,7 @@ async function submit() { if (!auth.ready || busy.value) return; busy.value = tr
     <form class="auth-card" @submit.prevent="submit">
       <h2>登录计划平台</h2>
       <p v-if="$route.query.passwordReset==='success'" class="success-text" role="status">密码已重置，请使用新密码重新登录。</p>
+      <p v-if="$route.query.emailChanged==='1'" class="success-text" role="status">登录邮箱已变更，请使用新邮箱和原密码重新登录。其他设备也需要重新登录。</p>
       <p v-if="auth.connectionError" class="error-text" role="alert">{{ auth.connectionError }}</p>
       <button v-if="auth.connectionError" class="btn" type="button" :disabled="busy" @click="auth.bootstrap()">重新检查连接</button>
       <label>邮箱<input v-model="email" type="email" autocomplete="email" required /></label>

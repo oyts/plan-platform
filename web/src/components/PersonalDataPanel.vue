@@ -26,8 +26,8 @@ async function choose(event:Event){
 async function download(kind:'backup'|'routes'|'todos'|'weekly'|'daily'){
   if(busy.value||requiresConnection())return;busy.value=kind;error.value='';notice.value='';
   try{const result=await api.get(kind==='backup'?'/data/backup':`/data/export/${kind}`,{responseType:'blob',timeout:60000});if(!inContext())return;
-    await downloadFile(result.data as Blob,kind==='backup'?`plan-cabin-private-${stamp()}.json`:`plan-cabin-${kind}-${stamp()}.csv`);
-    notice.value=kind==='backup'?'私有备份文件已交给系统保存。请确认保存位置并妥善保管；不包含本机待同步操作。':'导出文件已交给系统保存。';
+    const saved=await downloadFile(result.data as Blob,kind==='backup'?`plan-cabin-private-${stamp()}.json`:`plan-cabin-${kind}-${stamp()}.csv`);
+    notice.value=!saved?'已取消保存，未写入文件。':kind==='backup'?'私有备份文件已交给系统保存。请确认保存位置并妥善保管；不包含本机待同步操作。':'导出文件已交给系统保存。';
   }catch(e){const message=await downloadErrorMessage(e);if(inContext())error.value=message??apiMessage(e);}finally{busy.value='';}
 }
 async function preflight(){

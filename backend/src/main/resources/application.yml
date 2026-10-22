@@ -73,6 +73,7 @@ app:
     invitation-enabled: ${INVITATION_ENABLED:true}
     invitation-hours: ${INVITATION_HOURS:168}
     email-verification-enabled: ${EMAIL_VERIFICATION_ENABLED:false}
+    email-change-enabled: ${EMAIL_CHANGE_ENABLED:false}
     email-verification-minutes: ${EMAIL_VERIFICATION_MINUTES:60}
     bootstrap-admin-email: ${BOOTSTRAP_ADMIN_EMAIL:}
   public-url: ${APP_PUBLIC_URL:http://localhost:43128}

@@ -83,7 +83,7 @@ api.interceptors.response.use(async (response) => {
     throw new OfflineQueuedError();
   }
   if (!error.response && request?.method?.toUpperCase() === 'GET' && request.cacheOwner && cacheable(request.url ?? '')) return cachedReply(request);
-  const publicAuthRequest = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout', '/auth/password-reset/', '/auth/email-verification/confirm']
+  const publicAuthRequest = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout', '/auth/password-reset/', '/auth/email-verification/confirm', '/auth/email-change/verify']
     .some((path) => request?.url?.includes(path));
   if (error.response?.status === 401 && request && (request.retried || request.url === '/auth/refresh')) {
     clearTokens(); await forgetScope(serverScope()).catch(() => undefined);

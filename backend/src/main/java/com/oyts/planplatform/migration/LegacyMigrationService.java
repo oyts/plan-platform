@@ -164,7 +164,7 @@ class LegacyMigrationService {
                 TaskProgress itemProgress = new TaskProgress(task);
                 JsonNode oldProgress = progressMap.path(legacyTaskId);
                 applyProgress(itemProgress, oldProgress);
-                if (planDeleted != null && itemProgress.getStartedAt() != null) itemProgress.importState(
+                if (planDeleted != null && (itemProgress.getStartedAt() != null || itemProgress.getStatus() == TaskProgress.Status.RUNNING)) itemProgress.importState(
                     itemProgress.getStatus() == TaskProgress.Status.RUNNING ? TaskProgress.Status.PAUSED : itemProgress.getStatus(),
                     itemProgress.getAccumulatedSeconds(), null, itemProgress.getCompletedAt(), itemProgress.getAcceptanceJson(),
                     itemProgress.getNote(), itemProgress.getDeferTo(), itemProgress.getSkipReason());

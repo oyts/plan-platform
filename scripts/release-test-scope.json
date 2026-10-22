@@ -2,12 +2,23 @@
   "version": "0.1.19",
   "historicalClosure": {
     "status":"in-progress-unreleased",
-    "reason":"User approved historical closure including legacy recycling and dual-mailbox email change. New-import conversion and owner serialization are complete; completed-batch readonly recycling preview now validates retained snapshots, mappings and current parent versions, with writeSupported=false. Transactional backfill/receipts/UI, email change, save-as, contracts and remaining device cases not yet complete. Formal production and artifacts remain0.1.19/24.",
-    "backend":["LegacyBackfillPreviewIntegrationTest","LegacyRecyclingTest","LegacyRecyclingIntegrationTest","AuthPlanIntegrationTest#portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack"],
+    "reason":"User-approved historical closure: transactional old-batch recycling supplement V29, dual-mailbox email change V30 (default disabled), shared UI and export-only Windows SaveAs. Test only new/security/export/legacy behavior and declared API contract drift. Formal production/artifacts remain0.1.19/24; no real mail or paid AI.",
+    "backend":["LegacySupplementIntegrationTest","LegacyBackfillPreviewIntegrationTest","LegacyRecyclingTest","LegacyRecyclingIntegrationTest","EmailChangeIntegrationTest","MailRequestLimiterTest","EmailVerificationExperienceTest","AuthPlanIntegrationTest#portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack"],
+    "contract":["ApiContractTest"],
+    "frontendUnit":["src/download.test.ts","src/aiWorkbench.test.ts"],
+    "browser":["e2e/historical-closure.spec.ts"],
+    "rust":["exports::tests"],
     "nativeScripts":["scripts/android-reminders-acceptance.mjs --cold-start-followup"],
-    "results":{"newImportBackendDistinctPassed":13,"backfillReadonlyPreviewPassed":6,"asiaShanghaiPassed":19,"utcPassed":19,"androidColdProcessFollowupGroupsPassed":5,"paidAiCalls":0,"realEmails":0,"productionChanged":false},
-    "evidence":["acceptance-results/historical-closure/backfill-preview-asia-final.log","acceptance-results/historical-closure/backfill-preview-utc-final.log","acceptance-results/reflection/android/2026-10-22T09-18-49-297Z/report.json"],
-    "pending":["Safe explicit recycling backfill for already completed legacy imports","Dual-mailbox email change API/UI/security/acceptance","Reminder lock/reboot/tap/offline-pending proof","Windows native save-as implementation and UI acceptance","External Android synthetic-file receiving destination","Current API contract completion","Migration/compatibility/native versioned release gates"],
+    "results":{"backendDistinctPassed":44,"legacyDistinctPassed":26,"emailChangePassed":10,"affectedEmailVerificationPassed":6,"mailLimiterPassed":2,"asiaShanghaiPassed":44,"utcPassed":44,"frontendPassed":16,"browserPassed":12,"rustExportPassed":3,"apiContractTestsPassed":2,"apiRoutesIndexed":190,"pcSaveAsMixedUserHandoffPassed":true,"pcSaveCancelAutomatedPassed":true,"androidColdProcessFollowupGroupsPassed":5,"paidAiCalls":0,"realEmails":0,"productionChanged":false},
+    "evidence":["acceptance-results/historical-closure/closure-backend-asia-final2.log","acceptance-results/historical-closure/closure-backend-utc-final2.log","acceptance-results/historical-closure/frontend-round1.log","acceptance-results/historical-closure/browser-final.log","acceptance-results/historical-closure/native-export-final.log","acceptance-results/historical-closure/api-contract-final3-verify.log","acceptance-results/historical-closure/pc/2026-10-22T12-30-42-406Z/save-as-observations.json","acceptance-results/reflection/android/2026-10-22T09-18-49-297Z/report.json"],
+    "limits":"SaveAs path chosen by user after helper failure; actual JSON independently inspected. Cancel automated; no CSV system-dialog byte claim. API JSON indexes all MVC routes/declared DTOs, explicitly leaves dynamic schemas/statuses unresolved. Android cold-process evidence belongs to released0.1.19, not these new UI modules.",
+    "mysql":"PASS: final45280943 JAR. Actual0.1.19 V28->V30 guard retained separately in20261022T130600Z-45280943/report.json (48 business tables unchanged). Guarded retained V30 synthetic-data followup20261022T131700Z-8a25d3ec/resume-after-migration-report.json passed 5 groups, durable supplements, owner404/stale409, dual proofs/revocation, actual prior-image compatibility and full51-table restore. No real mail/production writes.",
+    "mysqlCasesPassed":5,
+    "mysqlTablesRestored":51,
+    "finalJarSha256":"452809438722476dde9a7a9c890967a4140b033aa940f39c915809e4e476e7e6",
+    "mysqlEvidence":["acceptance-results/historical-closure/mysql-migration-guard.json","acceptance-results/historical-closure/mysql-final.json"],
+    "androidCandidate":{"package":"cn.zijun701.plan.mobile.regression","version":"0.1.19","versionCode":24,"sha256":"362119e8b6a73412a49f892ed7d52099f55e470a0cda7040d978b995ac1f4624","deviceTested":false,"published":false},
+    "pending":["New-module Android and necessary native acceptance","Reminder lock/reboot/tap/offline-pending proof","External Android synthetic-file receiving destination","Dynamic-response API schemas beyond declared-type index","Versioned signing, production snapshot/confirmation, formal upgrade retention and publication gates","Real dual-mailbox mail acceptance and production enable confirmation"],
     "details":"docs/historical-closure-progress.md"
   },
   "documentationHandoff": {
@@ -270,8 +281,8 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "0.1.19 candidate combines private templates and stage6 trial closing. Test only template/lesson/capability/offline-message changes and native packaging/retention/export gates; prior production0.1.18 evidence remains historical. Android device deferred, no paid AI or real email.",
-  "frontendUnit": [],
+  "reason": "Unreleased historical closure on formal0.1.19: old-batch recycling, dual-mailbox change, narrow Windows export SaveAs and API route/DTO drift only. No unrelated full regression, paid AI or real mail. Remaining native and publication gates are explicit in historicalClosure.",
+  "frontendUnit": ["src/download.test.ts","src/aiWorkbench.test.ts"],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",
     "reason":"Private whole-structure PLAN/ROUTE and saved new-AI-draft templates; common copy writer, strict nested whitelist, V28, schema4 backup, manual pending replay. Typed task-time reads/writes affect structural copies directly. No unrelated full regression.",
@@ -306,10 +317,16 @@
     "mysqlFollowup":"V25 to V27 plus prior-start backfill, 47-table restore and actual 0.1.17 read compatibility passed in reflectionWorkspace; production unchanged",
     "details":"docs/native-reminders-progress.md"
   },
-  "browser": [],
+  "browser": ["e2e/historical-closure.spec.ts"],
   "backend": [
+    "LegacySupplementIntegrationTest",
+    "LegacyBackfillPreviewIntegrationTest",
     "LegacyRecyclingTest",
     "LegacyRecyclingIntegrationTest",
+    "EmailChangeIntegrationTest",
+    "MailRequestLimiterTest",
+    "EmailVerificationExperienceTest",
+    "ApiContractTest",
     "AuthPlanIntegrationTest#portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack"
   ],
   "android": [],

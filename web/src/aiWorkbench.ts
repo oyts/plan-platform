@@ -47,7 +47,7 @@ export class WorkspaceAutosave {
 }
 export async function exportWorkspace(name: string, content: WorkspaceContent) {
   const blob = new Blob([JSON.stringify({ format: 'plan-cabin-ai-draft', schemaVersion: 1, name, exportedAt: new Date().toISOString(), content: parseWorkspace(content) }, null, 2)], { type: 'application/json' });
-  const {downloadFile}=await import('@/download');await downloadFile(blob,'plan-cabin-ai-draft.json');
+  const {downloadFile}=await import('@/download');return await downloadFile(blob,'plan-cabin-ai-draft.json');
 }
 export const modeExamples: Record<AiMode, { purpose: string; example: string }> = {
   PLAN: { purpose: '有明确周期，按日期和休息日安排。', example: '考试复习 → 第一周基础 → 周一练习、周二回顾' },

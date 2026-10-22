@@ -33,6 +33,14 @@ class PasswordResetMailService {
         String link = publicUrl + "/verify-email?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
         return send(user.getEmail(), "计划平台：验证邮箱", "请在有效期内打开以下链接验证你的计划平台邮箱：\n" + link + "\n\n此链接仅可使用一次。");
     }
+    boolean sendEmailChange(String recipient,String requestId,String side,String rawToken) {
+        // Fragment avoids putting verification capabilities in HTTP access-log query strings.
+        String link=publicUrl+"/change-email#request="+requestId+"&side="+side+"&token="+rawToken;
+        return send(recipient,"计划舱：确认"+(side.equals("old")?"原邮箱":"新邮箱")+"变更验证",
+            "你正在请求更改计划舱登录邮箱。请在30分钟内打开以下链接，并在页面主动确认本邮箱验证：\n"+link
+            +"\n\n仅点击链接不会更改登录邮箱。必须分别验证两个邮箱，再由原账号在设置中输入当前密码最终确认。"
+            +"\n若不是你本人发起，请不要验证；请使用原账号取消该请求并检查登录安全。不要转发链接。此邮件不抄送任何其他人。");
+    }
     String invitationLink(String email, String rawToken) {
         return publicUrl + "/register?email=" + URLEncoder.encode(email, StandardCharsets.UTF_8) + "&invite=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
     }

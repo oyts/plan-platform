@@ -2,6 +2,7 @@ mod transport;
 mod update_policy;
 mod update_tls;
 pub mod reminders;
+mod exports;
 
 use serde::Serialize;
 use tauri::{Manager, State};
@@ -111,6 +112,19 @@ fn updates_enabled() -> bool {
     option_env!("PLAN_DESKTOP_UPDATE_URL").is_some_and(|value| !value.trim().is_empty()) && option_env!("PLAN_DESKTOP_UPDATE_PUBKEY").is_some_and(|value| !value.trim().is_empty())
 }
 
+#[tauri::command]
+async fn desktop_save_file(window: tauri::WebviewWindow, file_name: String, body: String) -> Result<bool, String> {
+    #[cfg(windows)] {
+        let owner = window.hwnd().map_err(|_| "无法读取导出窗口。")?.0 as isize;
+        let (send, receive) = tokio::sync::oneshot::channel();
+        std::thread::Builder::new().name("plan-export-save-as".into()).spawn(move || {
+            let _ = send.send(exports::save_as(owner, file_name, body));
+        }).map_err(|_| "无法打开保存窗口。")?;
+        receive.await.map_err(|_| "保存窗口异常结束，请重试。")?
+    }
+    #[cfg(not(windows))] { let _=(window,file_name,body); Err("当前平台尚未提供原生另存为。".into()) }
+}
+
 pub fn run() {
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
     if updates_enabled() {
@@ -136,7 +150,7 @@ pub fn run() {
         };
         window.build()?;
         Ok(())
-    }).invoke_handler(tauri::generate_handler![desktop_info, desktop_save_server, desktop_probe, desktop_request, desktop_open_url, desktop_check_update, desktop_download_update, desktop_install_update, clear_native_session, reminder_status, reminder_clear, reminder_refresh, reminder_enable])
+    }).invoke_handler(tauri::generate_handler![desktop_info, desktop_save_server, desktop_probe, desktop_request, desktop_open_url, desktop_save_file, desktop_check_update, desktop_download_update, desktop_install_update, clear_native_session, reminder_status, reminder_clear, reminder_refresh, reminder_enable])
       .run(tauri::generate_context!())
       .expect("无法启动计划舱桌面客户端");
 }

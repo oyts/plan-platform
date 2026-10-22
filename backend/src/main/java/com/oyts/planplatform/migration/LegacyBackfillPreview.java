@@ -13,7 +13,7 @@ import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Read-only preparation, deliberately separate from the future explicit write transaction. */
+/** Read-only preparation, also recomputed inside the explicit supplement transaction. */
 @Service
 class LegacyBackfillPreview {
     private final LegacyImportRepository imports;
@@ -86,10 +86,10 @@ class LegacyBackfillPreview {
 
     private Preview result(LegacyImport batch, boolean included, int markerCount, List<Entry> entries) {
         String fingerprint;
-        try { fingerprint = digest(mapper.writeValueAsString(List.of(batch.getId(), batch.getChecksum(), included, markerCount, entries))); }
+        try { fingerprint = digest(mapper.writeValueAsString(List.of(batch.getId(), batch.getChecksum(), batch.getCompletedAt(), included, markerCount, entries))); }
         catch (Exception e) { throw new IllegalStateException("补迁预检无法序列化。", e); }
-        return new Preview(batch.getId(), batch.getChecksum(), fingerprint, included, false, markerCount, entries,
-            "只读预检，不会写入。永久删除标记仅保留，不删除当前内容；正式补迁仍需版本复核、显式确认及持久防重回执。");
+        return new Preview(batch.getId(), batch.getChecksum(), fingerprint, included, true, markerCount, entries,
+            "预检不会写入。确认后仅补入缺失的回收站快照，保留原删除时间；不覆盖当前任务、历史或标签分配，不用旧永久删除标记删除当前内容。挂到现有路线的已删除步骤置于当前顺序末尾，原顺序仍留在快照中，不挪动现有步骤。回滚本批会同时删除本批原迁移及补迁内容，并非仅撤销此次补迁。");
     }
 
     private Map<String, String> mapping(JsonNode source, boolean plan, JsonNode ids) {

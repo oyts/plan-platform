@@ -56,7 +56,7 @@ class LegacyBackfillPreviewIntegrationTest {
         var before=db.queryForMap("select payload,report_json,status from legacy_imports where id=?",id);
         int plans=db.queryForObject("select count(*) from plans",Integer.class);
         JsonNode first=preview(token,id);
-        assertFalse(first.path("alreadyIncluded").asBoolean());assertFalse(first.path("writeSupported").asBoolean());
+        assertFalse(first.path("alreadyIncluded").asBoolean());assertTrue(first.path("writeSupported").asBoolean());
         assertEquals(4,first.path("entries").size());assertEquals(first,preview(token,id));
         assertEquals(2,java.util.stream.StreamSupport.stream(first.path("entries").spliterator(),false)
             .filter(n->n.path("action").asText().equals("ATTACH_DELETED_CHILD")).count());

@@ -84,4 +84,11 @@ class LegacyRecyclingIntegrationTest {
         mvc.perform(post("/api/migrations/legacy/import").header("Authorization","Bearer "+token).contentType(MediaType.APPLICATION_JSON).content(saved.toString())).andExpect(status().isConflict());
         mvc.perform(get("/api/plans").header("Authorization","Bearer "+token)).andExpect(jsonPath("$.length()").value(1));
     }
+    @Test void deletedPlanCannotImportAnInconsistentRunningStatusWithoutAStartTime() throws Exception {
+        String token=token();ObjectNode payload=LegacyRecyclingTest.fixture();
+        ((ObjectNode)payload.at("/workspace/trash/0/payload/progress/removed-task")).put("status","running").remove("startedAt");
+        JsonNode report=imported(token,payload);String plan=report.path("createdPlanIds").get(1).asText();
+        var state=db.queryForMap("select p.status,p.started_at,p.accumulated_seconds from task_progress p join plan_tasks t on t.id=p.task_id where t.plan_id=?",plan);
+        assertEquals("PAUSED",state.get("status"));assertNull(state.get("started_at"));assertEquals(120L,((Number)state.get("accumulated_seconds")).longValue());
+    }
 }

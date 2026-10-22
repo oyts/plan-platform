@@ -1,6 +1,24 @@
 # 核心接口与失败语义
 
-基础路径为 `/api`。普通业务需要Bearer Access Token，管理员端点还需要ADMIN；公开健康、部分账号入口和专用设备授权的提醒轮询另按各自规则。公开ID不授予权限，子记录也必须验证归属。正式三端为0.1.19／Android24，本页于2026年10月22日对照实际控制器核对。现有[OpenAPI](openapi.yaml)是较早的部分契约，不覆盖本页全部扩展；当前交付见[0.1.19记录](release-0119.md)，实现以控制器和DTO为准。
+基础路径为 `/api`。普通业务需要Bearer Access Token，管理员端点还需要ADMIN；公开健康、部分账号入口和专用设备授权的提醒轮询另按各自规则。公开ID不授予权限，子记录也必须验证归属。正式三端为0.1.19／Android24，本页于2026年10月22日对照实际控制器核对。[当前源码路由与声明DTO](openapi-current.json)覆盖190个显式MVC操作，由`ApiContractTest`检测漂移，包含尚未发布的本轮接口；`default`响应、`x-dynamic-schema`及流式JSON明确保留动态边界，不是全部业务响应／错误状态的完整规范。较早的[部分OpenAPI](openapi.yaml)保留历史参考；当前已发布能力见[0.1.19记录](release-0119.md)。
+
+## 本轮历史问题接口（源码已实现，尚未发布）
+
+| 方法与路径 | 请求／返回与安全规则 |
+| --- | --- |
+| GET `/migrations/legacy/{importId}/recycling-preview` | 本人COMPLETED批次；返回指纹、待补类型／ID／删除时间、父ID及版本，不返回当前任务正文。未知算法、父关系缺失409，他人404 |
+| POST `/migrations/legacy/{importId}/recycling-supplement` | `{operationKey:UUID,fingerprint:64位小写十六进制,confirmed:true}`；同事务回执和新增快照，过期409且不写入。原批次回滚包括原导入及补迁。不是普通离线写入 |
+| GET `/auth/email-change/status` | 本人请求状态、两侧验证标记、有效期和重试等待；不返回令牌；`enabled`与SMTP `configured`分开 |
+| POST `/auth/email-change/request` | `{currentPassword,newEmail}`，密码最长200、新邮箱最长190；当前密码核对、独立两封邮件均被SMTP接受才建立请求。200不等于邮箱已更改；503不覆盖旧有效请求 |
+| POST `/auth/email-change/verify` | 公开但需一次性能力：`{requestId:UUID,side:old或new,token:60—100字符}`；仅POST主动确认，成功204；无效／重复／过期401，限流429。GET链接不会消费验证 |
+| POST `/auth/email-change/{id}/cancel` | 本人登录后撤销请求，204；不更改登录邮箱。已完成变更不可借此回退 |
+| POST `/auth/email-change/complete` | 本人`{requestId,currentPassword,confirmed:true}`，两个邮箱已验证才204；原／新地址、密码指纹、账号状态和会话代次复核。竞争占用409，整批回滚；成功后旧JWT／刷新／找回／验证及提醒授权撤销 |
+
+邮箱变更默认关闭（`EMAIL_CHANGE_ENABLED=false`），未向真实收件人发送验收邮件。普通会话撤销和本机队列保留是不同概念；更改邮箱不删除计划，不自动清除／提交本机离线队列。账号必须用新邮箱重新登录，24小时离线身份边界不变。
+
+新验证邮件把能力放在`/change-email#request=…&side=…&token=…`片段中。页面只在内存暂存并移除片段，用户点击后POST；不放URL查询、日志、普通幂等缓存或离线队列。打开验证页可不登录；最终改邮箱必须在原账号登录状态完成。
+
+当前JSON的校验方法：在仓库根目录执行`mvn -f backend/pom.xml -Dtest=ApiContractTest test`。核对控制器／DTO变更后，才可用`-Dcontract.update=true`机械更新；不能以更新快照代替权限／事务测试。检查器不调用真实SMTP或AI，不把动态返回猜成真实用户样本。原始流式数据中心请求的严格重复字段、5MiB限额和schema4恢复规则仍见[个人数据中心](personal-data-center.md)；CSV、Markdown、APK等内容类型由各控制器运行分支确定，JSON中`*/*`不表示固定JSON响应。
 
 ## 整套模板接口（0.1.19已发布）
 

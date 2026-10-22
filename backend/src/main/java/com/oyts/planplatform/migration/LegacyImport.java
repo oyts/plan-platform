@@ -20,6 +20,7 @@ class LegacyImport {
     @PrePersist void prePersist() { id = UUID.randomUUID().toString(); importedAt = Instant.now(); }
     void complete(String reportJson) { this.status = "COMPLETED"; this.reportJson = reportJson; this.completedAt = Instant.now(); }
     void rollback(String reportJson) { this.status = "ROLLED_BACK"; this.reportJson = reportJson; this.rolledBackAt = Instant.now(); }
+    void supplement(String reportJson) { if (!"COMPLETED".equals(status)) throw new IllegalStateException("批次状态已改变。"); this.reportJson = reportJson; }
     void restart() { this.status = "SNAPSHOT"; this.reportJson = null; this.completedAt = null; this.rolledBackAt = null; }
     String getId() { return id; }
     String getSourceVersion() { return sourceVersion; }

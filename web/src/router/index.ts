@@ -36,6 +36,7 @@ const router = createRouter({ history: isDesktop() ? createWebHashHistory() : cr
   { path: '/exports', component: () => import('@/views/ExportsView.vue') },
   { path: '/members', component: () => import('@/views/MembersView.vue') },
   { path: '/verify-email', component: () => import('@/views/VerifyEmailView.vue'), meta: { public: true, allowAuthenticated: true } },
+  { path: '/change-email', component: () => import('@/views/EmailChangeVerifyView.vue'), meta: { public: true, allowAuthenticated: true } },
   { path: '/mainlines', component: () => import('@/views/MainlinesView.vue') },
   { path: '/routes', component: () => import('@/views/RouteHomeView.vue') },
   { path: '/route-progress', component: () => import('@/views/RouteProgressView.vue') },

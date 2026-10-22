@@ -36,6 +36,7 @@ public class UserAccount extends BaseEntity {
     public void updateDisplayName(String displayName) { this.displayName = displayName.trim(); }
     public void changePassword(String passwordHash) { this.passwordHash = passwordHash; }
     public void verifyEmail() { emailVerifiedAt = Instant.now(); }
+    public void changeEmail(String email) { this.email=email;emailVerifiedAt=Instant.now();authGeneration++; }
     public void makeAdmin() { role = "ADMIN"; }
 
     public String getEmail() { return email; }

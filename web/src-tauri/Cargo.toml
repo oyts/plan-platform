@@ -31,7 +31,7 @@ cookie = "0.18"
 chrono = "0.4"
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.62.2", features = ["Data_Xml_Dom", "UI_Notifications", "Win32_System_WinRT", "Win32_UI_Shell"] }
+windows = { version = "0.62.2", features = ["Data_Xml_Dom", "UI_Notifications", "Win32_System_WinRT", "Win32_UI_Shell", "Win32_UI_Shell_Common", "Win32_System_Com", "Win32_Storage_FileSystem"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
