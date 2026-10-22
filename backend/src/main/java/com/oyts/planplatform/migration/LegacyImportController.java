@@ -17,7 +17,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/migrations")
 class LegacyImportController {
     private final LegacyMigrationService service;
-    LegacyImportController(LegacyMigrationService service) { this.service = service; }
+    private final LegacyBackfillPreview backfill;
+    LegacyImportController(LegacyMigrationService service, LegacyBackfillPreview backfill) { this.service = service; this.backfill = backfill; }
+
+    @GetMapping("/legacy/{importId}/recycling-preview")
+    LegacyBackfillPreview.Preview recyclingPreview(@AuthenticationPrincipal Jwt jwt, @PathVariable String importId) {
+        return backfill.preview(jwt.getSubject(), importId);
+    }
 
     @PostMapping("/legacy/preview")
     LegacyMigrationService.Preview preview(@RequestBody JsonNode payload) { return service.preview(payload); }

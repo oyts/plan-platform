@@ -2,11 +2,11 @@
   "version": "0.1.19",
   "historicalClosure": {
     "status":"in-progress-unreleased",
-    "reason":"User approved historical closure including legacy recycling and dual-mailbox email change. First atomic module handles recycle snapshots and tombstones for new legacy imports, owner serialization and accurate preview. Existing completed-batch backfill, email change, save-as, contracts and remaining device cases not yet complete. Formal production and artifacts remain0.1.19/24.",
-    "backend":["LegacyRecyclingTest","LegacyRecyclingIntegrationTest","AuthPlanIntegrationTest#portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack"],
+    "reason":"User approved historical closure including legacy recycling and dual-mailbox email change. New-import conversion and owner serialization are complete; completed-batch readonly recycling preview now validates retained snapshots, mappings and current parent versions, with writeSupported=false. Transactional backfill/receipts/UI, email change, save-as, contracts and remaining device cases not yet complete. Formal production and artifacts remain0.1.19/24.",
+    "backend":["LegacyBackfillPreviewIntegrationTest","LegacyRecyclingTest","LegacyRecyclingIntegrationTest","AuthPlanIntegrationTest#portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack"],
     "nativeScripts":["scripts/android-reminders-acceptance.mjs --cold-start-followup"],
-    "results":{"newImportBackendDistinctPassed":13,"asiaShanghaiPassed":13,"utcPassed":13,"androidColdProcessFollowupGroupsPassed":5,"paidAiCalls":0,"realEmails":0,"productionChanged":false},
-    "evidence":["acceptance-results/historical-closure/backend-asia-final5.log","acceptance-results/historical-closure/backend-utc-final4.log","acceptance-results/reflection/android/2026-10-22T09-18-49-297Z/report.json"],
+    "results":{"newImportBackendDistinctPassed":13,"backfillReadonlyPreviewPassed":6,"asiaShanghaiPassed":19,"utcPassed":19,"androidColdProcessFollowupGroupsPassed":5,"paidAiCalls":0,"realEmails":0,"productionChanged":false},
+    "evidence":["acceptance-results/historical-closure/backfill-preview-asia-final.log","acceptance-results/historical-closure/backfill-preview-utc-final.log","acceptance-results/reflection/android/2026-10-22T09-18-49-297Z/report.json"],
     "pending":["Safe explicit recycling backfill for already completed legacy imports","Dual-mailbox email change API/UI/security/acceptance","Reminder lock/reboot/tap/offline-pending proof","Windows native save-as implementation and UI acceptance","External Android synthetic-file receiving destination","Current API contract completion","Migration/compatibility/native versioned release gates"],
     "details":"docs/historical-closure-progress.md"
   },

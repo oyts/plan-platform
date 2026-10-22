@@ -232,7 +232,7 @@ class LegacyMigrationService {
 
         ImportReport report = new ImportReport(batch.getId(), preview.checksum(), preview.sourceVersion(), "COMPLETED",
             importedTags, importedTasks, importedProgress, importedEntries, importedReflections, importedItems, importedTemplates, importedMilestones,
-            List.copyOf(planIds), List.copyOf(mainlineIds), List.copyOf(templateIds), List.copyOf(milestoneIds), preview.warnings(), Instant.now(), null);
+            List.copyOf(planIds), List.copyOf(mainlineIds), List.copyOf(templateIds), List.copyOf(milestoneIds), preview.warnings(), Instant.now(), null, 1);
         batch.complete(json(report));
         return report;
     }
@@ -256,7 +256,7 @@ class LegacyMigrationService {
         previous.createdPlanIds().forEach(id -> plans.findByIdAndOwnerId(id, userId).ifPresent(plans::delete));
         ImportReport rolledBack = new ImportReport(previous.importId(), previous.checksum(), previous.sourceVersion(), "ROLLED_BACK",
             previous.tags(), previous.tasks(), previous.progressRecords(), previous.timeEntries(), previous.reflections(), previous.mainlineItems(), previous.templates(), previous.milestones(),
-            previous.createdPlanIds(), previous.createdMainlineIds(), safeList(previous.createdTemplateIds()), safeList(previous.createdMilestoneIds()), previous.warnings(), previous.completedAt(), Instant.now());
+            previous.createdPlanIds(), previous.createdMainlineIds(), safeList(previous.createdTemplateIds()), safeList(previous.createdMilestoneIds()), previous.warnings(), previous.completedAt(), Instant.now(), previous.recyclingVersion());
         batch.rollback(json(rolledBack));
         return rolledBack;
     }
@@ -327,7 +327,7 @@ class LegacyMigrationService {
     record ImportReport(String importId, String checksum, String sourceVersion, String status, int tags, int tasks,
                         int progressRecords, int timeEntries, int reflections, int mainlineItems, int templates, int milestones,
                         List<String> createdPlanIds, List<String> createdMainlineIds, List<String> createdTemplateIds, List<String> createdMilestoneIds, List<String> warnings,
-                        Instant completedAt, Instant rolledBackAt) {}
+                        Instant completedAt, Instant rolledBackAt, int recyclingVersion) {}
     record History(String importId, String sourceVersion, String checksum, String status, Instant createdAt,
                    Instant completedAt, Instant rolledBackAt) {}
     record Snapshot(String snapshotId, String sourceVersion, String checksum, String message) {}

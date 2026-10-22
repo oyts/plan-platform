@@ -26,6 +26,7 @@ class LegacyImport {
     String getChecksum() { return checksum; }
     String getStatus() { return status; }
     String getReportJson() { return reportJson; }
+    String getPayload() { return payload; }
     Instant getImportedAt() { return importedAt; }
     Instant getCompletedAt() { return completedAt; }
     Instant getRolledBackAt() { return rolledBackAt; }
