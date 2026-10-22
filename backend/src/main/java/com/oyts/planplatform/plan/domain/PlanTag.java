@@ -44,6 +44,7 @@ public class PlanTag extends BaseEntity {
     public String getColor() { return color; }
     public boolean isOverall() { return overall; }
     public void trash() { deletedAt = Instant.now(); }
+    public void importDeletedAt(Instant value) { deletedAt = java.util.Objects.requireNonNull(value); }
     public void restore() { deletedAt = null; }
     public Instant getDeletedAt() { return deletedAt; }
 }

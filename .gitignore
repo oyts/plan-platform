@@ -29,6 +29,7 @@ backend/target-reflection/
 backend/target-reminder-timezone/
 backend/target-templates/
 backend/target-stable/
+backend/target-historical/
 android-artifacts/
 .android-signing/
 *.keystore

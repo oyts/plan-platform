@@ -82,33 +82,41 @@ class LegacyMigrationService {
         if (!catalog.path("defaultPlan").isObject()) warnings.add("备份不含暑假计划任务目录；其进度会保留在原始快照中，但不能转换为关系表。");
         if (!catalog.path("builtInMainlines").isArray()) warnings.add("备份不含内置主线目录；吉他和项目升级进度只能保留在原始快照中。");
 
-        List<JsonNode> planNodes = planNodes(payload);
-        List<JsonNode> mainlineNodes = mainlineNodes(payload);
+        LegacyRecycling.Converted recycled = null;
+        try { recycled = LegacyRecycling.convert(payload); }
+        catch (IllegalArgumentException failure) { errors.add(failure.getMessage()); }
+        JsonNode converted = recycled == null ? payload : recycled.payload();
+        List<JsonNode> planNodes = planNodes(converted);
+        List<JsonNode> mainlineNodes = mainlineNodes(converted);
         int planTasks = planNodes.stream().mapToInt(node -> node.path("tasks").size()).sum();
         int items = mainlineNodes.stream().mapToInt(node -> node.path("items").size()).sum();
         int entryCount = 0;
-        for (JsonNode item : payload.path("progress")) entryCount += item.path("timeEntries").size();
-        int preservedOnly = payload.path("workspace").path("trash").size() + payload.path("workspace").path("deletionMarkers").size();
+        for (JsonNode item : converted.path("progress")) entryCount += item.path("timeEntries").size();
+        int preservedOnly = recycled == null ? payload.path("workspace").path("trash").size() : 0;
         if (payload.path("workspace").path("taskTemplates").size() > 0) warnings.add("旧版任务模板会迁入新版模板库；模板的开始/结束时间需在创建任务时补充。");
         if (payload.path("gates").size() > 0) warnings.add("旧版闸门会迁为里程碑并保留验收勾选；旧备份未携带闸门日期，请在新版调整目标日期。");
-        if (preservedOnly > 0) warnings.add("回收站和删除标记共 " + preservedOnly + " 条，仅保存在原始快照中。");
+        if (recycled != null && !recycled.deleted().isEmpty()) warnings.add("将迁入回收站 " + recycled.deleted().size() + " 项，保留原删除时间；恢复沿用新版规则，不自动改写已重新分配的任务标签。");
+        if (recycled != null && recycled.markersOnly() > 0) warnings.add("永久删除标记 " + recycled.markersOnly() + " 项用于抑制旧内容复活；无正文不伪造可恢复记录，原标记保留在完整快照。");
         return new Preview(checksum(payload), text(payload, "planVersion", "unknown"), errors.isEmpty(), planNodes.size(),
-            planTasks, mainlineNodes.size(), items, payload.path("reflections").size(), entryCount, preservedOnly,
+            planTasks, mainlineNodes.size(), items, converted.path("reflections").size(), entryCount, preservedOnly,
             List.copyOf(warnings), List.copyOf(errors));
     }
 
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     ImportReport execute(String userId, JsonNode payload) {
         Preview preview = preview(payload);
         if (!preview.ready()) throw new IllegalArgumentException(String.join("；", preview.errors()));
+        UserAccount owner = users.lockById(userId).orElseThrow(() -> new NotFoundException("用户不存在。"));
         LegacyImport existing = imports.findByOwnerIdAndChecksum(userId, preview.checksum()).orElse(null);
         if (existing != null && "COMPLETED".equals(existing.getStatus())) return readReport(existing.getReportJson());
-        if (existing == null && imports.existsByOwnerIdAndStatus(userId, "COMPLETED")) {
+        if (imports.existsByOwnerIdAndStatus(userId, "COMPLETED")) {
             throw new ConflictException("该账号已有一批已完成的旧版迁移，请先回滚后再导入其他备份。");
         }
-        UserAccount owner = users.findById(userId).orElseThrow(() -> new NotFoundException("用户不存在。"));
+        String originalSnapshot = payload.toString();
+        LegacyRecycling.Converted recycled = LegacyRecycling.convert(payload);
+        payload = recycled.payload();
         LegacyImport batch = existing == null
-            ? imports.save(new LegacyImport(owner, preview.sourceVersion(), preview.checksum(), payload.toString()))
+            ? imports.save(new LegacyImport(owner, preview.sourceVersion(), preview.checksum(), originalSnapshot))
             : existing;
         if (existing != null) batch.restart();
 
@@ -130,12 +138,17 @@ class LegacyMigrationService {
         for (JsonNode source : planNodes(payload)) {
             Plan plan = plans.save(new Plan(owner, clip(text(source, "name", "旧版计划"), 120), "从计划控制台 " + preview.sourceVersion() + " 迁移",
                 date(source, "startDate"), date(source, "endDate")));
+            String legacyPlanKey = text(source, "id", "");
+            Instant planDeleted = recycled.deletion("plan", "", legacyPlanKey);
+            if (planDeleted != null) plan.importDeletedAt(planDeleted);
             plans.flush();
             planIds.add(plan.getId());
             Map<String, PlanTag> tagMap = new HashMap<>();
             for (JsonNode tagNode : source.path("tags")) {
                 PlanTag tag = tags.save(new PlanTag(plan, clip(text(tagNode, "name", "未命名标签"), 60),
                     clip(text(tagNode, "color", "#002FA7"), 20), tagNode.path("isOverall").asBoolean(false)));
+                Instant tagDeleted = recycled.deletion("tag", legacyPlanKey, text(tagNode,"id",""));
+                if (tagDeleted != null) tag.importDeletedAt(tagDeleted);
                 tagMap.put(text(tagNode, "id", ""), tag); importedTags++;
             }
             int order = 0;
@@ -151,6 +164,10 @@ class LegacyMigrationService {
                 TaskProgress itemProgress = new TaskProgress(task);
                 JsonNode oldProgress = progressMap.path(legacyTaskId);
                 applyProgress(itemProgress, oldProgress);
+                if (planDeleted != null && itemProgress.getStartedAt() != null) itemProgress.importState(
+                    itemProgress.getStatus() == TaskProgress.Status.RUNNING ? TaskProgress.Status.PAUSED : itemProgress.getStatus(),
+                    itemProgress.getAccumulatedSeconds(), null, itemProgress.getCompletedAt(), itemProgress.getAcceptanceJson(),
+                    itemProgress.getNote(), itemProgress.getDeferTo(), itemProgress.getSkipReason());
                 progress.save(itemProgress); importedProgress++;
                 for (JsonNode entry : oldProgress.path("timeEntries")) {
                     timeEntries.save(new TimeEntry(itemProgress, instant(entry.path("startedAt")), instant(entry.path("endedAt")),
@@ -191,6 +208,9 @@ class LegacyMigrationService {
         for (JsonNode source : mainlineNodes(payload)) {
             Mainline line = mainlines.save(new Mainline(owner, clip(text(source, "name", "旧版主线"), 120),
                 clip(text(source, "description", ""), 1000), clip(text(source, "color", "#002FA7"), 20)));
+            String legacyLineKey = text(source,"id","");
+            Instant lineDeleted = recycled.deletion("mainline","",legacyLineKey);
+            if (lineDeleted != null) line.importDeletedAt(lineDeleted);
             mainlines.flush(); mainlineIds.add(line.getId());
             int order = 0;
             for (JsonNode itemNode : source.path("items")) {
@@ -200,8 +220,12 @@ class LegacyMigrationService {
                     Math.max(1, itemNode.path("plannedMinutes").asInt(1)), order++);
                 JsonNode oldProgress = progressMap.path(text(itemNode, "id", ""));
                 MainlineItem.Status status = enumValue(MainlineItem.Status.class, text(oldProgress, "status", "pending"), MainlineItem.Status.PENDING);
+                Instant itemDeleted = recycled.deletion("mainline-item",legacyLineKey,text(itemNode,"id",""));
+                boolean removed = lineDeleted != null || itemDeleted != null;
+                if (removed && status == MainlineItem.Status.RUNNING) status = MainlineItem.Status.PAUSED;
                 item.importState(status, oldProgress.path("accumulatedSeconds").asLong(0), clip(text(oldProgress, "note", ""), 2000),
-                    nullableInstant(oldProgress.path("startedAt")), nullableInstant(oldProgress.path("completedAt")));
+                    removed ? null : nullableInstant(oldProgress.path("startedAt")), nullableInstant(oldProgress.path("completedAt")));
+                if (itemDeleted != null) item.importDeletedAt(itemDeleted);
                 mainlineItems.save(item); importedItems++;
             }
         }
@@ -221,6 +245,7 @@ class LegacyMigrationService {
 
     @Transactional
     ImportReport rollback(String userId, String importId) {
+        users.lockById(userId).orElseThrow(() -> new NotFoundException("用户不存在。"));
         LegacyImport batch = imports.findByIdAndOwnerId(importId, userId).orElseThrow(() -> new NotFoundException("迁移批次不存在。"));
         if ("ROLLED_BACK".equals(batch.getStatus())) return readReport(batch.getReportJson());
         if (!"COMPLETED".equals(batch.getStatus())) throw new ConflictException("只有已完成的迁移可以回滚。");
@@ -239,7 +264,7 @@ class LegacyMigrationService {
     @Transactional
     Snapshot preserve(String userId, JsonNode payload) {
         Preview preview = preview(payload);
-        UserAccount owner = users.findById(userId).orElseThrow(() -> new NotFoundException("用户不存在。"));
+        UserAccount owner = users.lockById(userId).orElseThrow(() -> new NotFoundException("用户不存在。"));
         LegacyImport row = imports.findByOwnerIdAndChecksum(userId, preview.checksum())
             .orElseGet(() -> imports.save(new LegacyImport(owner, preview.sourceVersion(), preview.checksum(), payload.toString())));
         return new Snapshot(row.getId(), preview.sourceVersion(), preview.checksum(), "原始 JSON 已完整保存在服务器。");

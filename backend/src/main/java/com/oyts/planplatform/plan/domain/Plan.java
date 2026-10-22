@@ -66,6 +66,7 @@ public class Plan extends BaseEntity {
         return IntStream.rangeClosed(1, 7).filter(day -> (restDaysMask & (1 << (day - 1))) != 0).boxed().toList();
     }
     public void trash() { deletedAt = Instant.now(); }
+    public void importDeletedAt(Instant value) { deletedAt = java.util.Objects.requireNonNull(value); }
     public void restore() { deletedAt = null; archived = false; }
     public UserAccount getOwner() { return owner; }
     public String getName() { return name; }

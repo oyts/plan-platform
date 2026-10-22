@@ -10,9 +10,10 @@ import {chromium,expect} from '../web/node_modules/@playwright/test/index.mjs';
 import {selectDevice,assertPortsFree,createFaultProxy} from './native-regression-support.mjs';
 import {acceptReflection} from './android-reflection-cases.mjs';
 const followup=process.argv.length===3&&process.argv[2]==='--review-followup';
-const remindersOnly=process.argv.length===3&&process.argv[2]==='--reminders-followup';
-const combined=process.argv.length===3&&['--combined','--review-followup','--reminders-followup'].includes(process.argv[2]);
-if(process.argv.length>2&&!combined)throw Error('Only --combined, --review-followup or --reminders-followup is supported.');
+const boundaries=process.argv.length===3&&process.argv[2]==='--cold-start-followup';
+const remindersOnly=boundaries||process.argv.length===3&&process.argv[2]==='--reminders-followup';
+const combined=process.argv.length===3&&['--combined','--review-followup','--reminders-followup','--cold-start-followup'].includes(process.argv[2]);
+if(process.argv.length>2&&!combined)throw Error('Only --combined, --review-followup, --reminders-followup or --cold-start-followup is supported.');
 const root=fileURLToPath(new URL('../',import.meta.url)),pkg='cn.zijun701.plan.mobile.regression';
 const run=join(root,combined?'acceptance-results/reflection/android':'acceptance-results/reminders/android',new Date().toISOString().replace(/[:.]/g,'-'));
 const adbPath=join(root,'.desktop-tools/android-sdk/platform-tools/adb.exe'),exec=promisify(execFile);
@@ -31,10 +32,16 @@ async function attach(){const pid=await adb('shell','pidof',pkg);if(!/^\d+$/.tes
 try{
  await mkdir(run,{recursive:true});await assertPortsFree(Object.values(ports));serial=selectDevice(await adb('devices'));
  const location=(await adb('shell','pm','path',pkg)).match(/^package:(\/data\/app\/[^\r\n]+\/base.apk)$/m)?.[1];if(!location)throw Error('Test APK not installed');
- const apk=await readFile(join(root,combined?'acceptance-results/reflection/android-final/PlanCabin-0.1.17-debug.apk':'.desktop-tools/reminder-android-candidate/PlanCabin-0.1.17-debug.apk'));
+ const apk=await readFile(join(root,boundaries?'.desktop-tools/native-regression/PlanCabin-0.1.19-debug.apk':combined?'acceptance-results/reflection/android-final/PlanCabin-0.1.17-debug.apk':'.desktop-tools/reminder-android-candidate/PlanCabin-0.1.17-debug.apk'));
  if(!(await adb('shell','sha256sum',location)).startsWith(createHash('sha256').update(apk).digest('hex')))throw Error('Installed test APK differs');
- const apiJar=join(root,remindersOnly?'backend/target-reminder-timezone/plan-platform-api.jar':combined?'backend/target-reflection/plan-platform-api.jar':'backend/target-reminders/plan-platform-api.jar');
+ const apiJar=join(root,boundaries?'backend/target-stable/plan-platform-api.jar':remindersOnly?'backend/target-reminder-timezone/plan-platform-api.jar':combined?'backend/target-reflection/plan-platform-api.jar':'backend/target-reminders/plan-platform-api.jar');
  report.apiSha256=createHash('sha256').update(await readFile(apiJar)).digest('hex');report.apkSha256=createHash('sha256').update(apk).digest('hex');
+ if(boundaries){
+  const released=JSON.parse(await readFile(join(root,'docs/release-0119-resume.json'),'utf8'));
+  const independent=JSON.parse(await readFile(join(root,'.desktop-tools/native-regression/build.json'),'utf8'));
+  if(report.apiSha256!==released.apiSha256||report.apkSha256!==independent.apkSha256.toLowerCase()||independent.androidPackage!==pkg)throw Error('Exact released API / independent0.1.19 APK baseline required');
+  report.scope='Android independent0.1.19 released reminder cold-process followup only; NOT new legacy-recycling candidate acceptance';
+ }
  const args=['-Duser.timezone=Asia/Shanghai','-jar',apiJar,'--spring.profiles.active=acceptance','--server.address=127.0.0.1',`--server.port=${ports.api}`,`--spring.datasource.url=jdbc:h2:mem:reminder_${randomUUID().replaceAll('-','')};MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1`,'--spring.datasource.driver-class-name=org.h2.Driver','--spring.datasource.username=sa','--spring.datasource.password=','--app.security.registration-enabled=true','--app.security.invitation-enabled=false','--app.security.email-verification-enabled=false','--app.security.refresh-cookie-secure=false','--app.jwt.secret=isolated-reminder-tests-not-production-at-least-32-bytes','--app.ai.enabled=false','--spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration','--app.operations.mail-alerts-enabled=false','--app.operations.scheduler-enabled=false'];
  const log=createWriteStream(join(run,'api.log'));child=spawn('E:/biancheng/JDK21/bin/java.exe',args,{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe']});child.stdout.pipe(log);child.stderr.pipe(log);
  await wait(async()=>{if(child.exitCode!==null)throw Error('Isolated API stopped');try{return(await fetch(`http://127.0.0.1:${ports.api}/actuator/health`)).ok;}catch{return false;}},'API health',90000);
@@ -56,7 +63,7 @@ try{
   if(!(await bridge('reminder_status')).exact){await guard();await page.getByRole('button',{name:'申请精确提醒',exact:true}).click();console.log('WAITING_USER_EXACT_PERMISSION: 请本人选择精确提醒权限并返回测试包。');await wait(async()=>await foreground()&&(await bridge('reminder_status')).exact,'user exact alarm choice',180000);}
   report.exactAlarmAuthorized=(await bridge('reminder_status')).exact;
  });
- await scenario('后台系统唤醒前的新鲜状态核对',async()=>{
+ await scenario(boundaries?'完整测试进程退出后的真实系统冷启动与通知':'后台系统唤醒前的新鲜状态核对',async()=>{
   const now=new Date(Date.now()+120000),date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(now),hm=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit'}).format(now);
   const p=await api('/plans',{name:'合成提醒计划',startDate:date,endDate:date,restDays:[]},user.accessToken,'POST',201);
   reminderTask=await api(`/plans/${p.id}/tasks`,{date,startTime:hm,endTime:null,plannedMinutes:15,title:'合成提醒任务',category:'STUDY',required:true,sortOrder:0,acceptance:[]},user.accessToken,'POST',201);
@@ -65,13 +72,30 @@ try{
   // Re-enable schedules a new near-term live check. No system permission is changed.
   await guard();await page.getByRole('button',{name:'关闭本设备提醒',exact:true}).click();await expect(page.getByRole('button',{name:'开启本设备提醒',exact:true})).toBeVisible();await page.getByRole('button',{name:'开启本设备提醒',exact:true}).click();await expect(page.getByRole('button',{name:'关闭本设备提醒',exact:true})).toBeVisible();
   await adb('shell','input','keyevent','3');console.log('BACKGROUND_WAIT: 等待原生系统唤醒；不使用 JS 定时器投递。');
+  let coldAfter=0;
+  if(boundaries){
+   const processId=await adb('shell','pidof',pkg);if(!/^\d+$/.test(processId))throw Error('One exact independent process required');
+   report.processBeforeCold=1;
+   await browser.close();browser=null;page=null;
+   // Simulate abrupt death of this owned debug process only. Some vendors do
+   // not terminate cached apps with am kill. Never force-stop the package:
+   // force-stop deliberately disables alarms and is a different lifecycle.
+   await adb('shell','run-as',pkg,'kill','-9',processId);
+   report.processExitMethod='owned-debug-process-death-not-force-stop-or-normal-close';
+   await wait(async()=>{
+    try{return !await adb('shell','pidof',pkg);}
+    catch(error){if(error.code===1&&!String(error.stdout||'').trim()&&!String(error.stderr||'').trim())return true;throw error;}
+   },'independent process actually exited',30000);
+   coldAfter=Date.now();report.processExitObserved=true;
+  }
   // Only this synthetic account's device last-seen is read; no other app's notifications are inspected.
-  await wait(async()=>{const d=await api('/reminders/devices',null,user.accessToken);return d.some(v=>v.enabled&&v.lastSeenAt);},'native background poll',180000);
+  await wait(async()=>{const d=await api('/reminders/devices',null,user.accessToken);return d.some(v=>v.enabled&&v.lastSeenAt&&(!coldAfter||new Date(v.lastSeenAt).getTime()>coldAfter));},'native background poll',180000);
   report.backgroundPollObserved=true;
   // Do not evaluate JS in a frozen background WebView. OS/native work must stand on its own.
   const alertAt=new Date(`${date}T${hm}:00+08:00`).getTime()-60000;
   while(Date.now()<alertAt+15000)await delay(1000);
   await adb('shell','am','start','-n',pkg+'/cn.zijun701.plan.mobile.MainActivity');await wait(foreground,'return after native alarm');
+  if(boundaries)await attach();
   report.nativeDiagnostics=await bridge('reminder_test_diagnostics');report.backgroundActiveCount=(await bridge('reminder_test_active')).length;
   if(!report.backgroundActiveCount){
    await bridge('reminder_test_tick');report.foregroundDiagnostics=await bridge('reminder_test_diagnostics');report.foregroundActiveCount=(await bridge('reminder_test_active')).length;

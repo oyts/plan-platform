@@ -21,6 +21,7 @@ public class Mainline extends BaseEntity {
     public void update(String name, String description, String color) { this.name = name.trim(); this.description = description == null ? "" : description.trim(); this.color = color.trim(); }
     public void archive() { archived = true; }
     public void trash() { deletedAt = Instant.now(); }
+    public void importDeletedAt(Instant value) { deletedAt = java.util.Objects.requireNonNull(value); }
     public void restore() { deletedAt = null; archived = false; }
     public String getName() { return name; } public String getDescription() { return description; }
     public String getColor() { return color; } public boolean isArchived() { return archived; }

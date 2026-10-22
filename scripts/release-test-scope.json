@@ -1,5 +1,15 @@
 {
   "version": "0.1.19",
+  "historicalClosure": {
+    "status":"in-progress-unreleased",
+    "reason":"User approved historical closure including legacy recycling and dual-mailbox email change. First atomic module handles recycle snapshots and tombstones for new legacy imports, owner serialization and accurate preview. Existing completed-batch backfill, email change, save-as, contracts and remaining device cases not yet complete. Formal production and artifacts remain0.1.19/24.",
+    "backend":["LegacyRecyclingTest","LegacyRecyclingIntegrationTest","AuthPlanIntegrationTest#portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack"],
+    "nativeScripts":["scripts/android-reminders-acceptance.mjs --cold-start-followup"],
+    "results":{"newImportBackendDistinctPassed":13,"asiaShanghaiPassed":13,"utcPassed":13,"androidColdProcessFollowupGroupsPassed":5,"paidAiCalls":0,"realEmails":0,"productionChanged":false},
+    "evidence":["acceptance-results/historical-closure/backend-asia-final5.log","acceptance-results/historical-closure/backend-utc-final4.log","acceptance-results/reflection/android/2026-10-22T09-18-49-297Z/report.json"],
+    "pending":["Safe explicit recycling backfill for already completed legacy imports","Dual-mailbox email change API/UI/security/acceptance","Reminder lock/reboot/tap/offline-pending proof","Windows native save-as implementation and UI acceptance","External Android synthetic-file receiving destination","Current API contract completion","Migration/compatibility/native versioned release gates"],
+    "details":"docs/historical-closure-progress.md"
+  },
   "documentationHandoff": {
     "status": "source-and-evidence-consistency-accepted",
     "reason": "Final stage documentation only: current production/release metadata, partial OpenAPI coverage, controller index, ER, parity, showcase and learning guide. No business/API/native/config change, rebuild, installation, deployment, paid AI or real email. Existing release tests below are historical evidence, not rerun for this documentation change.",
@@ -261,7 +271,7 @@
     ]
   },
   "reason": "0.1.19 candidate combines private templates and stage6 trial closing. Test only template/lesson/capability/offline-message changes and native packaging/retention/export gates; prior production0.1.18 evidence remains historical. Android device deferred, no paid AI or real email.",
-  "frontendUnit": ["src/learningModel.test.ts","src/helpModel.test.ts","src/personalTemplates.test.ts","src/api/offlineClient.test.ts"],
+  "frontendUnit": [],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",
     "reason":"Private whole-structure PLAN/ROUTE and saved new-AI-draft templates; common copy writer, strict nested whitelist, V28, schema4 backup, manual pending replay. Typed task-time reads/writes affect structural copies directly. No unrelated full regression.",
@@ -296,15 +306,11 @@
     "mysqlFollowup":"V25 to V27 plus prior-start backfill, 47-table restore and actual 0.1.17 read compatibility passed in reflectionWorkspace; production unchanged",
     "details":"docs/native-reminders-progress.md"
   },
-  "browser": [
-    "e2e/stable-trial.spec.ts",
-    "e2e/personal-templates.spec.ts",
-    "e2e/product-home-refresh.spec.ts"
-  ],
+  "browser": [],
   "backend": [
-    "PersonalTemplateIntegrationTest",
-    "TemplateBlueprintTest",
-    "OrchestrationIntegrationTest#planCopyRemapsStructureShiftsDatesAndDropsAllExecutionHistory"
+    "LegacyRecyclingTest",
+    "LegacyRecyclingIntegrationTest",
+    "AuthPlanIntegrationTest#portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack"
   ],
   "android": [],
   "dailyExperience": {

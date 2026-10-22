@@ -40,6 +40,7 @@ public class MainlineItem extends BaseEntity {
     }
     public void trash() { if (startedAt != null) pause(); deletedAt = Instant.now(); }
     public void restore() { deletedAt = null; }
+    public void importDeletedAt(Instant value) { deletedAt = java.util.Objects.requireNonNull(value); }
     public Mainline getMainline() { return mainline; } public String getTitle() { return title; }
     public String getDescription() { return description; } public String getAcceptanceJson() { return acceptanceJson; }
     public int getPlannedMinutes() { return plannedMinutes; } public int getSortOrder() { return sortOrder; }
