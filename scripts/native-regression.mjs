@@ -286,8 +286,8 @@ async function run() {
   const owner = await account('原生回归账号'); const other = await account('隔离回归账号');
   const first = clients[0]; const editor = clients.at(-1);
   if(options.stableTrial){
-    report.title=options.stableFiles?'Android0.1.19系统文件两组补验':'Android0.1.19模板与试用收口定向验收';
-    report.scope='独立真机debug包、真实Java桥、合成账号和隔离API。模板、教学、重开、JSON分享取消与系统文件选择后只读预检；不覆盖正式应用，不声称外部分享目的地或正式升级通过。';
+    report.title=options.stablePicker?'Android0.1.19系统文件选择器单项补验':options.stableFiles?'Android0.1.19系统文件两组补验':'Android0.1.19模板与试用收口定向验收';
+    report.scope=options.stablePicker?'独立Android真机系统文件选择器和真实Java上传通道；使用API生成的本轮合成备份，只读预检、不恢复。不是本轮原生导出、外部分享或正式升级验收。':'独立真机debug包、真实Java桥、合成账号和隔离API。模板、教学、重开、JSON分享取消与系统文件选择后只读预检；不覆盖正式应用，不声称外部分享目的地或正式升级通过。';
     await exerciseStableAndroid({client:first,owner,api,expect,route,restart,configure,scenario,adb,runDir,filesOnly:options.stableFiles,pickerOnly:!!options.stablePicker});
     report.status='PASS';return;
   }

@@ -123,11 +123,24 @@ export async function exerciseStableAndroid({client:c,owner,api,expect,route,res
   }
   try{
    await adb('push',local,remote);pushed=true;
+   // Announce the owned fixture to Android's document/media provider before
+   // opening Downloads. A raw adb push alone need not appear in its index.
+   await adb('shell','am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file://'+remote);
    await p().getByLabel('选择私有 JSON 备份',{exact:true}).click();await expect.poll(pickerForeground).toBe(true);
    if(pickerOnly){
-    console.log('ANDROID_FILE_SELECTION_HANDOFF: 请本人处理系统提示并选择下载目录中唯一文件 '+name+'；不选择其他私人文件。');
-    await expect(p().locator('.data-file')).toHaveText(name,{timeout:180000});
-    await writeFile(join(runDir,'picker-user-handoff.json'),JSON.stringify({generatedSyntheticFile:name,selectedByUser:true,precheckAutomated:true,fixtureFromApi:true},null,2));
+    console.log('ANDROID_FILE_SELECTION: 自动选择本轮唯一合成文件；仅系统密码提示需要本人处理。');
+    if(!await tapObserved([name])){
+     if(!await tapObserved(['显示根目录','Show roots']))throw Error('Observed document drawer required');
+     if(!await tapObserved(['下载','下载内容','Downloads']))throw Error('Observed Downloads root required');
+     if(!await tapObserved([name])){
+      if(!await tapObserved(['显示根目录','Show roots']))throw Error('Document drawer required for raw fixture location');
+      const model=(await adb('shell','getprop','ro.product.model')).trim();
+      if(!await tapObserved([model,'内部存储空间','内部存储','手机存储','Internal storage']))throw Error('Internal storage root not visible; no guessed input');
+      if(!await tapObserved(['Download','下载','Downloads']))throw Error('Owned fixture Download folder not visible');
+      if(!await tapObserved([name]))throw Error('Only the exact synthetic file may be selected');
+     }
+    }
+    await writeFile(join(runDir,'picker-selection.json'),JSON.stringify({generatedSyntheticFile:name,selectedByAutomation:true,precheckAutomated:true,fixtureFromApi:true},null,2));
    }else{
    if(!await tapObserved([name])){
     if(!await tapObserved(['显示根目录','Show roots']))throw Error('System document drawer was not uniquely observed; no guessed tap');
