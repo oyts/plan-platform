@@ -1,5 +1,12 @@
 {
   "version": "0.1.19",
+  "documentationHandoff": {
+    "status": "source-and-evidence-consistency-accepted",
+    "reason": "Final stage documentation only: current production/release metadata, partial OpenAPI coverage, controller index, ER, parity, showcase and learning guide. No business/API/native/config change, rebuild, installation, deployment, paid AI or real email. Existing release tests below are historical evidence, not rerun for this documentation change.",
+    "checks": ["git diff --check", "node scripts/verify-release.mjs", "repository-local documentation links and referenced source paths", "release checkpoint, V25-V28 DDL and affected controllers cross-check"],
+    "results": {"markdownFilesChecked":15,"localDocumentationLinksChecked":132,"explicitSourcePathsChecked":10,"referencedBackendTestClassesChecked":9,"erTableNamesChecked":30,"runtimeFilesChanged":0,"newBusinessTestsRun":0,"deviceOperations":0,"paidAiCalls":0,"realEmails":0},
+    "details": "docs/stable-handoff.md"
+  },
   "stableTrialCandidate": {
     "status":"complete-three-platform-0.1.19-released-and-github-archived",
     "reason":"Stage6 closes trial gaps. Existing targeted evidence retained; final production snapshot/cutover/HTTPS passed. FormalWindows540 files unchanged before launch, original login/empty queue/templates/lesson/cold reopen accepted. Android original login/empty queue/cold reopen and exact APK accepted; independent picker/readonly preview followup passed. Both native latest-version checks passed. Windows public optional and Android protected feeds released. No paidAI, test mail or unrelated full regression.",

@@ -1,8 +1,8 @@
 # 核心接口与失败语义
 
-基础路径为 `/api`。除公开健康和账号入口外需要Bearer Access Token，管理员端点还需要ADMIN。公开ID不授予权限，子记录也必须验证归属。正式版本为0.1.18；以下前轮接口已交付，私人整套模板是0.1.19候选扩展。旧接口结构见[OpenAPI](openapi.yaml)，本轮状态见[阶段六记录](stable-trial-progress.md)。
+基础路径为 `/api`。普通业务需要Bearer Access Token，管理员端点还需要ADMIN；公开健康、部分账号入口和专用设备授权的提醒轮询另按各自规则。公开ID不授予权限，子记录也必须验证归属。正式三端为0.1.19／Android24，本页于2026年10月22日对照实际控制器核对。现有[OpenAPI](openapi.yaml)是较早的部分契约，不覆盖本页全部扩展；当前交付见[0.1.19记录](release-0119.md)，实现以控制器和DTO为准。
 
-## 整套模板候选接口
+## 整套模板接口（0.1.19已发布）
 
 `GET /health` 增加明确的 `capabilities.structureTemplates=true`；旧服务器缺失时不能推断为支持。该声明不授予权限，也不代表OS安装或后台提醒已验收。
 
@@ -18,8 +18,8 @@
 | GET `/data/backup` | 本人字段白名单快照，私有 no-store，最多 5 MiB／20,000 行 | `data/PersonalDataController.java` |
 | POST `/data/preview` | 原始 JSON 备份只读预检，不修改业务 | 同上 |
 | POST `/data/restore` | `{backup,checksum,operationKey,confirmed}`，确认后恢复为新记录 | 同上 |
-| GET `/data/restores`、`/data/restored-weekly-reviews` | 恢复批次和只读复盘副本，`page` 从 0 开始 | 同上 |
-| GET `/data/export/{kind}` | `routes`、`todos`、`weekly` 的私有 CSV，中文 BOM 与公式注入防护 | 同上 |
+| GET `/data/restores`、`/data/restored-weekly-reviews`、`/data/restored-daily-reviews` | 恢复批次和只读复盘副本，`page` 从 0 开始 | 同上 |
+| GET `/data/export/{kind}` | `routes`、`todos`、`weekly`、`daily` 的私有CSV，中文BOM与公式注入防护 | 同上 |
 | POST `/organize/copy/preview`、`/copy/apply` | 本人整套结构复制，日期变化必须明确，重映射 ID | `organize/OrchestrationController.java` |
 | POST `/organize/batch/preview`、`/batch/apply` | 指定重复批次未来实例，保护历史，摘要变化返回 409 | 同上 |
 | GET `/organize/routes` | `page,size,search,state`，服务端路线摘要分页 | 同上 |
@@ -30,9 +30,24 @@
 | GET `/admin/operations/status`、`/alerts`、`/policy-audit` | 证据摘要／站内事件／规则审计，不返回备份正文 | `operations/OperationsController.java` |
 | POST `/admin/operations/evaluate`，PUT `/policy` | 核对固定分类告警／保存数字预览规则，没有删除接口 | 同上 |
 | GET `/admin/governance/config`、`/members`、`/audit` | 能力开关、成员分页、状态审计 | `auth/MemberGovernanceController.java` |
-| PUT `/admin/governance/members/{id}` | `{version,enabled,reason}`，默认关闭，禁止管理自己与其他管理员 | 同上 |
+| PUT `/admin/governance/members/{id}` | `{version,enabled,reason}`，受治理开关控制，禁止管理自己与其他管理员；生产已按确认策略启用 | 同上 |
 
-表中的实现路径相对于 `backend/src/main/java/com/oyts/planplatform/`。布尔能力字段表示 API 实现存在，不等于管理员已启用运维、邮件或治理策略。
+## AI工作台、提醒与复盘接口索引
+
+| 方法与路径 | 用途与边界 | 实现 |
+| --- | --- | --- |
+| GET `/ai/saved-drafts`、`/{id}`，PUT `/{id}` | 本人独立规划材料，新增version=-1、更新匹配version；不等于聊天历史备份 | `ai/AiWorkbenchController.java` |
+| POST `/ai/saved-drafts/clear`、`/{id}/resume` | 按编号和版本删除／跳过；重新同意后建立新对话，不主动调用上游 | 同上 |
+| GET、PUT `/reminders/preferences` | 账号规则版本校验；不代为打开系统权限 | `reminders/ReminderController.java` |
+| GET、POST `/reminders/devices`，DELETE `/reminders/devices/{id}` | 本人设备查询／登记／撤销；登记返回的授权不写普通幂等缓存 | 同上 |
+| POST `/reminders/poll` | 专用 `X-Reminder-Key`，不是Bearer登录；限流、核对最新状态、按设备事件防重 | 同上 |
+| GET `/reflection/facts`、`/items` | `kind=DAY\|WEEK,start`；items还支持mode、bucket和分页，不把三模式混算完成率 | `reflection/ReflectionController.java` |
+| GET、PUT `/reflection/days/{date}`、`/reflection/preferences` | 本人日自述／复盘规则及版本校验；旧计划日复盘独立保留 | 同上 |
+| POST `/reflection/guides/claim`，GET `/reflection/trend`，POST `/reflection/trend/{start}/decision` | 一次引导、两周趋势门槛及14天冷却 | 同上 |
+| GET `/reflection/targets`，POST `/reflection/analysis-preview` | 本人对象选择与同意前预览，不调用上游 | 同上 |
+| POST、GET `/reflection/analyses` | 建立只读分析会话／历史；付费发送仍走既有AI jobs协议，不能从分析会话应用规划 | 同上 |
+
+表中的实现路径相对于 `backend/src/main/java/com/oyts/planplatform/`。布尔能力字段表示API实现存在，不等于管理员已启用运维、邮件或治理策略。独立草稿、模板应用、复盘云端保存、AI、设备授权与计时不加入离线自动重放；不能从“接口有幂等键”推导成“可以自动离线重试”。
 
 ## 结构复制示例
 

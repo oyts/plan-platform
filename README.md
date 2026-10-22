@@ -4,11 +4,11 @@
 
 当前正式 **Web/API、Windows官网／可选更新源及Android登录受限源统一0.1.19／Android构建24**。个人模板库与第六课已发布；生产快照47表恢复、46张原业务表不变、旧镜像兼容、HTTPS新增6组、正式双端原登录／空队列与冷重开、Windows公网5组及Android受限源4组通过。见[0.1.19发布记录](docs/release-0119.md)。公开注册与官网APK继续关闭，系统提醒与自动下载默认关闭，AI、邮件和成员治理配置保留。
 
-前版0.1.16的真实V23→V24快照迁移及旧0.1.15镜像演练通过，36张原业务表校验不变；当时正式网页6项、Windows7项与公网下载5项、Android真机5项及受限源4项通过。Android原登录及空队列保留；Windows在服务切换间隙启动出现502，用户手动重新登录后完成重开及0/0队列检查，该历史结果不证明原会话跨升级保留。本版0.1.17的会话保留已另行验证，见上方发布记录。默认AI每天20次、管理员热修改、公众注册关闭及官网APK／二维码关闭保持不变。
+历次升级证据分别保留在对应发布记录中，不累加成当前版本的测试数量。例如0.1.16的Windows验收曾由用户重新登录，不能作为跨升级会话保留证明；0.1.19的原会话与重开另有实际证据。默认AI每天20次、管理员热修改、公众注册关闭及官网APK／二维码关闭保持不变。
 
 旧正式 Android 的临时匿名迁移窗口已于北京时间 **2026-10-15 02:17:33** 到期，旧匿名地址现已返回 404，不重新开放。已接入受限通道的客户端继续登录后更新；未迁移的旧版本需私下取得同包名、同签名的正式 APK。见 [迁移说明](docs/legacy-android-migration.md)。
 
-[产品官网](https://plan.zijun701.cn/welcome)已更新三模式与内置 AI 的完整介绍，包含可切换的草稿示例、确认后生成与已有规划调整、五节互动教学、跨端与离线边界。此次只发布网页展示，后端和数据库未重启，原生版本与下载／更新源不变。详见 [官网展示与独立发布](docs/product-website-and-todos.md)。
+[产品官网](https://plan.zijun701.cn/welcome)介绍三模式、AI工作台、提醒、复盘和个人模板库，包含草稿示例、确认后生成与已有规划调整、六节互动教学、跨端与离线边界。官网只介绍已发布能力；网页版入口和Windows下载可用，Android官网APK／二维码仍关闭。早期官网独立发布过程见[官网展示与独立发布](docs/product-website-and-todos.md)，当前交付以0.1.19记录为准。
 
 首次使用可从“使用教学”练习六节小案例，包含整套模板；AI教学使用本地模拟，不扣调用次数。已有规划的节奏示例只填写要求，发送和应用仍由用户确认；既有教学进度保留。
 
@@ -16,7 +16,7 @@
 
 日常小版本仅验证新增和受影响功能，大版本才执行全面回归；签名、版本、升级数据保留、生产备份与云端健康仍为发布门槛。见 [发布流程](docs/release-process.md) 与 [导航体验优化](docs/navigation-experience.md)。
 
-后续次序与验收边界见[整合开发规划](docs/next-development-roadmap.md)。第一阶段邮件安全、第二阶段[AI工作台与手机输入体验](docs/ai-workbench.md)、第三阶段[系统提醒](docs/native-reminders-progress.md)与第四阶段[日周复盘和AI分析](docs/reflection-workspace.md)已交付；0.1.18实际发布范围及限制见[发布记录](docs/release-0118.md)。上一轮六阶段目标保留在[历史规划](docs/development-roadmap.md)，已实现[反馈与脱敏诊断](docs/feedback-and-diagnostics.md)、[个人数据中心](docs/personal-data-center.md)、[编排与长期历史](docs/orchestration-and-history.md)、[离线范围及冲突体验](docs/offline-experience.md)、帮助／本地演示和[运行证据与成员治理](docs/operations-and-governance.md)。历史验收见[续做记录](docs/roadmap-progress.md)。清理仅预览，真实删除仍须另行确认。
+六阶段范围及完成情况见[整合开发规划](docs/next-development-roadmap.md)，最终交付与已知边界见[交付索引](docs/stable-handoff.md)。邮件安全、[AI工作台与手机输入体验](docs/ai-workbench.md)、[系统提醒](docs/native-reminders.md)、[日周复盘和AI分析](docs/reflection-workspace.md)、个人模板库与试用收口已分别随0.1.16—0.1.19交付。上一轮六阶段目标保留在[历史规划](docs/development-roadmap.md)，已实现[反馈与脱敏诊断](docs/feedback-and-diagnostics.md)、[个人数据中心](docs/personal-data-center.md)、[编排与长期历史](docs/orchestration-and-history.md)、[离线范围及冲突体验](docs/offline-experience.md)、帮助／本地演示和[运行证据与成员治理](docs/operations-and-governance.md)。历史验收见[续做记录](docs/roadmap-progress.md)。清理仅预览，真实删除仍须另行确认。
 
 0.1.4 已完成 HTTPS 新版部署、MySQL 备份恢复、加密签名备份、Windows 官网下载及更新源发布，见 [Windows 发布记录](docs/windows-public-release.md)。Android 继续只提供受邀测试 APK，官网下载等待 APP 备案，公开注册保持关闭，见 [受邀客户端测试](docs/invited-client-testing.md)。成员页手机卡片与底部编辑面板已进入共享源码，桌面保留表格，详见 [成员邀请手机验收](docs/mobile-members.md)。
 
@@ -24,7 +24,7 @@
 
 ## 当前状态
 
-阶段六正在准备0.1.19／Android24稳定候选，整合模板教学、旧服务器兼容提示、官网及最新项目材料。独立Windows六组已通过，包含非空队列跨升级／离线重开和真实JSON下载。独立Android现已安装0.1.19，模板、副本保护、教学重开三组核心业务通过，导出文件内容已核对；分享取消返回及系统文件选择器补验在窗口焦点变化时安全停止，不能算完整通过。正式站与正式客户端仍0.1.18，未验收包不推送。见[阶段六记录](docs/stable-trial-progress.md)。
+0.1.19已完成三端发布和GitHub归档；阶段六的最终资料收口不另发新版本。独立Windows六组包含合成非空队列跨升级／离线重开、同步和真实JSON下载；正式双端另有原登录、空队列及冷重开证据。Android系统文件选择／只读预检已补验，分享取消返回已确认，外部收件应用仍未验收；这些结论不能互相替代。完整版本、证据入口、演示和维护交接见[交付索引](docs/stable-handoff.md)。
 
 AI 支持官方 DeepSeek 异步对话、模式推荐与确认、草稿多次修订和手工编辑、三模式确认后原子生成、外部 AI JSON 导入，以及对明确选择的已有周期计划、目标路线和待办提出调整建议。修改前逐项展示差异，保护历史和所有权，冲突保留草稿，不删除后重建原计划。管理员每日额度热生效，调用幂等预占，未知结果不自动重复付费，手动业务不依赖 AI。独立 MySQL V14—V17、生产备份恢复和旧镜像回退通过；前两阶段 5 次、本轮 3 次官方合成验收均成功，未反复重跑付费脚本。Web、Windows 和 Android 新增功能已通过定向验收；Android 真机补测不重复付费调用。见 [AI 对话说明](docs/ai-conversations.md) 和 [额度基础](docs/ai-foundation.md)。
 
@@ -49,7 +49,7 @@ AI 支持官方 DeepSeek 异步对话、模式推荐与确认、草稿多次修�
 
 ## 已实现
 
-- 使用教学：五节分步练习、首次功能提示、可跳过与重学；练习数据不进入真实业务，进度按设备、服务器和账号保存。正式发布状态见 [教学说明](docs/learning-system.md)。
+- 使用教学：六节分步练习、首次功能提示、可跳过与重学；练习数据不进入真实业务，进度按设备、服务器和账号保存。正式发布状态见 [教学说明](docs/learning-system.md)。
 - 邮箱注册开关、登录限流、15 分钟 JWT Access Token、HttpOnly Refresh Cookie、令牌轮换与多设备会话管理。
 - 个人资料维护、当前密码验证的密码修改、SMTP 驱动的一次性找回密码链接；密码变更或找回会撤销全部刷新会话。
 - 用户级数据隔离，任何计划、标签、任务和主线查询都包含所有权条件。
@@ -168,8 +168,8 @@ plan-platform/
 
 1. Vue Web：当前基准客户端。
 2. Windows EXE：已使用 Tauri 2 封装 Vue，复用业务 API；macOS/Linux 安装包后续单独适配。
-3. Android APK：已用 Capacitor 8 复用 Vue，Java 原生层负责受限 API 请求和 Keystore 会话加密；当前交付本地测试包。
-4. 微信小程序：独立页面层，复用账号、计划、任务、主线和统计 API。
+3. Android APK：已用 Capacitor 8 复用 Vue，Java 原生层负责受限 API 请求和 Keystore 会话加密；正式包仅向受邀测试者提供，应用内使用登录受限更新源，官网不公开APK。
+4. 微信小程序：尚未开发，未来可单独实现页面层并复用API；不属于当前交付。
 
 详细设计见 [架构说明](docs/architecture.md)、[账号与会话安全](docs/account-security.md) 和 [学习路线](docs/learning-guide.md)。
 

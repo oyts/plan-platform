@@ -1,6 +1,6 @@
 # 计划舱架构与一致性设计
 
-计划舱采用模块化单体：Vue 3共享业务页面运行在Web/PWA、Tauri Windows和Capacitor Android中，通过同一Spring Boot API使用MySQL。正式版本为0.1.18；0.1.19候选包含私人整套模板及试用收口，见[阶段记录](stable-trial-progress.md)。微信小程序、iOS、微服务与本地大模型没有实现。
+计划舱采用模块化单体：Vue 3共享业务页面运行在Web/PWA、Tauri Windows和Capacitor Android中，通过同一Spring Boot API使用MySQL。正式三端均为0.1.19／Android24，含私人整套模板及试用收口，见[发布记录](release-0119.md)。本页为2026年10月22日源码与交付记录核对结果，不是一次新的生产探测。微信小程序、iOS、微服务与本地大模型没有实现。
 
 ## 运行结构
 
@@ -47,17 +47,29 @@ erDiagram
   mainline_stages o|--o{ mainline_items : groups
   users ||--o{ todos : owns
   users ||--o{ weekly_reviews : owns
+  users ||--o{ daily_reviews : owns
+  users ||--o| reflection_preferences : configures
+  users ||--o{ reflection_guides : acknowledges
+  users ||--o| reflection_coaching : cools_down
   users ||--o{ feedback_tickets : submits
   feedback_tickets ||--o{ feedback_messages : contains
   users ||--o{ personal_restore_batches : restores
   personal_restore_batches ||--o{ restored_weekly_reviews : retains
   users ||--o{ orchestration_operations : confirms
   users ||--o{ ai_sessions : owns
+  users ||--o{ ai_saved_drafts : saves
   ai_sessions ||--o{ ai_jobs : queues
   ai_quota_requests ||--o| ai_jobs : reserves
+  users ||--o| native_reminder_preferences : configures
+  users ||--o{ native_reminder_devices : authorizes
+  native_reminder_devices ||--o{ native_reminder_deliveries : deduplicates
+  users ||--o{ personal_templates : snapshots
+  users ||--o{ personal_template_operations : confirms
 ```
 
-图只显示主要关系，不是完整建表 DDL。路线前置 ID 存于 `prerequisite_ids_json`，不是图中另造的关系表；服务层根据完整路线检查同路线所有权、缺失依赖和循环。全部结构以 Flyway 迁移为准，候选已到 V23；生产仍在 V19，禁止用 `ddl-auto=update` 替代迁移。
+图只显示主要关系，不是完整建表DDL。路线前置ID存于 `prerequisite_ids_json`，不是图中另造的关系表；服务层根据完整路线检查同路线所有权、缺失依赖和循环。模板操作记录以用户和操作键约束防重，不通过外键绑定模板生命周期；独立AI草稿也不依赖临时会话一直存在。
+
+0.1.19源码与已发布生产迁移均到V28。V25为独立AI草稿，V26为设备提醒及首次开始证据，V27为日周复盘与趋势冷却，V28为私人整套模板。DDL以 `backend/src/main/resources/db/migration/` 及厂商迁移目录为准，禁止用 `ddl-auto=update` 替代迁移。最新发布包含真实快照V27→V28、原业务投影不变、恢复及旧镜像兼容证据；V23／V19仅是早期历史状态。
 
 ## 三类一致性边界
 
@@ -89,15 +101,21 @@ erDiagram
 
 Web Access Token 默认 15 分钟，仅在内存；随机刷新令牌只保存摘要，通过 HttpOnly Cookie 轮换。原生客户端另由平台安全存储处理刷新会话。登录失败限流，公开注册关闭，邀请和邮件能力由服务器开关控制。
 
-候选成员治理使用持久会话代次；停用撤销刷新会话并在后续联网请求检查状态，恢复不复活旧令牌。关闭管理开关不能取消已经发生的撤销。治理后回退必须保留代次校验，不能直接换回不识别它的旧二进制。断网缓存仍受原有 24 小时离线身份限制，不承诺远程抹除设备。
+正式成员治理使用持久会话代次；生产已按确认策略启用，仅管理普通成员，停用在下一次联网请求生效，恢复后须重新登录，业务数据不删除。关闭管理开关不能取消已经发生的撤销。治理后回退必须保留代次校验，不能直接换回不识别它的旧二进制。断网缓存仍受原有24小时离线身份限制，不承诺远程抹除设备；全新部署的能力实现与开关默认值不能混为生产启用状态。
 
 ## 可验证的项目材料
 
 私人整套模板新增 `personal_templates` 和用户范围防重表，快照不引用原计划ID，模板内部的阶段、标签与依赖有完整白名单校验。应用时复用结构复制事务重新映射ID；资料版本、来源结构指纹和操作键分别保护并发编辑、过期预览与重复确认。私有备份格式4兼容1—3，恢复为新记录。时间字段的结构读写与正常任务使用同一Hibernate映射，不能用JDBC原始字符串替代业务时间。
 
-`/api/health` 的 `capabilities.structureTemplates` 是服务器支持声明，不是账号授权或安装验收证明。候选官网只在明确支持时展示模板，新客户端连接旧服务器时给兼容提示，不调用不存在的模板接口。
+`/api/health` 的 `capabilities.structureTemplates` 是服务器支持声明，不是账号授权或安装验收证明。官网只在明确支持时展示模板，新客户端连接旧服务器时给兼容提示，不调用不存在的模板接口。
+
+## 提醒与复盘不是后台AI代理
+
+设备提醒由Windows当前用户计划任务或Android AlarmManager唤醒原生层，使用专用可撤销授权读取本人最新提醒状态，再按设备／事件领取防重。该授权不能登录或调用AI；没有联网核实、设备关机、系统强停或厂商冻结时不能承诺投递。Web只保留前台站内能力，三端业务对等不等于操作系统能力相同。
+
+三模式日周事实汇总与个人自述分开保存，不把长期路线计作每日欠账。复盘分析先选择范围并同意，主动发送才计AI次数；日分析不修改规划，周节奏调整另走已有对象差异确认。主动趋势须连续两周完整、已完成且含实际事项的复盘，讨论／拒绝／稍后再看均冷却14天，不据完成率自动加量。
 
 - [核心接口与失败语义](core-api.md)：实际控制器、请求参数、409 和确认流程。
 - [演示路线与项目讲解](project-showcase.md)：合成案例、3—5 分钟路线和面试问题。
-- [候选部署与验收交接](stable-candidate.md)：版本、构建、回退和待确认门槛。
+- [当前交付索引](stable-handoff.md)：实际版本、证据层次、维护与已知边界；[早期候选交接](stable-candidate.md)保留历史命令。
 - [轻量性能基线](performance-baseline.md)：真实条件和数据规模，不推导商业承载量。
