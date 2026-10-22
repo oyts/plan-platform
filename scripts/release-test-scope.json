@@ -1,7 +1,7 @@
 {
   "version": "0.1.19",
   "stableTrialCandidate": {
-    "status":"three-platform-0.1.19-released-github-archive-pending",
+    "status":"complete-three-platform-0.1.19-released-and-github-archived",
     "reason":"Stage6 closes trial gaps. Existing targeted evidence retained; final production snapshot/cutover/HTTPS passed. FormalWindows540 files unchanged before launch, original login/empty queue/templates/lesson/cold reopen accepted. Android original login/empty queue/cold reopen and exact APK accepted; independent picker/readonly preview followup passed. Both native latest-version checks passed. Windows public optional and Android protected feeds released. No paidAI, test mail or unrelated full regression.",
     "results":{"backendPassed":11,"frontendPassed":28,"browserDistinctPassed":28,"websiteFinalRecheckPassed":4,"nativeHarnessPassed":10,"mysqlCasesPassed":5,"mysqlTablesRestored":49,"formalSignaturesVerified":true,"paidAiCalls":0,"realEmailsSent":0,"androidDeviceTested":true,"androidCoreGroupsPassed":3,"androidExportFileContentVerified":true,"androidSystemFilesAccepted":true,"pcNativeAccepted":true,"independentPcGroupsPassed":6,"pcOriginalFilesUnchanged":529,"pcNonemptyQueueRetained":true},
     "evidence":["acceptance-results/stable-trial/backend.log","acceptance-results/stable-trial/frontend-final.log","acceptance-results/stable-trial/browser.json","acceptance-results/stable-trial/home-final2.json","acceptance-results/stable-trial/native-harness.log"],
@@ -14,7 +14,8 @@
     "androidCoreEvidence":"acceptance-results/native/2026-10-21T12-26-02-410Z-62c94efc/report.json",
     "androidCoreLimits":"First three core groups accepted. Earlier fourth only proved export; share return subsequently confirmed after user handoff, system picker/Java readonly precheck accepted2026-10-22 in separate evidence. No external receiving-app test; do not count retries as distinct core groups.",
     "production0119":{"snapshotTablesRestoredTwice":47,"originalBusinessTablesUnchanged":46,"httpsNewGroupsPassed":6,"formalWindowsFilesUnchangedBeforeLaunch":540,"formalWindowsUiAccepted":true,"formalAndroidUpgraded":true,"androidReadonlyGroupsPassed":3,"androidSystemPickerPassed":1,"windowsPublicGroupsPassed":5,"androidProtectedSourcePassed":4,"bothNativeUpdateChecksPassed":true,"automaticDownloadChecked":false,"updateSourcesChanged":true,"details":"docs/release-0119.md"},
-    "pending":["GitHub source/tag/Windows-only archive"],
+    "pending":[],
+    "github":{"tag":"v0.1.19","tagCommit":"94e70a954cf73c1751df1e50dea838d4000767d1","windowsOnlyAssets":true},
     "unprovenLimits":"External share receiving app not sent/tested; formal queues empty, independent synthetic Windows nonempty evidence separate; no new formal in-app cross-version installation. Earlier failures retained.",
     "details":"docs/stable-trial-progress.md"
   },
