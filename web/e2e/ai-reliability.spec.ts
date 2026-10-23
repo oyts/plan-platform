@@ -33,6 +33,12 @@ test('requirements unsaved edit blocks send and survives refresh; save preserves
   await setup(page);await generate(page,isMobile);await page.getByLabel('任务标题',{exact:true}).fill('不能丢失的手改标题');
   if(isMobile)await page.getByRole('navigation',{name:'AI 工作区'}).getByRole('button',{name:/^对话/}).click();
   await page.getByText('需求笔记（发送过的要求持续保留）',{exact:false}).click();await page.getByLabel('需求笔记',{exact:true}).fill('明确改为周六休息，每天一小时');
+  if(isMobile){
+    await expect(page.locator('.ai-message-form')).toHaveCSS('position','static');
+    // A short viewport represents the available area while a phone keyboard is open.
+    await page.setViewportSize({width:390,height:500});
+    await page.getByRole('button',{name:'保存需求笔记',exact:true}).click({trial:true});
+  }
   await page.getByRole('button',{name:'刷新对话',exact:true}).click();await expect(page.getByLabel('需求笔记',{exact:true})).toHaveValue('明确改为周六休息，每天一小时');
   await expect(page.getByRole('button',{name:'按要求修改草稿',exact:true})).toBeDisabled();
   await page.getByRole('button',{name:'保存需求笔记',exact:true}).click();

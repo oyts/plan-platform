@@ -1,7 +1,7 @@
 {
   "version": "0.1.20",
   "coreAiReliability": {
-    "status":"stage1-unreleased-shared-source-accepted-native-and-real-provider-pending",
+    "status":"stage1-development-and-targeted-acceptance-complete-unreleased",
     "reason":"V31 durable attempt metadata and bounded repair; explicit discussion/generate/revise, retained requirements, readable rejected prose and safe owner/admin diagnostics. Source version remains0.1.20 only as unreleased candidate; no public artifacts/cutover. Repair defaults false.",
     "backend":["AiRepairIntegrationTest","AiIntentIntegrationTest","DeepSeekProviderTest","AiConversationIntegrationTest","ReflectionAiIntegrationTest","AiFoundationTest","AiUsageIntegrationTest","AiQuotaIntegrationTest","AiAdjustmentIntegrationTest"],
     "contract":["ApiContractTest","ApiErrorContractTest"],
@@ -9,13 +9,14 @@
     "browser":["e2e/ai-reliability.spec.ts","e2e/ai-planning.spec.ts","e2e/ai-adjustment.spec.ts","e2e/account-ai-operations.spec.ts (AI/admin cases only)"],
     "paidAiCalls":8,
     "productionChanged":false,
-    "developmentChecks":{"backendDistinctPassed":66,"contractPassed":10,"frontendDistinctPassed":13,"browserNewPassed":6,"browserAffectedPassed":22,"backendFailedFinal":0,"h2Migration":31,"mysqlVerified":true,"wholeStageAccepted":false},
+    "developmentChecks":{"backendDistinctPassed":66,"contractPassed":10,"frontendDistinctPassed":13,"browserNewPassed":6,"browserAffectedPassed":22,"backendFailedFinal":0,"h2Migration":31,"mysqlVerified":true,"wholeStageAccepted":true,"formalPublicationAccepted":false},
     "candidateJarSha256":"1ef2adc76b176fc6feaddecab9aed027755bd5b8bf7ca6dfe6d1b916a1e177ab",
     "mysql":{"migrationJar":"6fa815851897c8852cdea8eb4a5cb6f38bbe461cbf46cb58ae9d8133710a20df","originalBusinessTablesUnchanged":50,"restoredTables":52,"priorImageCompatible":true,"finalPromptOnlyJarBootVerified":true,"finalMigrationsUnchanged":31},
     "realProviderApprovedBudget":{"parents":6,"attempts":12,"outputTokens":49152,"submitted":6,"actualAttempts":7,"actualOutputTokens":9682,"strictCasesPassed":5,"strictCasesTotal":6,"originalReport":"REVIEW_REQUIRED, recommendation null"},
     "separatelyApprovedFollowup":{"parents":1,"maxAttempts":2,"maxOutputTokens":2048,"actualAttempts":1,"actualOutputTokens":165,"recommendedMode":"PLAN","status":"PASS"},
-    "pc":"PARTIAL: discussion/no-draft, note retention/edit/save without charge, generated repaired draft, manual edit guards. Save edited draft/diagnostic/revision/reopen pending; no formal client touched.",
-    "pending":["Remaining independent Windows AI UI acceptance","Android acceptance after Web/PC; signed candidate publication separately gated"],
+    "pc":"PASS_SCOPED: discussion, note/edit/save without charge, bounded repair/quota, manual draft save, safe diagnostics, revision and cold reopen. Original57cbf739 full UI; finalfa201129 mobile-only CSS rebuild login/home and same conversation/title/disabled confirmation verified after owner navigation handoff. No Windows CDP/auth automation; no formal client touched.",
+    "oct24":{"paidAiCalls":0,"realEmails":0,"finalWebRecheckPassed":6,"androidPassedGroups":5,"androidPackage":"cn.zijun701.plan.mobile.regression","androidSha256":"ff23b8d601c0ebd953944293fb8eb0044d6c3844b5737181c9a1fdb32071fdfa","formalAndroidApkUnchanged":true,"pcFinalExeSha256":"fa2011297282a455ec195a27711d9b08970f582a6805c8f0dee2ff03ab81042c","evidence":["acceptance-results/ai-reliability/android/2026-10-23T19-14-18-904Z/report.json","acceptance-results/ai-reliability/pc/observations-20261024.json","acceptance-results/historical-closure/ai-reliability-browser-notes-fix3.log"],"limits":"Fake upstream on both independent native clients; no new real-provider calls, production deployment, formal signing or upgrade evidence. Synthetic revision fixture uses current today; not proof of preserving dates across midnight."},
+    "pending":["New version/signing, production snapshot/migration/rollback, formal native retention and update feeds remain separate publication gates"],
     "details":"docs/ai-reliability-progress.md"
   },
   "historicalClosure": {

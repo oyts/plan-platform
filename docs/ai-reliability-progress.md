@@ -1,6 +1,20 @@
 # 核心阶段1 AI可靠性开发与验收进度
 
-更新于2026年10月23日。基线dd75f00；正式三端仍为0.1.20／Android25／MySQL V30。本页只记录[核心规划](core-function-roadmap-0120-plus.md)阶段1，不推进阶段2—6或UI重构。剩余10%停止，不自动安排续做。
+更新于2026年10月24日。阶段源码基线31c2c1a；正式三端仍为0.1.20／Android25／MySQL V30。本页只记录[核心规划](core-function-roadmap-0120-plus.md)阶段1，不推进阶段2—6或UI重构。剩余10%停止，不自动安排续做。
+
+**当前结论：阶段1开发及约定的定向验收已完成，尚未正式发布。** 生产仍为历史0.1.20；本次候选不能替换历史签名包或给朋友作为新版本分发。
+
+## 10月24日补验
+
+- 原合成数据库按受限 `--resume` 路径恢复，没有重建库或更换维护者登录凭据。PC补完手改保存、逐次诊断、明确修订、关闭重开和确认未恢复：通过。未执行真实计划创建，未碰正式客户端。旧PARTIAL记录保留，补验记录为acceptance-results/ai-reliability/pc/observations-20261024.json。
+- Android真机首次发现需求笔记保存被后续sticky输入表单遮挡。按frontend-design技能检查真实截图，保持Swiss蓝白和现有页签，仅在手机尺寸展开笔记时取消后续表单悬浮；不是全站视觉重构。补上500px短视口下保存按钮真实命中检查。
+- 最终Web新增6项重新通过；不是新增6个不同案例，也未重跑无关旧业务。证据：acceptance-results/historical-closure/ai-reliability-browser-notes-fix3.log。前两次运行因浏览器路径／受限进程及残留预览端口失败，失败日志保留，改用仓库浏览器和原用户权限后通过。
+- Android独立包最终SHA256：ff23b8d601c0ebd953944293fb8eb0044d6c3844b5737181c9a1fdb32071fdfa。五组通过：只讨论／笔记与未保存保护；一次修复两次诊断及计次；手改保存和二次修订；冷重开保留；两次确定失败时旧草稿、可读文字及退款。真实Java桥接，本机H2／假上游，不是页面拦截模拟。正式APK前后哈希相同。证据：acceptance-results/ai-reliability/android/2026-10-23T19-14-18-904Z/report.json。
+- 首次安装被系统取消，维护者处理后同独立包安装成功。脚本HTTP状态码、成功诊断reason=null时读取state的两处错误已修正，旧失败报告保留；OEM WebView的CDP截图超时改用前台守卫后的真实屏幕截图，不绕过业务断言或安全弹窗。
+- 最终独立PC重建SHA256：fa2011297282a455ec195a27711d9b08970f582a6805c8f0dee2ff03ab81042c。原合成登录／首页保留通过；最后一次AI入口只读补看遇到电脑工具坐标错误，由维护者打开原对话后，真实截图／UIA核对原三轮对话、修订标题、已用1／占用0、保存禁用和确认生成禁用均正常。记为有人机交接的补验，未用CDP或自动认证替代技能。
+- 本次新增收费AI调用0、真实邮件0、生产部署0。此前有界真实模型7父请求／8上游／9847输出已结案，预算不重新获得。
+
+下文10月23日记录为历史检查点；当前下一步以本节与页末为准。
 
 ## 已实现
 
@@ -53,9 +67,29 @@ PC维护者已自行登录。独立EXE SHA256为57cbf739cf779dd166aa7e0165c5a1de
 - 两次契约命令参数／生成开关错误及随后契约漂移失败保留；按正确开关更新审查后的快照，最终10项通过。
 - 首个MySQL演练未覆盖开发H2驱动，启动失败；第二轮迁移和API通过，但服务器Python3.6不支持gzip.compress(mtime=0)。改用GzipFile兼容路径后，仅续做恢复和旧镜像门槛，52表相同。未删库或篡改Flyway校验和。
 
-## 下一步
+## 当前收尾与发布边界
 
-1. 不重跑任何真实验收脚本或删除启动标记；原6请求及另1补验均已结束，没有剩余收费授权。
-2. 通过电脑操作技能续验当前合成草稿保存、诊断、修订及重开；先恢复准确窗口／焦点，自动滚动后重新观察。必要时用键盘Tab，但不得使用CDP代替Windows技能或自动登录。
-3. Web和PC均完成后通知连接Android，构建独立测试候选，定向真机验收本阶段，不重跑邮件／历史迁移／提醒等无关全套。
-4. 更新本页、scope和API说明，安全审查后同步GitHub源码。正式版本号、签名、升级保留、生产备份及发布另走候选门槛；目前阶段1未完整结束，不能对朋友宣布已发布。
+1. Web最终6项、独立Android5组、PC完整流程及最终重建包只读保留补验已完成；真实模型结论仍保留原5/6与单独补验，不改写为原轮全通过。
+2. 文档／scope一致性和敏感审查后同步GitHub源码；阶段2—6本轮不开始。
+3. 正式发布另走新版本号、同身份签名、生产快照／恢复与迁移、灰度健康、升级保留和更新源门槛。候选仍显示0.1.20只是未发布构建，不能重打历史正式标签／包，不能给朋友当新版。
+4. 不重跑任何真实调用脚本，不删除启动标记；没有剩余收费授权。不自动安排任务。
+
+## 定向复现（不调用收费上游）
+
+PC与手机本轮证据使用同一受限合成库，启动器一小时自动停止。保留库续做仅限下列路径；不要重新运行seed或覆盖synthetic-login.txt：
+
+```powershell
+$env:JAVA_HOME='E:\biancheng\JDK21'
+.desktop-tools/node22/node-v22.23.3-win-x64/node.exe scripts/start-ai-reliability-fixture.mjs --resume acceptance-results/ai-reliability/2026-10-23T15-25-05-949Z
+```
+
+另开本机终端，使用Node22及仓库浏览器；`PLAN_RELIABILITY_REUSE=1`只用于已经确认的上述假上游：
+
+```powershell
+$env:PATH=(Join-Path (Get-Location) '.desktop-tools/node22/node-v22.23.3-win-x64')+';'+$env:PATH
+$env:PLAYWRIGHT_BROWSERS_PATH=(Join-Path (Get-Location) '.desktop-tools/playwright')
+$env:PLAN_RELIABILITY_REUSE='1'
+npm.cmd --prefix web run test:e2e -- --config playwright.reliability.config.ts
+```
+
+手机需本人连接、解锁并允许独立包安装之后，才运行`node scripts/android-ai-reliability.mjs`。脚本要求唯一授权设备、当前精确APK哈希与独立包身份，遇到系统提示等待本人，不代点安全确认；会创建新合成账号，退出旧账号也只限独立包，不清数据。APK路径：`.desktop-tools/ai-reliability-android/PlanCabin-0.1.20-debug.apk`，**不是正式包，不发朋友或上传更新源**。未来重建哈希改变时必须重新审查及验收，不能去掉哈希断言。
