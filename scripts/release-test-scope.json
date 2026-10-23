@@ -1,7 +1,7 @@
 {
   "version": "0.1.21",
   "coreAiReliability": {
-    "status":"stage1-development-and-targeted-acceptance-complete-unreleased",
+    "status":"stage1-released-0.1.21",
     "reason":"V31 durable attempt metadata and bounded repair; explicit discussion/generate/revise, retained requirements, readable rejected prose and safe owner/admin diagnostics. Source version remains0.1.20 only as unreleased candidate; no public artifacts/cutover. Repair defaults false.",
     "backend":["AiRepairIntegrationTest","AiIntentIntegrationTest","DeepSeekProviderTest","AiConversationIntegrationTest","ReflectionAiIntegrationTest","AiFoundationTest","AiUsageIntegrationTest","AiQuotaIntegrationTest","AiAdjustmentIntegrationTest"],
     "contract":["ApiContractTest","ApiErrorContractTest"],
@@ -16,7 +16,8 @@
     "separatelyApprovedFollowup":{"parents":1,"maxAttempts":2,"maxOutputTokens":2048,"actualAttempts":1,"actualOutputTokens":165,"recommendedMode":"PLAN","status":"PASS"},
     "pc":"PASS_SCOPED: discussion, note/edit/save without charge, bounded repair/quota, manual draft save, safe diagnostics, revision and cold reopen. Original57cbf739 full UI; finalfa201129 mobile-only CSS rebuild login/home and same conversation/title/disabled confirmation verified after owner navigation handoff. No Windows CDP/auth automation; no formal client touched.",
     "oct24":{"paidAiCalls":0,"realEmails":0,"finalWebRecheckPassed":6,"androidPassedGroups":5,"androidPackage":"cn.zijun701.plan.mobile.regression","androidSha256":"ff23b8d601c0ebd953944293fb8eb0044d6c3844b5737181c9a1fdb32071fdfa","formalAndroidApkUnchanged":true,"pcFinalExeSha256":"fa2011297282a455ec195a27711d9b08970f582a6805c8f0dee2ff03ab81042c","evidence":["acceptance-results/ai-reliability/android/2026-10-23T19-14-18-904Z/report.json","acceptance-results/ai-reliability/pc/observations-20261024.json","acceptance-results/historical-closure/ai-reliability-browser-notes-fix3.log"],"limits":"Fake upstream on both independent native clients; no new real-provider calls, production deployment, formal signing or upgrade evidence. Synthetic revision fixture uses current today; not proof of preserving dates across midnight."},
-    "pending":["New version/signing, production snapshot/migration/rollback, formal native retention and update feeds remain separate publication gates"],
+    "release0121":{"backendDistinctPassed":76,"snapshotTablesRestoredTwice":51,"originalBusinessTablesUnchanged":50,"formalWindowsFilesUnchanged":561,"formalWindowsAccepted":true,"formalAndroidAccepted":true,"httpsGroupsPassed":6,"windowsPublicGroupsPassed":5,"androidProtectedGroupsPassed":4,"bothNativeLatestChecksPassed":true,"automaticDownloadChecked":false,"paidAiCalls":0,"realTestEmails":0,"details":"docs/release-0121.md"},
+    "pending":[],
     "details":"docs/ai-reliability-progress.md"
   },
   "historicalClosure": {

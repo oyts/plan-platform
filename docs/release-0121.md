@@ -1,6 +1,6 @@
 # 计划舱0.1.21：核心阶段1 AI可靠性
 
-2026年10月24日发布收尾中，**尚未完成正式分发**。源码和独立三端验收已完成，生产当前仍为0.1.20。进度以[检查点](release-0121-resume.json)和本页后续实际结果为准，不将候选构建当成上线。
+2026年10月24日，**正式Web/API、Windows官网／可选更新源、Android登录受限源已统一0.1.21／构建26**。本轮核心阶段1已开发及验收，正在完成GitHub归档。进度以[检查点](release-0121-resume.json)为准，不将独立调试包当成正式安装包。
 
 ## 交付范围
 
@@ -14,8 +14,9 @@
 - 有界官方模型样本：7父请求／8次上游／9847输出Token，原六项严格检查5/6和另一次推荐补验分别保留；本次发布不新增付费调用或真实测试邮件。
 - 0.1.21后端最终：76个不同用例通过。第一次参数引用错误未执行测试；第二次75通过、1个契约版本漂移失败，审查确认仅版本字段后补跑10项契约通过并生成JAR。不伪造首次即全通过。
 - 快照演练守卫5项、激活守卫4项通过。最初unittest discover对带连字符文件名发现0项，不算通过数；改为直接运行文件取得上述真实结果。
-- 正式Windows已覆盖原目录，启动前561个原数据文件不变；原登录、0/0队列、0.1.21和HTTPS设置／默认不自动下载已核对，冷重开与新版服务联测待补。
-- 正式Android已核对升级前原登录和0/0队列，同证书安装0.1.21／26成功；升级后验收待生产切换。
+- 正式Windows已覆盖原目录，启动前561个原数据文件不变；原登录、0/0队列、0.1.21和HTTPS设置／默认不自动下载、冷重开及新版讨论／生成入口均通过；发布后实际检查显示当前最新版本，未勾选自动下载。
+- 正式Android同包名同证书覆盖，精确APK、原登录及0/0队列、新版讨论／生成、对话／草稿切换、冷重开4组通过；发布后更新检查结果另存检查点。
+- 正式HTTPS桌面／手机共6组通过，需求保存、不调用AI、409、他人404、no-store、重开手动草稿与明确确认门槛均使用专用普通合成账号；没有调用模型或创建真实业务。Windows公网5组及Android受限源4组通过，旧安装包保留。
 
 证据根目录：acceptance-results/historical-closure/ai-reliability-0121-*及acceptance-results/native-ai-reliability-0121/。私有资料不进Git。正式队列为空，不能声称证明非空真实队列升级；独立合成证据另列。
 
@@ -34,8 +35,16 @@
 
 新目录/home/oyts/plan-platform/releases/0.1.21-459347da，旧目录/home/oyts/plan-platform/releases/0.1.20-b1a78701。演练使用当时真实一致性快照，两次独立恢复，再检查V30→V31三张扩展表的原列投影与其他原表、空新增尝试表及默认值、实际0.1.20旧镜像兼容。正式服务在演练中不切换。
 
+实际演练已通过：51表两次完整恢复一致，50张原业务表的原字段不变。报告/home/oyts/plan-platform/release-drills/roadmap-20261023193133-f1c39909/report.json；快照/home/oyts/plan-platform/releases/0.1.15-50bc92a/backups/plan_platform-mysql-20261023-193134.sql.gz。随后精确激活通过，公网健康0.1.21、功能／邮件／治理开关及只读挂载保留；升级后的日常MySQL备份已上传既有OSS并下载校验，无删除、无主动测试发信。
+
 激活必须使用scripts/activate-ai-reliability-release.py，核对精确归档／JAR与一小时内演练证明。只在新发布.env启用AI_REPAIR_ENABLED=true，旧发布环境和共享叠加文件保持原字节。邮件变更、SMTP／AI只读挂载、治理／告警、HTTPS与受限分发挂载保留。实际启用后默认60秒、合计8192输出Token及64K保守输入字节边界继续由后端执行；不因启用修复增加用户每日次数。
 
 激活失败先执行会话代次回退守卫，再恢复旧应用镜像／入口，不降级数据库、不清账号或队列。不要使用早期回旧Node的rollback-public-entry.sh。保留旧包、镜像、卷、恢复库和备份；未测试通过不发布更新源。
 
 本轮5小时额度剩余5%时保存并通知维护者，不安排自动任务。尚未开始阶段2—6或UI重构。
+
+## 分发与回退
+
+Windows阶段：production-artifacts/windows-public-release/0.1.21/20261023T194352009Z-Q1fSbp，远端client-public/releases/windows-0121-308Q95；必要时执行该目录publish.sh rollback windows-0121-308Q95，仅撤回静态清单。Android阶段：production-artifacts/invited-android/0.1.21/candidate-7d5uaS，必要时执行/home/oyts/plan-platform/android-private/staging/android-26-c3f38f94/rollback.sh。两者均保留新旧字节，不降级已安装客户端。
+
+公网证据：acceptance-results/public-web/20261023-194106-2cb41c/report.json；acceptance-results/windows-public-cloud/2026-10-23T19-44-47-543Z-0367572f/report.json；acceptance-results/invited-android/2026-10-23T19-44-58-068Z-93e6f45f/report.json。Windows更新签名不是Authenticode发布者证书；本轮同身份覆盖不冒充重新执行应用内跨版本安装。
