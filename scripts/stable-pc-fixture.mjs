@@ -1,23 +1,31 @@
 import {spawn} from 'node:child_process';
 import {createWriteStream} from 'node:fs';
-import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile,copyFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {join,resolve,sep} from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
 import {assertPortsFree,createFaultProxy} from './native-regression-support.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url)),historical=process.argv.includes('--historical'),port=historical?43167:43162,proxyPort=historical?43168:43163;
 const input=process.argv.slice(2).filter(arg=>arg!=='--historical'),resume=input.length===2&&input[0]==='--resume';
-if(input.length&&!resume)throw Error('Use [--historical] [--resume with an existing synthetic run].');
+const clone=historical&&input.length===2&&input[0]==='--clone';
+if(input.length&&!resume&&!clone)throw Error('Use [--historical] [--resume or --clone with an existing synthetic run].');
 await assertPortsFree([port,proxyPort]);
 const outputRoot=historical?'acceptance-results/historical-closure/pc':'acceptance-results/stable-trial/pc';
 const out=resume?resolve(input[1]):join(root,outputRoot,new Date().toISOString().replace(/[:.]/g,'-'));
 if(!resolve(out).startsWith(resolve(root,outputRoot)+sep))throw Error('Invalid private fixture directory');
 await mkdir(out,{recursive:true});
 const jar=join(root,historical?'backend/target-historical/plan-platform-api.jar':'backend/target-stable/plan-platform-api.jar'),jarHash=createHash('sha256').update(await readFile(jar)).digest('hex');
-const prior=resume?JSON.parse(await readFile(join(out,'state.json'),'utf8')):null;
+let prior=resume?JSON.parse(await readFile(join(out,'state.json'),'utf8')):null;
+if(clone){
+ const source=resolve(input[1]);if(!source.startsWith(resolve(root,outputRoot)+sep))throw Error('Only an existing local synthetic fixture may be cloned');
+ prior=JSON.parse(await readFile(join(source,'state.json'),'utf8'));
+ if(prior.jarSha256!=='d6460ca0a4fe231e290ab7231332c99340fd5242b7f07cfaa7891e59c01a3cce'||jarHash!=='452809438722476dde9a7a9c890967a4140b033aa940f39c915809e4e476e7e6'||prior.port!==port||prior.proxyPort!==proxyPort)throw Error('Only the reviewed historical CSV fixture and exact final JAR can be cloned');
+ await copyFile(join(source,'synthetic-db.mv.db'),join(out,'synthetic-db.mv.db'));await copyFile(join(source,'synthetic-login.txt'),join(out,'synthetic-login.txt'));
+ await writeFile(join(out,'state.json'),JSON.stringify({...prior,jarSha256:jarHash,status:'CLONED_SYNTHETIC_ONLY',sourceFixtureRetained:true}),{flag:'wx'});
+}
 if(resume&&(prior.jarSha256!==jarHash||prior.port!==port||prior.proxyPort!==proxyPort))throw Error('Resume requires identical accepted API bytes and original isolated ports.');
 const args=['-Duser.timezone=Asia/Shanghai','-jar',jar,'--server.address=127.0.0.1',`--server.port=${port}`,'--spring.profiles.active=acceptance',
- `--spring.datasource.url=jdbc:h2:file:${join(out,'synthetic-db').replaceAll('\\','/')};MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_ON_EXIT=FALSE`,
+ `--spring.datasource.url=jdbc:h2:file:${join(out,'synthetic-db').replaceAll('\\','/')};MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_ON_EXIT=FALSE;WRITE_DELAY=0`,
  '--spring.datasource.driver-class-name=org.h2.Driver','--spring.datasource.username=sa','--spring.datasource.password=',
  '--spring.h2.console.enabled=false','--app.security.registration-enabled=true','--app.security.email-verification-enabled=false',
  '--app.security.bootstrap-admin-email=','--app.security.password-reset-enabled=false','--app.security.refresh-cookie-secure=false',
@@ -33,7 +41,7 @@ async function api(path,body,token,method='POST',expected=200){const r=await fet
 try{
  let healthy=false;for(let i=0;i<90;i++){if(child.exitCode!==null)throw Error('Isolated API exited');try{healthy=(await fetch(`http://127.0.0.1:${port}/actuator/health`)).ok;}catch{}if(healthy)break;await new Promise(r=>setTimeout(r,1000));}if(!healthy)throw Error('Isolated API not ready');
  proxy=await createFaultProxy(proxyPort,port);
- if(resume){
+ if(resume||clone){
   await writeFile(join(out,'resume-'+Date.now()+'.json'),JSON.stringify({at:new Date().toISOString(),apiProcessId:child.pid,jarSha256:jarHash,previousStateUnchanged:true},null,2),{flag:'wx'});
   console.log('RESUMED: '+out);console.log('Original synthetic account and database retained. Commands: offline | online | stop.');
   process.stdin.setEncoding('utf8');process.stdin.on('data',text=>{const command=text.trim();if(command==='stop')void stop();else if(['offline','online'].includes(command)){proxy.setOnline(command==='online');console.log('Synthetic proxy '+command);}});

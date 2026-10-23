@@ -18,21 +18,31 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Route/declared-DTO drift gate, not an assertion that all dynamic service responses are typed. */
+/** Route/DTO and reviewed service-delegation drift gate; unresolved dynamic fields remain explicit. */
 @SpringBootTest
 class ApiContractTest {
     @Autowired @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping mappings;
     @Autowired ObjectMapper json;
-    @Value("${app.version}") String sourceVersion;
     private final Map<String,JsonNode> schemas=new TreeMap<>();
     private static final Set<String> PUBLIC=Set.of("GET /health","GET /auth/config","POST /auth/register",
         "POST /auth/login","POST /auth/refresh","POST /auth/logout","POST /auth/password-reset/request",
         "POST /auth/password-reset/confirm","POST /auth/email-verification/confirm","POST /auth/email-change/verify");
 
+    @Test void springRegexQuantifiersBecomeValidOpenApiPathVariables(){
+        assertThat(ApiContractServiceTypes.normalizePath("/ai/saved-drafts/{id:[a-f0-9-]{36}}"))
+            .isEqualTo("/ai/saved-drafts/{id}");
+        assertThat(ApiContractServiceTypes.normalizePath("/{id:[0-9]{1,5}}/{other}"))
+            .isEqualTo("/{id}/{other}");
+        assertThat(ApiContractServiceTypes.normalizePath("/plans/{id}" )).isEqualTo("/plans/{id}");
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+            ()->ApiContractServiceTypes.normalizePath("/{id:[0-9]{2}"));
+    }
+
     @Test void artifactReferencesOperationsAndPathParametersAreConsistent() throws Exception {
         JsonNode artifact=json.readTree(Path.of("../docs/openapi-current.json").toFile());
         Set<String> ids=new HashSet<>();int count=0;
         for(var path:artifact.path("paths").properties())for(var operation:path.getValue().properties()){
+            assertThat(path.getKey()).doesNotContain(":");
             count++;assertThat(ids.add(operation.getValue().path("operationId").asText())).as(path.getKey()).isTrue();
             Set<String> actual=new HashSet<>();for(JsonNode p:operation.getValue().path("parameters"))if(p.path("in").asText().equals("path")){
                 assertThat(p.path("required").asBoolean()).isTrue();actual.add(p.path("name").asText());
@@ -47,23 +57,50 @@ class ApiContractTest {
         if(node.isContainerNode())node.forEach(child->checkReferences(child,root));
     }
 
+    @Test void normalResponseSchemasAndPrivateBackupVersionsHaveReviewedShapes()throws Exception{
+        JsonNode artifact=json.readTree(Path.of("../docs/openapi-current.json").toFile());
+        for(var path:artifact.path("paths").properties())for(var op:path.getValue().properties())
+            assertReviewed(op.getValue().path("responses"),artifact,new HashSet<>());
+        JsonNode input=artifact.path("paths").path("/data/preview").path("post").path("requestBody").path("content").path("application/json").path("schema").path("oneOf");
+        assertThat(input.size()).isEqualTo(4);
+        for(int v=1;v<=4;v++){
+            JsonNode fields=input.get(v-1).path("properties").path("records").path("properties");
+            assertThat(fields.has("personal_templates")).isEqualTo(v==4);
+            assertThat(fields.has("daily_reviews")).isEqualTo(v>=3);
+            assertThat(fields.path("task_progress").path("items").path("properties").has("ever_started")).isEqualTo(v>=2);
+        }
+        assertThat(artifact.path("paths").path("/ai/saved-drafts/{id}").path("put").path("x-spring-route").asText()).contains("{36}");
+    }
+    private void assertReviewed(JsonNode node,JsonNode artifact,Set<String> seen){
+        assertThat(node.has("x-dynamic-schema")).as(node.toString()).isFalse();
+        if(node.has("$ref")){String ref=node.path("$ref").asText();if(seen.add(ref))assertReviewed(artifact.at(ref.substring(1)),artifact,seen);}
+        if(node.isContainerNode())node.forEach(child->assertReviewed(child,artifact,seen));
+    }
+
     @Test void currentRoutesAndDeclaredDtosMatchTheCheckedInContract() throws Exception {
+        // The test profile deliberately has an older fixture version; document the real source metadata.
+        var releaseVersion=java.util.regex.Pattern.compile("(?m)^  version: ([0-9]+\\.[0-9]+\\.[0-9]+)\\s*$")
+            .matcher(Files.readString(Path.of("src/main/resources/application.yml")));
+        assertThat(releaseVersion.find()).isTrue();String sourceVersion=releaseVersion.group(1);
+        assertThat(releaseVersion.find()).isFalse();
         ObjectNode contract=json.createObjectNode();contract.put("openapi","3.0.3");
         contract.set("info",json.valueToTree(Map.of("title","计划舱当前源码路由与声明DTO契约","version",sourceVersion+"-source",
-            "x-contract-coverage","all-mvc-api-routes-and-declared-types; dynamic bodies explicitly marked",
-            "description","未发布候选。路由、参数与声明DTO由Spring MVC及Java类型提取；default响应和x-dynamic-schema不承诺具体响应结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。")));
+            "x-contract-coverage","all-mvc-api-routes-declared-types-and-reviewed-service-delegations; unresolved dynamic fields explicitly marked",
+            "description","未发布候选。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。default响应和x-dynamic-schema仍不承诺具体结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。")));
         contract.set("servers",json.valueToTree(List.of(Map.of("url","/api"))));
         contract.set("security",json.valueToTree(List.of(Map.of("bearerAuth",List.of()))));
         ObjectNode paths=contract.putObject("paths");List<String> operations=new ArrayList<>();
+        ApiContractShapes reviewed=new ApiContractShapes(json,t->schema(t,new Annotation[0]));
         mappings.getHandlerMethods().entrySet().stream().sorted(Comparator.comparing(e->e.getKey().toString())).forEach(entry->{
             var handler=entry.getValue();Method method=handler.getMethod();
             if(!handler.getBeanType().getPackageName().startsWith("com.oyts.planplatform"))return;
             for(String full:entry.getKey().getPatternValues()){
-                if(!full.startsWith("/api/"))continue;String path=full.substring(4);
+                if(!full.startsWith("/api/"))continue;String springPath=full.substring(4),path=ApiContractServiceTypes.normalizePath(springPath);
                 for(var verb:entry.getKey().getMethodsCondition().getMethods()){
                     String key=verb+" "+path;operations.add(key);ObjectNode op=json.createObjectNode();
                     op.put("operationId",handler.getBeanType().getSimpleName()+"_"+method.getName()+"_"+verb);
                     op.put("x-java-handler",handler.getBeanType().getName()+"#"+method.getName());
+                    if(!springPath.equals(path))op.put("x-spring-route",springPath);
                     if(PUBLIC.contains(key))op.putArray("security");
                     if(key.equals("POST /reminders/poll"))op.set("security",json.valueToTree(List.of(Map.of("reminderKey",List.of()))));
                     PreAuthorize rule=AnnotatedElementUtils.findMergedAnnotation(method,PreAuthorize.class);
@@ -86,17 +123,24 @@ class ApiContractTest {
                         if(!fallback.equals(ValueConstants.DEFAULT_NONE))shape.put("x-spring-default",fallback);value.set("schema",shape);
                     }
                     if(!parameters.isEmpty())op.set("parameters",parameters);
-                    if(Set.of("POST /data/preview","POST /data/restore").contains(key))op.put("x-streamed-json-body","Strict duplicate-field detection and byte-limited raw JSON; see core-api.md and PersonalDataController");
+                    if(Set.of("POST /data/preview","POST /data/restore").contains(key)){
+                        op.put("x-streamed-json-body","Strict duplicate-field detection and byte-limited raw JSON; see core-api.md and PersonalDataController");
+                        ObjectNode request=op.putObject("requestBody");request.put("required",true);request.putObject("content").putObject("application/json").set("schema",reviewed.request(key));
+                    }
                     JavaType response=json.constructType(method.getGenericReturnType());boolean dynamic=HttpEntity.class.isAssignableFrom(response.getRawClass())||response.hasRawClass(Object.class);
                     if(HttpEntity.class.isAssignableFrom(response.getRawClass()))response=response.containedTypeOrUnknown(0);
+                    Type serviceResponse=ApiContractServiceTypes.response(handler.getBeanType(),method,verb.name());
+                    if(serviceResponse!=null){response=json.constructType(serviceResponse);op.put("x-response-source","reviewed-service-delegation");}
                     ResponseStatus status=AnnotatedElementUtils.findMergedAnnotation(method,ResponseStatus.class);
-                    String code=status!=null?Integer.toString(status.code().value()):dynamic?"default":"200";
+                    ObjectNode reviewedShape=reviewed.response(key);Integer reviewedStatus=ApiContractShapes.status(key);
+                    String code=reviewedStatus!=null?reviewedStatus.toString():status!=null?Integer.toString(status.code().value()):serviceResponse!=null||reviewedShape!=null?"200":dynamic?"default":"200";
                     ObjectNode reply=op.putObject("responses").putObject(code);
                     reply.put("description",dynamic&&status==null?"状态由控制器运行分支决定，声明类型不保证具体HTTP状态":"声明的正常响应；失败语义另见core-api.md");
-                    if(!response.hasRawClass(void.class)&&!response.hasRawClass(Void.class)){
+                    if(!code.equals("204")&&!response.hasRawClass(void.class)&&!response.hasRawClass(Void.class)){
                         var produced=entry.getKey().getProducesCondition().getProducibleMediaTypes();
-                        String media=produced.size()==1?produced.iterator().next().toString():dynamic||response.hasRawClass(String.class)?"*/*":"application/json";
-                        reply.putObject("content").putObject(media).set("schema",schema(response,new Annotation[0]));
+                        String media=produced.size()==1?produced.iterator().next().toString():reviewedShape!=null?ApiContractShapes.media(key):serviceResponse!=null?"application/json":dynamic||response.hasRawClass(String.class)?"*/*":"application/json";
+                        reply.putObject("content").putObject(media).set("schema",reviewedShape!=null?reviewedShape:schema(response,new Annotation[0]));
+                        if(reviewedShape!=null)op.put("x-response-source","reviewed-wire-whitelist");
                         if(media.equals("*/*"))reply.put("x-runtime-content-type",true);
                     }
                     ObjectNode pathNode=paths.has(path)?(ObjectNode)paths.get(path):paths.putObject(path);assertThat(pathNode.has(verb.name().toLowerCase(Locale.ROOT))).as(key).isFalse();
@@ -139,7 +183,8 @@ class ApiContractTest {
                     // Validation annotations on record components are propagated to the backing field.
                     try{annotations=raw.getDeclaredField(field.getName()).getAnnotations();}catch(NoSuchFieldException impossible){throw new IllegalStateException(impossible);}
                     JavaType resolved=json.getTypeFactory().resolveMemberType(field.getGenericType(),type.getBindings());
-                    props.set(field.getName(),schema(resolved,annotations));
+                    ObjectNode reviewedField=new ApiContractShapes(json,t->schema(t,new Annotation[0])).field(raw,field.getName());
+                    props.set(field.getName(),reviewedField!=null?reviewedField:schema(resolved,annotations));
                     if(Arrays.stream(annotations).anyMatch(a->a instanceof NotNull||a instanceof NotBlank||a instanceof NotEmpty||a instanceof AssertTrue))required.add(field.getName());
                 }
                 if(!required.isEmpty())record.set("required",required);
