@@ -183,3 +183,9 @@ Windows CSV补验已在本人确认电脑可用后启动，使用 `stable-pc-fix
 `reminder-boundary-clock.mjs`把仅重启夹具的准备时间从125秒改为10分钟；按分钟截断和提前1分钟后仍至少留下8分钟。等待预算由真实提醒时刻计算，不再固定120秒。本人返回时若未来投递窗口已不足15秒，明确记录 `INCONCLUSIVE_LATE_OWNER_RETURN`，不判产品投递FAIL；已通过的原生授权／新鲜核对仍独立记录。时钟工具3项通过，包括跨上海零点和迟返边界；Android脚本语法检查通过。**未执行新一轮真机，重启后未来通知依旧待补验。**
 
 可复现：`mvn -q -f backend/pom.xml -Dplan.build.directory=target-historical -Dtest=ApiErrorContractTest,ApiContractTest test`；`node --test scripts/test-reminder-boundary-clock.mjs`。本轮只改测试／契约文档，无须重建已验证JAR/APK或重跑旧业务／MySQL全库演练。下一步先核对最新额度，取得届时手机可接管及本次重启许可后，只运行 `android-reminder-boundaries.mjs --owner-approved-reboot-only`；预计需等待未来提醒约9分钟，本人应及时解锁返回。随后再推进统一新版本签名及生产发布门槛，邮箱变更生产启用仍须确认。
+
+### 本次最终结果：重启后未来通知通过
+
+维护者随后明确确认手机已准备、允许本轮重启一次；实际执行上述reboot-only，重启后维护者亲自解锁返回。报告 `acceptance-results/historical-closure/reminder-boundaries/2026-10-23T05-58-18-300Z/report.json` 为PASS：既有原生授权保持开启、BOOT后设备新鲜联网核对、在未来窗口中等待后系统活动通知数量大于0。不是仅检查重启命令或把上次过期事件改成通过。正式应用未动，无真实邮件或付费AI。脚本finally已执行提醒清理、独立设备授权撤销、自有代理／ADB转发和Java进程关闭，没有cleanup-unconfirmed标记；合成库与之前失败证据保留。
+
+本次共同错误5项、路由契约4项均通过（`api-errors-final2.log`），时钟3项通过，最终JAR仍45280943…。源码工具第一笔提交f30023d已推送。补测结束查询额度已用91%／剩余9%，立即停止新开发，仅保存本条结果；不设置自动任务、不用重置券。提醒生命周期不再是未验收遗留。剩余是旧迁移输入逐版本形式化／逐接口错误穷尽描述的文档边界，以及统一新版签名、生产快照与迁移确认、正式升级保留及发布；生产邮箱变更仍默认关闭并待确认。
