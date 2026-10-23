@@ -1,5 +1,5 @@
 {
-  "version": "0.1.20",
+  "version": "0.1.21",
   "coreAiReliability": {
     "status":"stage1-development-and-targeted-acceptance-complete-unreleased",
     "reason":"V31 durable attempt metadata and bounded repair; explicit discussion/generate/revise, retained requirements, readable rejected prose and safe owner/admin diagnostics. Source version remains0.1.20 only as unreleased candidate; no public artifacts/cutover. Repair defaults false.",
@@ -334,8 +334,8 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Core roadmap stage1 in progress: AI repair/attempt accounting and directly affected conversation, reflection, provider and execution guard. This is not a new release or complete-stage acceptance. No unrelated full regression or paid AI.",
-  "frontendUnit": ["src/aiPlanning.test.ts","src/aiTransport.test.ts"],
+  "reason": "0.1.21 core stage1 release: intent/requirements, bounded repair, accounting and diagnostic UI; exact migration/restore, formal signature/retention and publication gates. No unrelated full regression, new paid AI or real email. Independent native and bounded provider evidence retained separately.",
+  "frontendUnit": ["src/aiPlanning.test.ts","src/aiTransport.test.ts","src/aiExperience.test.ts","src/aiWorkbench.test.ts","src/aiAdjustment.test.ts"],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",
     "reason":"Private whole-structure PLAN/ROUTE and saved new-AI-draft templates; common copy writer, strict nested whitelist, V28, schema4 backup, manual pending replay. Typed task-time reads/writes affect structural copies directly. No unrelated full regression.",
@@ -373,11 +373,16 @@
   "browser": ["e2e/ai-planning.spec.ts"],
   "backend": [
     "AiRepairIntegrationTest",
+    "AiIntentIntegrationTest",
     "DeepSeekProviderTest",
     "AiConversationIntegrationTest",
     "ReflectionAiIntegrationTest",
     "AiFoundationTest",
-    "AiUsageIntegrationTest"
+    "AiUsageIntegrationTest",
+    "AiQuotaIntegrationTest",
+    "AiAdjustmentIntegrationTest",
+    "ApiContractTest",
+    "ApiErrorContractTest"
   ],
   "android": [],
   "dailyExperience": {
