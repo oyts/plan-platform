@@ -83,6 +83,33 @@
 
 ## HTTP 结果与客户端责任
 
+### 错误正文不是统一包络
+
+`openapi-current.json` 的 `x-shared-failure-families` 按实际来源记录共同错误族，**不表示每个接口都会返回表中全部状态**，也不把过滤器错误附会成业务DTO。`ApiErrorContractTest`直接检查异常处理器和模拟Servlet过滤器输出，不调用真实数据库、邮件或AI。
+
+| 来源 | 状态 | 已确认正文 |
+| --- | --- | --- |
+| `ApiExceptionHandler` 业务异常 | 400／401／403／404／409／429／503 | `{timestamp,status,message}` |
+| Bean Validation 字段错误 | 400 | 另含 `fields: {字段名: 提示}`；不回显被拒绝的值，同字段保留首条错误 |
+| `MemberAccessFilter` 会话撤销／账号状态查询不可用 | 401／503 | 仅 `{message}`，没有 timestamp 或 status 字段 |
+| `IdempotencyFilter` 内容不一致／仍处理中 | 409 | `{status,message}`，没有 timestamp；不等于所有业务409 |
+| 畸形幂等键／AI或复盘请求超限 | 400／413 | 使用 `sendError`；由容器处理，不保证JSON或上述字段 |
+| Spring Security、HTTP解析、Nginx等 | 随实际原因 | 可能空正文、容器JSON或HTML；不承诺固定包络或穷尽状态 |
+
+客户端以HTTP状态为准，先检查内容类型，再尝试读取可选的 `message` 和 `fields`；解析失败也要保留原输入，显示安全的通用说明，不能把错误HTML当成功数据。上述目录不是“全部错误分支已逐接口穷尽验收”，也不承诺数据库异常或反向代理错误一定被Advice捕获。
+
+### 旧迁移原始JSON的兼容边界
+
+三个旧接口仍接收 `JsonNode`，不应用新版私有备份格式1—4的Schema：
+
+- `POST /migrations/legacy/preview` 对可解析的JSON返回预检报告；结构或版本错误可以是HTTP200且 `ready=false`，不能只按HTTP200认定可迁移。
+- `POST /migrations/legacy/import` 先要求预检 `ready=true`，再由迁移事务解析日期、进度、引用等；预检成功仍不等于写入必定成功。本人相同内容的已完成批次返回原报告，其他已完成批次会409。
+- `POST /migrations/legacy-snapshot` 保存原始JSON，**不要求** `ready=true`；不能据保存成功宣称已转换关系表。这里的“原始”是Jackson解析后再次序列化的JSON，不保证保留原文件空白或键顺序对应的字节。
+
+旧版标准输入使用数值 `schemaVersion:1—6`、对象 `progress` 与 `reflections`；`planVersion` 缺省为unknown。缺少工作区、内置目录时预检产生警告，部分内容只能保留快照。工作区包含 `customPlans/customMainlines/taskTemplates/trash/deletionMarkers`；回收站至多1000项、删除标记至多10000项，由 `LegacyRecycling` 联合验证类型、编号、删除时间和父子引用。永久删除标记不伪造可恢复正文，也不删除当前新版数据。
+
+这些说明来自当前解析代码，不是六个历史版本的完整JSON Schema。旧解析器存在类型转换、可选字段补足和完整快照保留规则；在没有逐版本兼容样本及验证器前，三个请求继续明确标注动态输入，不用过严的字段白名单误拒旧文件，也不用空Schema伪装形式化已完成。
+
 | 结果 | 客户端处理 |
 | --- | --- |
 | 400 | 保留输入，显示字段、关系、大小或不支持操作的具体校验信息；不自动重试 |

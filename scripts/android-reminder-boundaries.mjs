@@ -4,6 +4,7 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';import {createWriteStr
 import {randomUUID,createHash} from 'node:crypto';import {join} from 'node:path';import {fileURLToPath} from 'node:url';
 import {chromium,expect} from '../web/node_modules/@playwright/test/index.mjs';
 import {selectDevice,assertPortsFree,createFaultProxy} from './native-regression-support.mjs';
+import {reminderWindow,requireFutureWindow,dueWaitBudget} from './reminder-boundary-clock.mjs';
 const offlineFollowup=process.argv.length===3&&process.argv[2]==='--offline-followup';
 const rebootOnly=process.argv.length===3&&process.argv[2]==='--owner-approved-reboot-only';
 if(!offlineFollowup&&!rebootOnly&&!process.argv.includes('--owner-approved-lock-reboot'))throw Error('Explicit owner lock/reboot permission required');
@@ -23,12 +24,12 @@ async function bridge(command,args={}){return page.evaluate(async({command,args}
 async function api(path,data,token=user?.accessToken,method=data?'POST':'GET',expected=200){const r=await fetch(`http://127.0.0.1:${ports.api}/api${path}`,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(15000)});if(r.status!==expected)throw Error(path+': HTTP '+r.status);return expected===204?null:r.json();}
 async function check(name,fn){const r={name,status:'FAIL'};report.cases.push(r);try{await fn();r.status='PASS';console.log('[PASS] '+name);}finally{await writeFile(join(out,'report.json'),JSON.stringify(report,null,2));}}
 async function schedule(label){
- const now=new Date(Date.now()+125000),date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(now),hm=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit'}).format(now);
+ const window=reminderWindow(Date.now(),{reboot:label==='重启'}),{date,hm}=window;
  const plan=await api('/plans',{name:'合成历史提醒'+label,startDate:date,endDate:date,restDays:[]},undefined,'POST',201);
  const task=await api(`/plans/${plan.id}/tasks`,{date,startTime:hm,plannedMinutes:15,title:'合成历史提醒'+label,category:'STUDY',required:true,sortOrder:0,acceptance:[]},undefined,'POST',201);
  const prefs=await api('/reminders/preferences');await api('/reminders/preferences',{...prefs,advanceEnabled:true,advanceMinutes:1,quietEnabled:false,hideDetails:false},undefined,'PUT');
  await guard();await bridge('reminder_clear');registration=await api('/reminders/devices',{platform:'ANDROID',label:'合成历史边界测试'});await bridge('reminder_enable',{owner:user.user.id,registration});
- return {plan,task,date,hm,alertAt:new Date(`${date}T${hm}:00+08:00`).getTime()-60000};
+ return {plan,task,...window};
 }
 async function ownerUnlock(){console.log('WAITING_OWNER_UNLOCK: 请本人解锁手机并返回独立测试包，不要发送密码。');await wait(async()=>{try{await guard();return await unlocked();}catch{return false;}},'owner unlock and return',600000);}
 try{
@@ -47,7 +48,8 @@ try{
   await guard();const s=await schedule('重启');await writeFile(join(out,'private-resume.json'),JSON.stringify({user,password,registration,schedule:s}),{flag:'wx'});await browser.close();browser=null;page=null;const before=Date.now();console.log('REBOOTING: 已获本人许可，重启手机一次。');await adb('reboot');await delay(3000);
   await wait(async()=>{try{return(await adb('shell','getprop','sys.boot_completed'))==='1';}catch{return false;}},'boot completed',180000);await adb('reverse',`tcp:${ports.proxy}`,`tcp:${ports.proxy}`);await ownerUnlock();await attach();expect((await bridge('reminder_status')).enabled).toBe(true);
   await wait(async()=>{const d=await api('/reminders/devices');return d.some(x=>x.id===registration.id&&new Date(x.lastSeenAt).getTime()>before);},'boot receiver fresh server poll',120000);
-  await wait(async()=>Date.now()>s.alertAt+15000,'post boot alert time',120000);expect((await bridge('reminder_test_active')).length).toBeGreaterThan(0);report.bootReceiverFreshPoll=true;
+  report.bootReceiverFreshPoll=true;requireFutureWindow(s,Date.now());
+  await wait(async()=>Date.now()>s.alertAt+15000,'post boot alert time',dueWaitBudget(s,Date.now()));expect((await bridge('reminder_test_active')).length).toBeGreaterThan(0);
  });
  if(offlineFollowup)await check('点击本包合成系统通知返回正确计划且不自动完成任务',async()=>{
   const s=await schedule('通知点击');await adb('shell','input','keyevent','3');console.log('NOTIFICATION_WAIT: 等待合成通知，不锁屏或重启。');await wait(async()=>Date.now()>s.alertAt+20000,'notification due',120000);await adb('shell','am','start','-n',pkg+'/cn.zijun701.plan.mobile.MainActivity');await guard();expect((await bridge('reminder_test_active')).length).toBeGreaterThan(0);
@@ -60,7 +62,7 @@ try{
   await guard();await page.evaluate(()=>location.hash='/todos');await expect(page.getByRole('heading',{name:'今日待办',exact:true})).toBeVisible();proxy.setOnline(false);await page.getByLabel('快速记录',{exact:true}).fill('合成离线边界待办');await page.getByRole('button',{name:'记一件事',exact:true}).click();await expect(page.locator('.todo-row').filter({hasText:'合成离线边界待办'})).toBeVisible();expect((await bridge('reminder_status')).enabled).toBe(false);expect(await bridge('reminder_test_active')).toHaveLength(0);await page.evaluate(()=>location.hash='/sync');await expect(page.locator('.sync-summary strong')).toHaveText('1');proxy.setOnline(true);
  });
  report.status='PASS';
-}catch(error){report.error=error.message;console.error('Stopped: '+error.message);process.exitCode=1;}
+}catch(error){report.error=error.message;if(error.message.startsWith('INCONCLUSIVE_LATE_OWNER_RETURN'))report.status='INCONCLUSIVE';console.error('Stopped: '+error.message);process.exitCode=1;}
 finally{
  if(page)try{await bridge('reminder_clear');}catch{report.localCleanupUnconfirmed=true;}
  if(user&&registration)await api(`/reminders/devices/${registration.id}`,undefined,undefined,'DELETE',204).catch(()=>{report.serverRevokeUnconfirmed=true;});

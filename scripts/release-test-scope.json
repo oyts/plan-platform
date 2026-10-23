@@ -4,7 +4,7 @@
     "status":"in-progress-unreleased",
     "reason":"User-approved historical closure: transactional old-batch recycling supplement V29, dual-mailbox email change V30 (production disabled), shared UI and export-only Windows SaveAs. Test only new/security/export/legacy behavior and API contract drift. Formal production/artifacts remain0.1.19/24. Exactly two owner-approved real verification emails accepted and confirmed in an isolated service; no paid AI.",
     "backend":["LegacySupplementIntegrationTest","LegacyBackfillPreviewIntegrationTest","LegacyRecyclingTest","LegacyRecyclingIntegrationTest","EmailChangeIntegrationTest","MailRequestLimiterTest","EmailVerificationExperienceTest","AuthPlanIntegrationTest#portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack"],
-    "contract":["ApiContractTest"],
+    "contract":["ApiContractTest","ApiErrorContractTest"],
     "frontendUnit":["src/download.test.ts","src/aiWorkbench.test.ts"],
     "browser":["e2e/historical-closure.spec.ts"],
     "rust":["exports::tests"],
@@ -24,6 +24,7 @@
     "pending":["Future scheduled notification after reboot (authorization/fresh poll passed; delayed user return skipped expired advance event)","Legacy raw migration request schemas/error-status exhaustiveness beyond reviewed normal responses","Versioned signing, production snapshot/confirmation, formal upgrade retention and publication gates","Production email-change enable confirmation (real isolated dual-mailbox acceptance passed)"],
     "finalContractEvidence":"acceptance-results/historical-closure/api-contract-metadata-final.log",
     "finalContractSourceVersion":"0.1.19-source",
+    "oct23ErrorAndClockFollowup":{"sharedFailureFamiliesDocumented":true,"errorContractTestsPassed":5,"routeContractTestsPassed":4,"clockUnitTestsPassed":3,"rebootFixtureLeadMinutes":10,"lateReturnVerdict":"INCONCLUSIVE, not product delivery failure","deviceOperations":0,"productionChanged":false,"runtimeSourceChanged":false,"evidence":["acceptance-results/historical-closure/api-errors-final2.log"],"commands":["mvn -q -f backend/pom.xml -Dplan.build.directory=target-historical -Dtest=ApiErrorContractTest,ApiContractTest test","node --test scripts/test-reminder-boundary-clock.mjs"],"limits":"Raw legacy request schemas and exhaustive per-operation failures remain outside formal coverage. New future-window helper is unit-tested only; no postboot device PASS claim."},
     "details":"docs/historical-closure-progress.md"
   },
   "documentationHandoff": {

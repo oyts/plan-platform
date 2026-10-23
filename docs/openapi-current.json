@@ -1,14 +1,101 @@
 {
   "openapi" : "3.0.3",
   "info" : {
-    "description" : "未发布候选。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。default响应和x-dynamic-schema仍不承诺具体结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。",
-    "version" : "0.1.19-source",
     "title" : "计划舱当前源码路由与声明DTO契约",
+    "version" : "0.1.19-source",
+    "description" : "未发布候选。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。default响应和x-dynamic-schema仍不承诺具体结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。",
     "x-contract-coverage" : "all-mvc-api-routes-declared-types-and-reviewed-service-delegations; unresolved dynamic fields explicitly marked"
   },
   "servers" : [ {
     "url" : "/api"
   } ],
+  "x-shared-failure-families" : {
+    "description" : "按实际异常处理器与过滤器区分错误族，不对每个接口承诺全部状态。客户端先读HTTP状态，再按Content-Type安全读取可选message/fields；空正文、容器或反向代理HTML仍须兜底。",
+    "controllerAdvice" : {
+      "statuses" : [ 400, 401, 403, 404, 409, 429, 503 ],
+      "source" : "common.ApiExceptionHandler",
+      "schema" : {
+        "type" : "object",
+        "additionalProperties" : false,
+        "properties" : {
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "type" : "integer"
+          },
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "timestamp", "status", "message" ]
+      }
+    },
+    "beanValidation" : {
+      "status" : 400,
+      "schema" : {
+        "type" : "object",
+        "additionalProperties" : false,
+        "properties" : {
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "type" : "integer"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "fields" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "timestamp", "status", "message", "fields" ]
+      },
+      "source" : "common.ApiExceptionHandler#validation"
+    },
+    "memberAccess" : {
+      "statuses" : [ 401, 503 ],
+      "source" : "auth.MemberAccessFilter",
+      "schema" : {
+        "type" : "object",
+        "additionalProperties" : false,
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "message" ]
+      }
+    },
+    "idempotencyConflict" : {
+      "status" : 409,
+      "source" : "sync.IdempotencyFilter",
+      "schema" : {
+        "type" : "object",
+        "additionalProperties" : false,
+        "properties" : {
+          "status" : {
+            "type" : "integer"
+          },
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "status", "message" ]
+      }
+    },
+    "containerOrSecurity" : {
+      "exampleStatuses" : [ 400, 401, 403, 413 ],
+      "bodySchemaGuaranteed" : false,
+      "description" : "畸形幂等键sendError(400)、AI/复盘体积拦截sendError(413)、Spring Security认证/授权与容器解析错误不经过上述Advice；正文可能为空或由容器生成。此表不是全部上游错误枚举。"
+    }
+  },
   "security" : [ {
     "bearerAuth" : [ ]
   } ],
@@ -15064,13 +15151,13 @@
   "components" : {
     "securitySchemes" : {
       "bearerAuth" : {
-        "bearerFormat" : "JWT",
+        "type" : "http",
         "scheme" : "bearer",
-        "type" : "http"
+        "bearerFormat" : "JWT"
       },
       "reminderKey" : {
-        "name" : "X-Reminder-Key",
         "type" : "apiKey",
+        "name" : "X-Reminder-Key",
         "in" : "header"
       }
     },

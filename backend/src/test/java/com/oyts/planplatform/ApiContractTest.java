@@ -88,6 +88,7 @@ class ApiContractTest {
             "x-contract-coverage","all-mvc-api-routes-declared-types-and-reviewed-service-delegations; unresolved dynamic fields explicitly marked",
             "description","未发布候选。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。default响应和x-dynamic-schema仍不承诺具体结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。")));
         contract.set("servers",json.valueToTree(List.of(Map.of("url","/api"))));
+        contract.set("x-shared-failure-families",ApiContractErrors.catalog(json));
         contract.set("security",json.valueToTree(List.of(Map.of("bearerAuth",List.of()))));
         ObjectNode paths=contract.putObject("paths");List<String> operations=new ArrayList<>();
         ApiContractShapes reviewed=new ApiContractShapes(json,t->schema(t,new Annotation[0]));

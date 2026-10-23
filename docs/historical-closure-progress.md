@@ -171,3 +171,15 @@ Windows CSV补验已在本人确认电脑可用后启动，使用 `stable-pc-fix
 当前设备补验剩余只有**重启后未来事项的自动到点投递**，不能用上面的过期跳过诊断替代。真实邮箱、手机完整业务、锁屏、点击、离线队列、外部接收和Windows另存为字节均已有对应证据。正常响应契约已补齐，旧迁移原始JSON输入形式化和所有错误分支的穷尽描述仍是文档边界。统一新版本签名／发布及生产邮箱变更启用仍待后续发布确认，不因为验收通过而擅自开放。
 
 最终契约4项退出0，补充证据 `api-contract-metadata-final.log`：文档版本改从生产源码配置读取，避免测试profile中旧0.1.7夹具版本误写文档；当前为0.1.19-source。此次只改测试生成器，没有重编或改动产品JAR。正式HTTPS收尾实查仍0.1.19，隔离真实邮件容器Running=false，私密测试地址／口令／会话和验收产物没有纳入提交。用户已有 `docs/stable-handoff.md` 改动保留，不纳入本批提交。
+
+## 2026年10月23日续做：共同错误契约与重启夹具修正
+
+维护者恢复“5小时额度剩余10%停止”的要求，自动任务仍关闭。本轮没有接管手机／PC、发信、调用AI或改动生产；先完成不需要设备的收尾。用户已有 `docs/stable-handoff.md` 改动继续保留，不纳入本批。
+
+当前契约增加 `x-shared-failure-families`，区分Advice的三字段包络、字段校验fields、成员过滤器仅message、幂等冲突status/message，以及不承诺JSON的容器／安全错误。不是给190个操作都附加一份可能并不成立的错误状态全集。新增 `ApiErrorContractTest`直接执行Advice、模拟成员／幂等过滤器及AI／复盘体积限制；同时保留原4项路由契约检查。首轮合成JwtAuthenticationToken未设已认证，夹具被正确跳过幂等处理，修正合成认证构造后通过；不是产品过滤器漏洞。错误正文不含合成数据库异常或被拒绝字段原值。
+
+三个旧迁移原始请求仍保留动态标记，但 [接口说明](core-api.md) 已补清楚实际边界：preview可能200且ready=false，import再做事务解析，snapshot并不要求预检ready；不能用新版备份格式1—4替代旧schema1—6，也不能把重新序列化JSON称为逐字节原文件保存。完整逐历史版本Schema／所有运行时错误仍未伪报完成。
+
+`reminder-boundary-clock.mjs`把仅重启夹具的准备时间从125秒改为10分钟；按分钟截断和提前1分钟后仍至少留下8分钟。等待预算由真实提醒时刻计算，不再固定120秒。本人返回时若未来投递窗口已不足15秒，明确记录 `INCONCLUSIVE_LATE_OWNER_RETURN`，不判产品投递FAIL；已通过的原生授权／新鲜核对仍独立记录。时钟工具3项通过，包括跨上海零点和迟返边界；Android脚本语法检查通过。**未执行新一轮真机，重启后未来通知依旧待补验。**
+
+可复现：`mvn -q -f backend/pom.xml -Dplan.build.directory=target-historical -Dtest=ApiErrorContractTest,ApiContractTest test`；`node --test scripts/test-reminder-boundary-clock.mjs`。本轮只改测试／契约文档，无须重建已验证JAR/APK或重跑旧业务／MySQL全库演练。下一步先核对最新额度，取得届时手机可接管及本次重启许可后，只运行 `android-reminder-boundaries.mjs --owner-approved-reboot-only`；预计需等待未来提醒约9分钟，本人应及时解锁返回。随后再推进统一新版本签名及生产发布门槛，邮箱变更生产启用仍须确认。
