@@ -1,7 +1,7 @@
 {
   "version":"0.1.21",
   "androidVersionCode":26,
-  "status":"three-platform-published-github-archive-pending",
+  "status":"complete-three-platform-released-and-github-archived",
   "automationEnabled":false,
   "stopAtFiveHourRemainingPercent":5,
   "candidate":"production-artifacts/client-release/0.1.21/20261023T192420Z-e73d16fb",
@@ -40,5 +40,7 @@
   "androidProtectedStage":"production-artifacts/invited-android/0.1.21/candidate-7d5uaS",
   "paidAiCallsDuringRelease":0,
   "realTestEmailsDuringRelease":0,
-  "remaining":["Final source push and immutable GitHub Windows-only archive"]
+  "github":{"url":"https://github.com/oyts/plan-platform/releases/tag/v0.1.21","tag":"v0.1.21","tagCommit":"81b90316baa61d84934615d64c12bdabfdc15ac2","windowsOnlyAssets":true,"androidPublicAsset":false},
+  "remaining":[],
+  "warning":"Stage1 complete. Do not rerun paid campaigns, installs, production migration or publications for documentation. No automatic continuation; stages2-6 require the next owner request."
 }

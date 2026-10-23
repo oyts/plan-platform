@@ -1,6 +1,6 @@
 # 计划舱0.1.21：核心阶段1 AI可靠性
 
-2026年10月24日，**正式Web/API、Windows官网／可选更新源、Android登录受限源已统一0.1.21／构建26**。本轮核心阶段1已开发及验收，正在完成GitHub归档。进度以[检查点](release-0121-resume.json)为准，不将独立调试包当成正式安装包。
+2026年10月24日，**正式Web/API、Windows官网／可选更新源、Android登录受限源已统一0.1.21／构建26**。本轮核心阶段1开发、验收、发布及[GitHub归档](https://github.com/oyts/plan-platform/releases/tag/v0.1.21)均已完成。进度以[检查点](release-0121-resume.json)为准，不将独立调试包当成正式安装包。
 
 ## 交付范围
 
@@ -15,7 +15,7 @@
 - 0.1.21后端最终：76个不同用例通过。第一次参数引用错误未执行测试；第二次75通过、1个契约版本漂移失败，审查确认仅版本字段后补跑10项契约通过并生成JAR。不伪造首次即全通过。
 - 快照演练守卫5项、激活守卫4项通过。最初unittest discover对带连字符文件名发现0项，不算通过数；改为直接运行文件取得上述真实结果。
 - 正式Windows已覆盖原目录，启动前561个原数据文件不变；原登录、0/0队列、0.1.21和HTTPS设置／默认不自动下载、冷重开及新版讨论／生成入口均通过；发布后实际检查显示当前最新版本，未勾选自动下载。
-- 正式Android同包名同证书覆盖，精确APK、原登录及0/0队列、新版讨论／生成、对话／草稿切换、冷重开4组通过；发布后更新检查结果另存检查点。
+- 正式Android同包名同证书覆盖，精确APK、原登录及0/0队列、新版讨论／生成、对话／草稿切换、冷重开4组通过；发布后实际更新检查2组通过，显示当前最新且自动下载未勾选。
 - 正式HTTPS桌面／手机共6组通过，需求保存、不调用AI、409、他人404、no-store、重开手动草稿与明确确认门槛均使用专用普通合成账号；没有调用模型或创建真实业务。Windows公网5组及Android受限源4组通过，旧安装包保留。
 
 证据根目录：acceptance-results/historical-closure/ai-reliability-0121-*及acceptance-results/native-ai-reliability-0121/。私有资料不进Git。正式队列为空，不能声称证明非空真实队列升级；独立合成证据另列。
@@ -48,3 +48,5 @@
 Windows阶段：production-artifacts/windows-public-release/0.1.21/20261023T194352009Z-Q1fSbp，远端client-public/releases/windows-0121-308Q95；必要时执行该目录publish.sh rollback windows-0121-308Q95，仅撤回静态清单。Android阶段：production-artifacts/invited-android/0.1.21/candidate-7d5uaS，必要时执行/home/oyts/plan-platform/android-private/staging/android-26-c3f38f94/rollback.sh。两者均保留新旧字节，不降级已安装客户端。
 
 公网证据：acceptance-results/public-web/20261023-194106-2cb41c/report.json；acceptance-results/windows-public-cloud/2026-10-23T19-44-47-543Z-0367572f/report.json；acceptance-results/invited-android/2026-10-23T19-44-58-068Z-93e6f45f/report.json。Windows更新签名不是Authenticode发布者证书；本轮同身份覆盖不冒充重新执行应用内跨版本安装。
+
+不可变标签v0.1.21指向81b90316baa61d84934615d64c12bdabfdc15ac2。GitHub仅公开Windows EXE、更新签名和SHA256SUMS；APK、账号、日志、数据库及密钥均未上传。后续仅资料一致性提交可以领先标签，不移动标签、不重打已发布包。
