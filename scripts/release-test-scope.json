@@ -1,5 +1,23 @@
 {
   "version": "0.1.20",
+  "coreAiReliability": {
+    "status":"stage1-unreleased-shared-source-accepted-native-and-real-provider-pending",
+    "reason":"V31 durable attempt metadata and bounded repair; explicit discussion/generate/revise, retained requirements, readable rejected prose and safe owner/admin diagnostics. Source version remains0.1.20 only as unreleased candidate; no public artifacts/cutover. Repair defaults false.",
+    "backend":["AiRepairIntegrationTest","AiIntentIntegrationTest","DeepSeekProviderTest","AiConversationIntegrationTest","ReflectionAiIntegrationTest","AiFoundationTest","AiUsageIntegrationTest","AiQuotaIntegrationTest","AiAdjustmentIntegrationTest"],
+    "contract":["ApiContractTest","ApiErrorContractTest"],
+    "frontendUnit":["src/aiPlanning.test.ts","src/aiExperience.test.ts","src/aiWorkbench.test.ts","src/aiAdjustment.test.ts"],
+    "browser":["e2e/ai-reliability.spec.ts","e2e/ai-planning.spec.ts","e2e/ai-adjustment.spec.ts","e2e/account-ai-operations.spec.ts (AI/admin cases only)"],
+    "paidAiCalls":8,
+    "productionChanged":false,
+    "developmentChecks":{"backendDistinctPassed":66,"contractPassed":10,"frontendDistinctPassed":13,"browserNewPassed":6,"browserAffectedPassed":22,"backendFailedFinal":0,"h2Migration":31,"mysqlVerified":true,"wholeStageAccepted":false},
+    "candidateJarSha256":"1ef2adc76b176fc6feaddecab9aed027755bd5b8bf7ca6dfe6d1b916a1e177ab",
+    "mysql":{"migrationJar":"6fa815851897c8852cdea8eb4a5cb6f38bbe461cbf46cb58ae9d8133710a20df","originalBusinessTablesUnchanged":50,"restoredTables":52,"priorImageCompatible":true,"finalPromptOnlyJarBootVerified":true,"finalMigrationsUnchanged":31},
+    "realProviderApprovedBudget":{"parents":6,"attempts":12,"outputTokens":49152,"submitted":6,"actualAttempts":7,"actualOutputTokens":9682,"strictCasesPassed":5,"strictCasesTotal":6,"originalReport":"REVIEW_REQUIRED, recommendation null"},
+    "separatelyApprovedFollowup":{"parents":1,"maxAttempts":2,"maxOutputTokens":2048,"actualAttempts":1,"actualOutputTokens":165,"recommendedMode":"PLAN","status":"PASS"},
+    "pc":"PARTIAL: discussion/no-draft, note retention/edit/save without charge, generated repaired draft, manual edit guards. Save edited draft/diagnostic/revision/reopen pending; no formal client touched.",
+    "pending":["Remaining independent Windows AI UI acceptance","Android acceptance after Web/PC; signed candidate publication separately gated"],
+    "details":"docs/ai-reliability-progress.md"
+  },
   "historicalClosure": {
     "status":"complete-three-platform-0.1.20-released-and-github-archived",
     "reason":"Historical closure delivered as0.1.20/25 with owner-approved production email change enabled. New/affected tests and publication gates only. Initial results and dated followups below remain historical, not counts for the final release. Final metadata/evidence in release0120; no account automatically changed, no public APK or registration.",
@@ -315,8 +333,8 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Historical closure0.1.20: V29 recycling supplements, V30 dual-mailbox changes, Windows export SaveAs and API compatibility contract. Only new/affected tests; no unrelated full regression or paid AI. Native upgrade/signature/production snapshot gates required. Owner approved production email-change enable; no automatic change to any account.",
-  "frontendUnit": ["src/download.test.ts","src/aiWorkbench.test.ts"],
+  "reason": "Core roadmap stage1 in progress: AI repair/attempt accounting and directly affected conversation, reflection, provider and execution guard. This is not a new release or complete-stage acceptance. No unrelated full regression or paid AI.",
+  "frontendUnit": ["src/aiPlanning.test.ts","src/aiTransport.test.ts"],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",
     "reason":"Private whole-structure PLAN/ROUTE and saved new-AI-draft templates; common copy writer, strict nested whitelist, V28, schema4 backup, manual pending replay. Typed task-time reads/writes affect structural copies directly. No unrelated full regression.",
@@ -351,19 +369,14 @@
     "mysqlFollowup":"V25 to V27 plus prior-start backfill, 47-table restore and actual 0.1.17 read compatibility passed in reflectionWorkspace; production unchanged",
     "details":"docs/native-reminders-progress.md"
   },
-  "browser": ["e2e/historical-closure.spec.ts"],
+  "browser": ["e2e/ai-planning.spec.ts"],
   "backend": [
-    "LegacySupplementIntegrationTest",
-    "LegacyBackfillPreviewIntegrationTest",
-    "LegacyRecyclingTest",
-    "LegacyRecyclingIntegrationTest",
-    "EmailChangeIntegrationTest",
-    "MailRequestLimiterTest",
-    "EmailVerificationExperienceTest",
-    "ApiContractTest",
-    "ApiErrorContractTest",
-    "LegacyWireContractIntegrationTest",
-    "AuthPlanIntegrationTest#portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack"
+    "AiRepairIntegrationTest",
+    "DeepSeekProviderTest",
+    "AiConversationIntegrationTest",
+    "ReflectionAiIntegrationTest",
+    "AiFoundationTest",
+    "AiUsageIntegrationTest"
   ],
   "android": [],
   "dailyExperience": {

@@ -47,6 +47,7 @@ app:
     max-concurrent: ${AI_MAX_CONCURRENT:2}
     queue-capacity: ${AI_QUEUE_CAPACITY:4}
     timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
+    repair-enabled: ${AI_REPAIR_ENABLED:false}
   android-updates:
     enabled: ${ANDROID_UPDATE_ENABLED:false}
     directory: ${ANDROID_UPDATE_DIRECTORY:}

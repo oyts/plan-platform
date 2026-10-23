@@ -31,6 +31,7 @@ backend/target-templates/
 backend/target-stable/
 backend/target-historical/
 backend/target-closure-release/
+backend/target-ai-reliability/
 android-artifacts/
 .android-signing/
 *.keystore

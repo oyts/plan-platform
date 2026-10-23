@@ -15,14 +15,15 @@ class AiUsageService {
     record Day(String date,Totals totals){}
     record Runtime(boolean enabled,int maxConcurrent,int queueCapacity,long queued,long running,AiExecutionGuard.Snapshot circuit){}
     record Entry(String requestId,String member,String email,String quotaDate,String state,String quotaState,String errorCode,Instant createdAt,Instant completedAt,Long durationMs,Long inputTokens,Long outputTokens){}
-    record Report(String from,String to,String timezone,Totals totals,List<Day> days,Runtime runtime,AiQuotaService.Page<Entry> recent){}
+    record ReasonCount(String reason,long attempts){}
+    record Report(String from,String to,String timezone,Totals totals,List<Day> days,Runtime runtime,AiQuotaService.Page<Entry> recent,List<ReasonCount> reasons){}
     private static final String STATE="COALESCE(q.terminal_state,j.state,CASE WHEN q.state='SUCCEEDED' THEN 'SUCCEEDED' WHEN q.state='RELEASED' THEN 'FAILED' WHEN q.state='UNKNOWN' THEN 'UNKNOWN' ELSE 'UNTRACKED' END)";
     private static final String INPUT="COALESCE(q.input_tokens,j.input_tokens)",OUTPUT="COALESCE(q.output_tokens,j.output_tokens)";
     private static final String FROM=" FROM ai_quota_requests q LEFT JOIN ai_jobs j ON j.reservation_id=q.id JOIN users u ON u.id=q.owner_id WHERE q.quota_day>=? AND q.quota_day<=?";
     private static String aggregate(){
         String s="COUNT(*)";
         for(String state:List.of("SUCCEEDED","FAILED","UNKNOWN","QUEUED","RUNNING","UNTRACKED"))s+=",COALESCE(SUM(CASE WHEN "+STATE+"='"+state+"' THEN 1 ELSE 0 END),0)";
-        return s+",COALESCE(SUM("+INPUT+"),0),COALESCE(SUM("+OUTPUT+"),0),COALESCE(SUM(CASE WHEN "+INPUT+" IS NOT NULL AND "+OUTPUT+" IS NOT NULL THEN 1 ELSE 0 END),0)";
+        return s+",COALESCE(SUM("+INPUT+"),0),COALESCE(SUM("+OUTPUT+"),0),COALESCE(SUM(CASE WHEN COALESCE(q.token_usage_complete,TRUE)=TRUE AND "+INPUT+" IS NOT NULL AND "+OUTPUT+" IS NOT NULL THEN 1 ELSE 0 END),0)";
     }
     private Totals totals(java.sql.ResultSet r,int start)throws java.sql.SQLException{return new Totals(r.getLong(start),r.getLong(start+1),r.getLong(start+2),r.getLong(start+3),r.getLong(start+4),r.getLong(start+5),r.getLong(start+6),r.getLong(start+7),r.getLong(start+8),r.getLong(start+9));}
     @Transactional(readOnly=true)
@@ -36,7 +37,9 @@ class AiUsageService {
         var rows=db.query("SELECT q.id,u.display_name,u.email,q.quota_day,"+STATE+",q.state,COALESCE(q.failure_code,j.error_code),q.created_at,COALESCE(q.completed_at,CASE WHEN j.state IN ('SUCCEEDED','FAILED','UNKNOWN') THEN j.updated_at END),q.duration_ms,"+INPUT+","+OUTPUT+FROM+" ORDER BY q.created_at DESC,q.id DESC LIMIT ? OFFSET ?",
             (r,n)->new Entry(r.getString(1),r.getString(2),r.getString(3),r.getDate(4).toLocalDate().toString(),r.getString(5),r.getString(6),safeCode(r.getString(7)),r.getTimestamp(8).toInstant(),r.getTimestamp(9)==null?null:r.getTimestamp(9).toInstant(),(Long)r.getObject(10),(Long)r.getObject(11),(Long)r.getObject(12)),from,to,size,(long)page*size);
         long queued=db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE state='QUEUED'",Long.class),running=db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE state='RUNNING'",Long.class);
-        return new Report(from.toString(),to.toString(),"Asia/Shanghai",sum,days,new Runtime(config.enabled()&&!config.apiKeyFile().isBlank(),config.maxConcurrent(),config.queueCapacity(),queued,running,guard.snapshot()),new AiQuotaService.Page<>(rows,page,size,sum.requests()));
+        var reasons=db.query("SELECT a.reason,COUNT(*) FROM ai_job_attempts a JOIN ai_jobs j ON j.id=a.job_id JOIN ai_quota_requests q ON q.id=j.reservation_id WHERE q.quota_day>=? AND q.quota_day<=? AND a.reason IS NOT NULL GROUP BY a.reason ORDER BY a.reason",(r,n)->new ReasonCount(safeReason(r.getString(1)),r.getLong(2)),from,to);
+        return new Report(from.toString(),to.toString(),"Asia/Shanghai",sum,days,new Runtime(config.enabled()&&!config.apiKeyFile().isBlank(),config.maxConcurrent(),config.queueCapacity(),queued,running,guard.snapshot()),new AiQuotaService.Page<>(rows,page,size,sum.requests()),reasons);
     }
     private String safeCode(String code){if(code==null)return null;try{return AiFailure.Code.valueOf(code).name();}catch(Exception unknown){return "UNKNOWN_ERROR";}}
+    private String safeReason(String reason){try{return AiFailure.Reason.valueOf(reason).name();}catch(Exception unknown){return "UNKNOWN_ERROR";}}
 }

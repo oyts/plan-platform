@@ -27,6 +27,7 @@ class AiConversationIntegrationTest {
     @Autowired AiConversationService sessions; @Autowired AiQuotaService quotas; @Autowired UserAccountRepository users;
     @Autowired ObjectMapper mapper; @Autowired JdbcTemplate db; @Autowired MockMvc mvc; @Autowired AiProperties config;
     @MockBean AiProvider provider;
+    @Autowired AiAttempts attempts;
     String owner,other,admin;
     String user(boolean isAdmin) {var user=new UserAccount("dialogue-"+UUID.randomUUID()+"@example.test","unused-test-hash","对话验收");if(isAdmin)user.makeAdmin();return users.saveAndFlush(user).getId();}
     RequestPostProcessor as(String id){return jwt().jwt(j->j.subject(id)).authorities(new SimpleGrantedAuthority("ROLE_USER"));}
@@ -38,7 +39,7 @@ class AiConversationIntegrationTest {
         return mapper.writeValueAsString(new AiDrafts.Draft(1,mode,0,"验收规划",mode==AiDrafts.Mode.PLAN?LocalDate.of(2026,10,15):null,mode==AiDrafts.Mode.PLAN?LocalDate.of(2026,10,31):null,mode==AiDrafts.Mode.PLAN?List.of(7):List.of(),mode==AiDrafts.Mode.ROUTE?List.of(new AiDrafts.Stage("base","基础")):List.of(),List.of(first,second)));
     }
     void reply(String mode,String draft) throws Exception {when(provider.generate(any())).thenReturn(new AiProvider.Result("{\"message\":\"请核对这份草稿。\",\"recommendedMode\":\""+mode+"\",\"draft\":"+draft+"}",100,200));}
-    void runNext() {var work=sessions.claim();assertNotNull(work);try(var guard=new AiExecutionGuard(2,0)){var runner=new AiJobRunner(sessions,provider,guard,config,false);try{runner.run(work);}finally{runner.close();}}}
+    void runNext() {var work=sessions.claim();assertNotNull(work);try(var guard=new AiExecutionGuard(2,0)){var runner=new AiJobRunner(sessions,provider,guard,config,attempts,false,false);try{runner.run(work);}finally{runner.close();}}}
     @Test void discussesModeFirstAndDeduplicatesPaidAdmission() throws Exception {
         var session=sessions.create(owner,null,true);reply("ROUTE","null");
         var job=sessions.enqueue(owner,session.id(),session.version(),"conversation-first","想学吉他，时间不固定");

@@ -38,11 +38,17 @@ final class DeepSeekProvider implements AiProvider {
             var response=client.send(http,info->new LimitedBody(256_000));
             if (response.statusCode()!=200) throw new AiFailure(AiFailure.Code.UPSTREAM_UNAVAILABLE,false);
             var root=mapper.readTree(response.body());var choice=root.path("choices").path(0);
-            if (!"stop".equals(choice.path("finish_reason").asText()) || !choice.path("message").path("content").isTextual()) throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
-            String text=choice.path("message").path("content").textValue();
             var usage=root.path("usage");
-            if (!usage.path("prompt_tokens").canConvertToLong() || !usage.path("completion_tokens").canConvertToLong()) throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
-            return new Result(text,usage.path("prompt_tokens").longValue(),usage.path("completion_tokens").longValue());
+            if (!usage.path("prompt_tokens").isIntegralNumber() || !usage.path("completion_tokens").isIntegralNumber()
+                || !usage.path("prompt_tokens").canConvertToLong() || !usage.path("completion_tokens").canConvertToLong()
+                || usage.path("prompt_tokens").longValue()<0 || usage.path("completion_tokens").longValue()<0
+                || usage.path("prompt_tokens").longValue()>1000000 || usage.path("completion_tokens").longValue()>8192)
+                throw new AiFailure(AiFailure.Code.INVALID_OUTPUT,false,AiFailure.Reason.USAGE_MISSING,null);
+            if(!choice.path("message").path("content").isTextual())throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
+            var result=new Result(choice.path("message").path("content").textValue(),usage.path("prompt_tokens").longValue(),usage.path("completion_tokens").longValue());
+            if(!"stop".equals(choice.path("finish_reason").asText()))throw new AiFailure(AiFailure.Code.INVALID_OUTPUT,false,
+                "length".equals(choice.path("finish_reason").asText())?AiFailure.Reason.OUTPUT_TRUNCATED:AiFailure.Reason.OUTPUT_INVALID,result);
+            return result;
         } catch (AiFailure safe) { throw safe; }
         catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new AiFailure(AiFailure.Code.UPSTREAM_UNAVAILABLE,true); }
         catch (com.fasterxml.jackson.core.JsonProcessingException invalid) { throw new AiFailure(AiFailure.Code.INVALID_OUTPUT); }

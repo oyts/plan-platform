@@ -50,4 +50,10 @@ class AiUsageIntegrationTest {
         for(String[] dates:List.of(new String[]{day.minusDays(31).toString(),day.toString()},new String[]{day.toString(),day.plusDays(1).toString()},new String[]{day.minusDays(90).toString(),day.minusDays(89).toString()}))mvc.perform(get("/api/admin/ai/usage").with(as(admin,"ADMIN")).param("from",dates[0]).param("to",dates[1])).andExpect(status().isBadRequest());
         mvc.perform(get("/api/admin/ai/usage").with(as(admin,"ADMIN")).param("size","51")).andExpect(status().isBadRequest());
     }
+    @Test void attemptReasonsAreSanitizedMetadataAndCorrelateWithOwnerNumber()throws Exception{
+        var session=conversations.create(owner,null,true);conversations.enqueue(owner,session.id(),0,UUID.randomUUID().toString(),"MUST_NOT_LEAK");var work=conversations.claim();
+        db.update("INSERT INTO ai_job_attempts(job_id,attempt_no,state,reason,input_chars,output_chars,input_tokens,output_tokens,started_at,completed_at) VALUES (?,0,'REJECTED','DRAFT_INVALID',100,200,50,60,?,?)",work.id(),java.sql.Timestamp.from(Instant.now().minusSeconds(1)),java.sql.Timestamp.from(Instant.now()));
+        var diagnostic=conversations.read(owner,session.id()).turns().getFirst().diagnostic();assertEquals(work.reservation(),diagnostic.requestId());assertEquals(100,diagnostic.details().getFirst().inputChars());assertTrue(diagnostic.details().getFirst().durationMs()>=0);
+        mvc.perform(get("/api/admin/ai/usage").with(as(admin,"ADMIN"))).andExpect(status().isOk()).andExpect(jsonPath("$.reasons[0].reason").value("DRAFT_INVALID")).andExpect(jsonPath("$.reasons[0].attempts").value(1)).andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("MUST_NOT_LEAK"))));
+    }
 }

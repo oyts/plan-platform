@@ -12,6 +12,7 @@ final class ApiContractServiceTypes {
             add("AiController",method,"ai.AiConversationService",method,switch(method){case "list"->1;case "create"->3;case "read"->2;default->4;});
         add("AiController","adjust","ai.AiConversationService","createAdjustment",4);
         add("AiController","draft","ai.AiConversationService","saveDraft",4);
+        add("AiController","requirements","ai.AiConversationService","saveRequirements",4);
         add("AiController","enqueue","ai.AiConversationService","enqueue",5);
         add("AiQuotaController","settings:GET","ai.AiQuotaService","policy",0);
         add("AiQuotaController","settings:PUT","ai.AiQuotaService","changePolicy",3);

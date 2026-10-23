@@ -25,8 +25,9 @@ public final class AiExecutionGuard implements AutoCloseable {
         catch (RejectedExecutionException busy) { throw new AiFailure(AiFailure.Code.BUSY); }
         try {
             var result = future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-            if (result == null || result.text() == null || result.text().isBlank() || result.text().length() > 128000 || result.inputTokens() < 0 || result.outputTokens() < 0) {
-                failed(); throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
+            if (result == null || result.text() == null || result.text().isBlank() || result.text().length() > 128000 || result.inputTokens() < 0 || result.outputTokens() < 0 || result.inputTokens()>1000000 || result.outputTokens()>8192) {
+                failed(); throw new AiFailure(AiFailure.Code.INVALID_OUTPUT,false,AiFailure.Reason.OUTPUT_INVALID,
+                    result!=null && result.inputTokens()>=0 && result.outputTokens()>=0 && result.inputTokens()<=1000000 && result.outputTokens()<=8192?result:null);
             }
             failures.set(0); return result;
         } catch (TimeoutException failure) { future.cancel(true); failed(); throw new AiFailure(AiFailure.Code.TIMEOUT); }

@@ -22,19 +22,22 @@ public class AiConversationService {
         this.db=db;this.quotas=quotas;this.config=config;this.mapper=mapper;this.validator=validator;this.applier=applier;this.adjustments=adjustments;this.reflections=reflections;
     }
     public record Summary(String id,String mode,long version,Instant createdAt,Instant expiresAt,boolean applied,boolean adjustment,boolean processing) {}
-    public record Turn(String id,String state,String message,String reply,String error,Instant createdAt) {}
+    public enum Intent { AUTO, DIALOGUE, GENERATE, REVISE }
+    public record AttemptInfo(int number,String state,String reason,Integer inputChars,Integer outputChars,Long inputTokens,Long outputTokens,Long durationMs) {}
+    public record Diagnostic(String requestId,String reason,int attempts,boolean repairing,boolean replyOnly,List<AttemptInfo> details) {}
+    public record Turn(String id,String state,String message,String reply,String error,Instant createdAt,Diagnostic diagnostic) {}
     public record Session(String id,String mode,String recommendedMode,long version,AiDrafts.Draft draft,
-                          JsonNode applied,Instant expiresAt,List<Turn> turns,AiAdjustmentService.View adjustment,JsonNode review) {}
+                          JsonNode applied,Instant expiresAt,List<Turn> turns,AiAdjustmentService.View adjustment,JsonNode review,String requirementsText) {}
     public record Job(String id,String state,String error) {}
-    record Work(String id,String owner,String sessionId,String reservation,String context,String mode) {}
-    private record Row(String id,String mode,String recommendedMode,long version,String draft,String applied,Instant expiresAt,String adjustment,String review) {}
+    record Work(String id,String owner,String sessionId,String reservation,String context,String mode,Intent intent) {}
+    private record Row(String id,String mode,String recommendedMode,long version,String draft,String applied,Instant expiresAt,String adjustment,String review,String requirements) {}
     boolean available() { return config.enabled() && !config.apiKeyFile().isBlank(); }
     private void lock() { db.queryForObject("SELECT id FROM ai_quota_policy WHERE id=1 FOR UPDATE",Integer.class); }
     private void enabledUser(String owner) { if(db.queryForObject("SELECT COUNT(*) FROM users WHERE id=? AND enabled=true",Integer.class,owner)!=1) throw new NotFoundException("账号不存在。"); }
     private Row owned(String owner,String id,boolean locking) {
         enabledUser(owner);
-        var rows=db.query("SELECT id,selected_mode,recommended_mode,version,draft_json,applied_json,expires_at,adjustment_json,review_context_json FROM ai_sessions WHERE id=? AND owner_id=? AND expires_at>?"+(locking?" FOR UPDATE":""),
-            (r,n)->new Row(r.getString(1),r.getString(2),r.getString(3),r.getLong(4),r.getString(5),r.getString(6),r.getTimestamp(7).toInstant(),r.getString(8),r.getString(9)),id,owner,now());
+        var rows=db.query("SELECT id,selected_mode,recommended_mode,version,draft_json,applied_json,expires_at,adjustment_json,review_context_json,requirements_text FROM ai_sessions WHERE id=? AND owner_id=? AND expires_at>?"+(locking?" FOR UPDATE":""),
+            (r,n)->new Row(r.getString(1),r.getString(2),r.getString(3),r.getLong(4),r.getString(5),r.getString(6),r.getTimestamp(7).toInstant(),r.getString(8),r.getString(9),r.getString(10)),id,owner,now());
         if(rows.isEmpty()) throw new NotFoundException("对话不存在或已过期。");return rows.getFirst();
     }
     private void editable(Row row,long version) {
@@ -54,7 +57,7 @@ public class AiConversationService {
         lock();enabledUser(owner);
         if(db.queryForObject("SELECT COUNT(*) FROM ai_sessions WHERE owner_id=? AND expires_at>?",Integer.class,owner,now())>=20) throw new ConflictException("最多保留 20 个对话，请先删除不需要的对话。");
         String id=UUID.randomUUID().toString();
-        db.update("INSERT INTO ai_sessions(id,owner_id,selected_mode,created_at,expires_at) VALUES (?,?,?,?,?)",id,owner,mode==null?null:mode.name(),now(),Timestamp.from(Instant.now().plus(Duration.ofDays(30))));
+        db.update("INSERT INTO ai_sessions(id,owner_id,selected_mode,created_at,expires_at,requirements_text) VALUES (?,?,?,?,?,'')",id,owner,mode==null?null:mode.name(),now(),Timestamp.from(Instant.now().plus(Duration.ofDays(30))));
         return read(owner,id);
     }
     @Transactional
@@ -70,9 +73,27 @@ public class AiConversationService {
     public Session read(String owner,String id) {
         var row=owned(owner,id,false);
         var turns=db.query("SELECT id,state,user_message,reply_text,error_code,created_at FROM ai_jobs WHERE session_id=? ORDER BY created_at,id",
-            (r,n)->new Turn(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getTimestamp(6).toInstant()),id);
+            (r,n)->new Turn(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getTimestamp(6).toInstant(),diagnostic(r.getString(1),r.getString(2),r.getString(4))),id);
         var snapshot=adjustments.decode(row.adjustment);
-        return new Session(id,row.mode,row.recommendedMode,row.version,row.draft==null?null:adjustments.parse(snapshot,row.draft),row.applied==null?null:json(row.applied),row.expiresAt,turns,adjustments.view(snapshot),row.review==null?null:json(row.review));
+        return new Session(id,row.mode,row.recommendedMode,row.version,row.draft==null?null:adjustments.parse(snapshot,row.draft),row.applied==null?null:json(row.applied),row.expiresAt,turns,adjustments.view(snapshot),row.review==null?null:json(row.review),requirements(row));
+    }
+    private Diagnostic diagnostic(String job,String state,String reply){
+        var reasons=db.query("SELECT reason FROM ai_job_attempts WHERE job_id=? ORDER BY attempt_no DESC",(r,n)->r.getString(1),job);
+        String reason=reasons.isEmpty()?null:reasons.getFirst();
+        if(reason!=null)try{AiFailure.Reason.valueOf(reason);}catch(IllegalArgumentException invalid){reason=null;}
+        var details=db.query("SELECT attempt_no,state,reason,input_chars,output_chars,input_tokens,output_tokens,started_at,completed_at FROM ai_job_attempts WHERE job_id=? ORDER BY attempt_no",(r,n)->new AttemptInfo(r.getInt(1)+1,r.getString(2),r.getString(3),(Integer)r.getObject(4),(Integer)r.getObject(5),(Long)r.getObject(6),(Long)r.getObject(7),r.getTimestamp(9)==null?null:Math.max(0,Duration.between(r.getTimestamp(8).toInstant(),r.getTimestamp(9).toInstant()).toMillis())),job);
+        String request=db.queryForObject("SELECT reservation_id FROM ai_jobs WHERE id=?",String.class,job);
+        return new Diagnostic(request,reason,reasons.size(),"RUNNING".equals(state)&&reasons.size()>1,"FAILED".equals(state)&&reply!=null,details);
+    }
+    private String requirements(Row row){
+        if(row.requirements!=null)return row.requirements;
+        // Old sessions are readable without migration-time copying of private text.
+        return String.join("\n",db.query("SELECT user_message FROM ai_jobs WHERE session_id=? ORDER BY created_at,id",(r,n)->r.getString(1),row.id));
+    }
+    @Transactional public Session saveRequirements(String owner,String id,long version,String text){
+        if(text==null||text.length()>8000)throw new IllegalArgumentException("需求笔记最多8000字，请整理后保存。");
+        lock();var row=owned(owner,id,true);editable(row,version);analysisOnly(row);
+        db.update("UPDATE ai_sessions SET requirements_text=?,version=version+1 WHERE id=?",text,id);return read(owner,id);
     }
     @Transactional
     public Session choose(String owner,String id,long version,AiDrafts.Mode mode) {
@@ -116,29 +137,42 @@ public class AiConversationService {
     }
     @Transactional
     public Job enqueue(String owner,String id,long version,String operation,String message) {
+        return enqueue(owner,id,version,operation,message,Intent.AUTO);
+    }
+    @Transactional
+    public Job enqueue(String owner,String id,long version,String operation,String message,Intent requestedIntent) {
+        Intent intent=requestedIntent==null?Intent.AUTO:requestedIntent;
         if(!available()) throw new AiFailure(AiFailure.Code.DISABLED,false);
         if(message==null || message.isBlank() || message.length()>Math.min(config.maxInputChars(),8000)) throw new IllegalArgumentException("请缩短消息后重试。");
         if(operation==null || !operation.matches("[A-Za-z0-9._:-]{8,100}")) throw new IllegalArgumentException("请求标识无效。");
-        lock();var row=owned(owner,id,true);String fingerprint=hash(id+"\n"+version+"\n"+message);
+        lock();var row=owned(owner,id,true);String fingerprint=hash(id+"\n"+version+"\n"+message+(intent==Intent.AUTO?"":"\n"+intent.name()));
         var prior=db.query("SELECT id,state,error_code,fingerprint FROM ai_jobs WHERE owner_id=? AND operation_key=?",
             (r,n)->new String[]{r.getString(1),r.getString(2),r.getString(3),r.getString(4)},owner,operation);
         if(!prior.isEmpty()) { var first=prior.getFirst();if(!fingerprint.equals(first[3])) throw new ConflictException("同一请求标识不能用于不同内容。");return new Job(first[0],first[1],first[2]); }
         editable(row,version);
+        if(row.review!=null && intent!=Intent.AUTO && intent!=Intent.DIALOGUE)throw new IllegalArgumentException("复盘分析不能生成草稿。");
+        if((intent==Intent.GENERATE||intent==Intent.REVISE) && row.mode==null)throw new IllegalArgumentException("请先选择规划模式。");
+        if(intent==Intent.REVISE && row.draft==null)throw new IllegalArgumentException("请先准备草稿再修改。");
+        // AUTO is the old-client protocol: do not introduce a note-editor requirement there.
+        String notes=intent==Intent.AUTO?"":requirements(row),nextNotes=notes.isBlank()?message:notes+"\n"+message;
+        if(intent!=Intent.AUTO && row.review==null && nextNotes.length()>8000)throw new IllegalArgumentException("需求笔记已满，请先整理并保存，尚未调用AI或扣次数。");
         adjustments.assertCurrent(owner,adjustments.decode(row.adjustment));
         if(db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE owner_id=? AND state IN ('QUEUED','RUNNING')",Integer.class,owner)>0) throw new TooManyRequestsException("你已有一个 AI 请求正在处理，请在最近对话中等待结果。");
         if(db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE session_id=?",Integer.class,id)>=30) throw new ConflictException("本次对话已达 30 轮，请保存草稿或新建对话。");
         if(db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE state IN ('QUEUED','RUNNING')",Integer.class)>=config.maxConcurrent()+config.queueCapacity()) throw new AiFailure(AiFailure.Code.BUSY,false);
-        String context=context(row,message);
+        String context=context(row,message,intent,notes);
         var reservation=quotas.reserve(owner,operation,fingerprint);
         if(!reservation.acquired()) throw new ConflictException("该请求已经处理，不能重复调用模型。");
         String job=UUID.randomUUID().toString();
-        db.update("INSERT INTO ai_jobs(id,session_id,owner_id,operation_key,fingerprint,reservation_id,state,user_message,context_json,created_at,updated_at) VALUES (?,?,?,?,?,?,'QUEUED',?,?,?,?)",job,id,owner,operation,fingerprint,reservation.id(),message,context,now(),now());
-        db.update("UPDATE ai_sessions SET version=version+1 WHERE id=?",id);return new Job(job,"QUEUED",null);
+        db.update("INSERT INTO ai_jobs(id,session_id,owner_id,operation_key,fingerprint,reservation_id,state,user_message,context_json,created_at,updated_at,request_intent) VALUES (?,?,?,?,?,?,'QUEUED',?,?,?,?,?)",job,id,owner,operation,fingerprint,reservation.id(),message,context,now(),now(),intent.name());
+        db.update("UPDATE ai_sessions SET requirements_text=?,version=version+1 WHERE id=?",intent==Intent.AUTO?row.requirements:row.review==null?nextNotes:notes,id);return new Job(job,"QUEUED",null);
     }
-    private String context(Row row,String message) {
+    private String context(Row row,String message,Intent intent,String notes) {
         var history=db.query("SELECT user_message,reply_text FROM ai_jobs WHERE session_id=? AND state='SUCCEEDED' ORDER BY created_at DESC,id DESC LIMIT 6",(r,n)->Map.of("user",r.getString(1),"assistant",r.getString(2)),row.id);
         var turns=new ArrayList<>(history);Collections.reverse(turns);
         Map<String,Object> context=new LinkedHashMap<>();context.put("today",LocalDate.now(AiQuotaService.ZONE).toString());context.put("selectedMode",row.mode);context.put("currentDraft",row.draft==null?null:json(row.draft));context.put("history",turns);context.put("message",message);
+        context.put("requestIntent",intent.name());context.put("requirements",notes);
+        context.put("conversationStartedOn",db.queryForObject("SELECT created_at FROM ai_sessions WHERE id=?",Timestamp.class,row.id).toInstant().atZone(AiQuotaService.ZONE).toLocalDate().toString());
         var snapshot=adjustments.decode(row.adjustment);
         if(snapshot!=null) {
             context.put("intent","ADJUST_EXISTING");context.put("existingItemIds",snapshot.items().keySet());context.put("existingStageIds",snapshot.stages().keySet());context.put("protectedItemIds",snapshot.protectedItems());
@@ -158,27 +192,36 @@ public class AiConversationService {
         var work=work(ids.getFirst());
         db.update("UPDATE ai_jobs SET state='RUNNING',updated_at=? WHERE id=?",now(),work.id);return work;
     }
-    private Work work(String id) { return db.queryForObject("SELECT j.id,j.owner_id,j.session_id,j.reservation_id,j.context_json,s.selected_mode FROM ai_jobs j JOIN ai_sessions s ON s.id=j.session_id WHERE j.id=?",(r,n)->new Work(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6)),id); }
+    private Work work(String id) { return db.queryForObject("SELECT j.id,j.owner_id,j.session_id,j.reservation_id,j.context_json,s.selected_mode,j.request_intent FROM ai_jobs j JOIN ai_sessions s ON s.id=j.session_id WHERE j.id=?",(r,n)->new Work(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6),Intent.valueOf(r.getString(7))),id); }
     @Transactional
     public void succeed(Work work,AiProvider.Result result) {
         // Untrusted JSON cannot escape into entities; validation never makes network calls.
         JsonNode output=json(result.text());
-        if(output==null || !output.isObject()) throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
+        if(output==null || !output.isObject()) throw new AiFailure(AiFailure.Code.INVALID_OUTPUT,false,AiFailure.Reason.ENVELOPE_INVALID,null);
         Set<String> fields=new HashSet<>();output.fieldNames().forEachRemaining(fields::add);
         if(!fields.equals(Set.of("message","recommendedMode","draft")) || !output.path("message").isTextual() || output.path("message").asText().isBlank() || output.path("message").asText().length()>4000) throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
         String recommendation=output.path("recommendedMode").asText();
-        try { AiDrafts.Mode.valueOf(recommendation); } catch(Exception invalid) { throw new AiFailure(AiFailure.Code.INVALID_OUTPUT); }
+        if(output.path("recommendedMode").isNull())recommendation=null;
+        else try { AiDrafts.Mode.valueOf(recommendation); } catch(Exception invalid) { throw new AiFailure(AiFailure.Code.INVALID_OUTPUT); }
         lock();var row=owned(work.owner,work.sessionId,true);
         AiDrafts.Draft draft;
-        try { draft=output.path("draft").isNull()?null:adjustments.parse(adjustments.decode(row.adjustment),write(output.get("draft"))); }
-        catch(IllegalArgumentException invalid) { throw new AiFailure(AiFailure.Code.INVALID_OUTPUT); }
+        try { draft=work.intent==Intent.DIALOGUE || output.path("draft").isNull()?null:adjustments.parse(adjustments.decode(row.adjustment),write(output.get("draft"))); }
+        catch(IllegalArgumentException | AiFailure invalid) { throw new AiFailure(AiFailure.Code.INVALID_OUTPUT,false,AiFailure.Reason.DRAFT_INVALID,null); }
         if(row.review!=null&&draft!=null)throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
-        if(draft!=null && (work.mode==null || !draft.mode().name().equals(work.mode))) throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
+        if(draft!=null && (work.mode==null || !draft.mode().name().equals(work.mode))) throw new AiFailure(AiFailure.Code.INVALID_OUTPUT,false,AiFailure.Reason.MODE_MISMATCH,null);
         if(!"RUNNING".equals(db.queryForObject("SELECT state FROM ai_jobs WHERE id=?",String.class,work.id))) return;
         db.update("UPDATE ai_sessions SET recommended_mode=?,draft_json=?,version=version+1 WHERE id=?",recommendation,draft==null?row.draft:write(revision(draft,row.version+1)),row.id);
         db.update("UPDATE ai_jobs SET state='SUCCEEDED',context_json=NULL,reply_text=?,input_tokens=?,output_tokens=?,updated_at=? WHERE id=?",output.path("message").asText(),result.inputTokens(),result.outputTokens(),now(),work.id);
         usageMetadata(work,"SUCCEEDED",null,result.inputTokens(),result.outputTokens());
         quotas.settle(work.owner,work.reservation,"SUCCEEDED");
+    }
+    @Transactional public void retainReadableReply(Work work,AiProvider.Result result){
+        if(result==null||result.text()==null||result.text().length()>128000)return;
+        JsonNode value;
+        try{value=json(AiOutputText.unwrap(result.text()));}catch(AiFailure invalid){return;}
+        if(!value.isObject()||!value.path("message").isTextual()||value.path("message").asText().isBlank()||value.path("message").asText().length()>4000)return;
+        // Text is displayed escaped as untrusted prose, never interpreted as a validated draft.
+        db.update("UPDATE ai_jobs SET reply_text=? WHERE id=? AND owner_id=? AND state='RUNNING'",value.path("message").asText(),work.id,work.owner);
     }
     @Transactional
     public void fail(Work work,AiFailure failure) {
@@ -190,10 +233,17 @@ public class AiConversationService {
         quotas.settle(work.owner,work.reservation,failure.uncertain()?"UNKNOWN":"RELEASED");
     }
     private void usageMetadata(Work work,String state,String code,Long input,Long output) {
+        var attempts=db.queryForMap("SELECT COUNT(*) AS n,COUNT(input_tokens) AS known,COALESCE(SUM(input_tokens),0) AS ins,COALESCE(SUM(output_tokens),0) AS outs FROM ai_job_attempts WHERE job_id=?",work.id);
+        boolean complete=input!=null && output!=null;
+        if(((Number)attempts.get("n")).longValue()>0){
+            complete=((Number)attempts.get("known")).longValue()==((Number)attempts.get("n")).longValue();
+            input=((Number)attempts.get("known")).longValue()>0?((Number)attempts.get("ins")).longValue():null;
+            output=input==null?null:((Number)attempts.get("outs")).longValue();
+        }
         var created=db.queryForObject("SELECT created_at FROM ai_jobs WHERE id=?",Timestamp.class,work.id).toInstant();
         var completed=Instant.now();
-        db.update("UPDATE ai_quota_requests SET terminal_state=?,failure_code=?,input_tokens=?,output_tokens=?,completed_at=?,duration_ms=? WHERE id=? AND owner_id=?",
-            state,code,input,output,Timestamp.from(completed),Math.max(0,Duration.between(created,completed).toMillis()),work.reservation,work.owner);
+        db.update("UPDATE ai_quota_requests SET terminal_state=?,failure_code=?,input_tokens=?,output_tokens=?,token_usage_complete=?,completed_at=?,duration_ms=? WHERE id=? AND owner_id=?",
+            state,code,input,output,complete,Timestamp.from(completed),Math.max(0,Duration.between(created,completed).toMillis()),work.reservation,work.owner);
     }
     @Transactional
     public void maintain() {

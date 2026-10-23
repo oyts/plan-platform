@@ -1646,9 +1646,15 @@
                     },
                     "adjustmentEnabled" : {
                       "type" : "boolean"
+                    },
+                    "intentEnabled" : {
+                      "type" : "boolean"
+                    },
+                    "requirementsEnabled" : {
+                      "type" : "boolean"
                     }
                   },
-                  "required" : [ "schemaVersion", "available", "provider", "model", "status", "message", "transport", "timezone", "maxInputChars", "adjustmentEnabled" ]
+                  "required" : [ "schemaVersion", "available", "provider", "model", "status", "message", "transport", "timezone", "maxInputChars", "adjustmentEnabled", "intentEnabled", "requirementsEnabled" ]
                 }
               }
             }
@@ -14932,6 +14938,50 @@
         }
       }
     },
+    "/ai/sessions/{id}/requirements" : {
+      "put" : {
+        "operationId" : "AiController_requirements_PUT",
+        "x-java-handler" : "com.oyts.planplatform.ai.AiController#requirements",
+        "requestBody" : {
+          "required" : true,
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "allOf" : [ {
+                  "$ref" : "#/components/schemas/ai.AiController.Requirements"
+                } ],
+                "nullable" : false
+              }
+            }
+          }
+        },
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        } ],
+        "x-response-source" : "reviewed-service-delegation",
+        "responses" : {
+          "200" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/ai.AiConversationService.Session"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/mainlines/{id}/paused" : {
       "put" : {
         "operationId" : "MainlineController_paused_PUT",
@@ -15160,9 +15210,9 @@
   "components" : {
     "securitySchemes" : {
       "bearerAuth" : {
-        "scheme" : "bearer",
         "type" : "http",
-        "bearerFormat" : "JWT"
+        "bearerFormat" : "JWT",
+        "scheme" : "bearer"
       },
       "reminderKey" : {
         "type" : "apiKey",
@@ -15288,9 +15338,97 @@
           "version" : {
             "type" : "integer",
             "minimum" : 0
+          },
+          "intent" : {
+            "type" : "string",
+            "enum" : [ "AUTO", "DIALOGUE", "GENERATE", "REVISE" ],
+            "nullable" : true
           }
         },
         "required" : [ "message", "operationKey", "version" ]
+      },
+      "ai.AiController.Requirements" : {
+        "type" : "object",
+        "properties" : {
+          "text" : {
+            "type" : "string",
+            "minLength" : 0,
+            "maxLength" : 8000
+          },
+          "version" : {
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "text", "version" ]
+      },
+      "ai.AiConversationService.AttemptInfo" : {
+        "type" : "object",
+        "properties" : {
+          "number" : {
+            "type" : "integer"
+          },
+          "state" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "reason" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "inputChars" : {
+            "type" : "integer",
+            "nullable" : true
+          },
+          "outputChars" : {
+            "type" : "integer",
+            "nullable" : true
+          },
+          "inputTokens" : {
+            "type" : "integer",
+            "nullable" : true
+          },
+          "outputTokens" : {
+            "type" : "integer",
+            "nullable" : true
+          },
+          "durationMs" : {
+            "type" : "integer",
+            "nullable" : true
+          }
+        }
+      },
+      "ai.AiConversationService.Diagnostic" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "reason" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "attempts" : {
+            "type" : "integer"
+          },
+          "repairing" : {
+            "type" : "boolean"
+          },
+          "replyOnly" : {
+            "type" : "boolean"
+          },
+          "details" : {
+            "type" : "array",
+            "items" : {
+              "allOf" : [ {
+                "$ref" : "#/components/schemas/ai.AiConversationService.AttemptInfo"
+              } ],
+              "nullable" : true
+            },
+            "nullable" : true
+          }
+        }
       },
       "ai.AiConversationService.Job" : {
         "type" : "object",
@@ -15581,6 +15719,10 @@
             "required" : [ "intent", "kind", "facts", "notesIncluded" ],
             "description" : "只包含本人明确同意发送的复盘汇总、可选文字及可选单一规划。WEEK才含趋势字段，includeNotes时才含notes；编码上下文不超过12000字符。calculatedAt不会发给AI。",
             "nullable" : true
+          },
+          "requirementsText" : {
+            "type" : "string",
+            "nullable" : true
           }
         }
       },
@@ -15645,6 +15787,12 @@
           "createdAt" : {
             "type" : "string",
             "format" : "date-time",
+            "nullable" : true
+          },
+          "diagnostic" : {
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/ai.AiConversationService.Diagnostic"
+            } ],
             "nullable" : true
           }
         }
@@ -16097,6 +16245,18 @@
           }
         }
       },
+      "ai.AiUsageService.ReasonCount" : {
+        "type" : "object",
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "attempts" : {
+            "type" : "integer"
+          }
+        }
+      },
       "ai.AiUsageService.Report" : {
         "type" : "object",
         "properties" : {
@@ -16138,6 +16298,16 @@
             "allOf" : [ {
               "$ref" : "#/components/schemas/ai.AiQuotaService.Page.cdb80122"
             } ],
+            "nullable" : true
+          },
+          "reasons" : {
+            "type" : "array",
+            "items" : {
+              "allOf" : [ {
+                "$ref" : "#/components/schemas/ai.AiUsageService.ReasonCount"
+              } ],
+              "nullable" : true
+            },
             "nullable" : true
           }
         }
@@ -23457,5 +23627,5 @@
       }
     }
   },
-  "x-operation-count" : 190
+  "x-operation-count" : 191
 }
