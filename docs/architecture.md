@@ -1,6 +1,6 @@
 # 计划舱架构与一致性设计
 
-计划舱采用模块化单体：Vue 3共享业务页面运行在Web/PWA、Tauri Windows和Capacitor Android中，通过同一Spring Boot API使用MySQL。正式三端均为0.1.19／Android24，含私人整套模板及试用收口，见[发布记录](release-0119.md)。本页为2026年10月22日源码与交付记录核对结果，不是一次新的生产探测。微信小程序、iOS、微服务与本地大模型没有实现。
+计划舱采用模块化单体：Vue 3共享业务页面运行在Web/PWA、Tauri Windows和Capacitor Android中，通过同一Spring Boot API使用MySQL。正式三端均为0.1.20／Android25，含历史问题收口，见[发布记录](release-0120.md)。本页为2026年10月23日源码与交付记录核对结果。微信小程序、iOS、微服务与本地大模型没有实现。
 
 ## 运行结构
 
@@ -65,11 +65,13 @@ erDiagram
   native_reminder_devices ||--o{ native_reminder_deliveries : deduplicates
   users ||--o{ personal_templates : snapshots
   users ||--o{ personal_template_operations : confirms
+  users ||--o{ email_change_requests : proves_both_mailboxes
+  legacy_imports ||--o| legacy_recycling_supplements : supplements_once
 ```
 
 图只显示主要关系，不是完整建表DDL。路线前置ID存于 `prerequisite_ids_json`，不是图中另造的关系表；服务层根据完整路线检查同路线所有权、缺失依赖和循环。模板操作记录以用户和操作键约束防重，不通过外键绑定模板生命周期；独立AI草稿也不依赖临时会话一直存在。
 
-0.1.19源码与已发布生产迁移均到V28。V25为独立AI草稿，V26为设备提醒及首次开始证据，V27为日周复盘与趋势冷却，V28为私人整套模板。DDL以 `backend/src/main/resources/db/migration/` 及厂商迁移目录为准，禁止用 `ddl-auto=update` 替代迁移。最新发布包含真实快照V27→V28、原业务投影不变、恢复及旧镜像兼容证据；V23／V19仅是早期历史状态。
+0.1.20源码与已发布生产迁移均到V30。V25为独立AI草稿，V26为设备提醒及首次开始证据，V27为日周复盘与趋势冷却，V28为私人整套模板；V29为旧回收站持久补迁回执，V30为双邮箱验证请求。DDL以 `backend/src/main/resources/db/migration/` 及厂商迁移目录为准，禁止用 `ddl-auto=update` 替代迁移。最新发布包含真实快照V28→V30、两次独立恢复、原业务投影不变及旧0.1.19镜像兼容证据；V28／V23／V19是早期历史状态。
 
 ## 三类一致性边界
 

@@ -1,6 +1,6 @@
 # 核心接口与失败语义
 
-基础路径为 `/api`。普通业务需要Bearer Access Token，管理员端点还需要ADMIN；公开健康、部分账号入口和专用设备授权的提醒轮询另按各自规则。公开ID不授予权限，子记录也必须验证归属。正式三端为0.1.19／Android24，本页于2026年10月23日对照实际控制器核对。[当前源码契约](openapi-current.json)覆盖190个显式MVC操作、声明DTO及已审查的动态正常响应，由`ApiContractTest`检测漂移，包含尚未发布的本轮接口。54处服务包装返回从实际泛型提取，14处动态响应按已审查白名单描述；私有备份预检／恢复包含格式1—4。Spring正则路径转为合法OpenAPI参数，原规则留在`x-spring-route`。三个旧版迁移JSON请求仍标`x-dynamic-schema`，`default`响应及错误状态不作穷尽保证；不是可以替代所有业务校验的完整规范。较早的[部分OpenAPI](openapi.yaml)保留历史参考；当前已发布能力见[0.1.19记录](release-0119.md)。
+基础路径为 `/api`。普通业务需要Bearer Access Token，管理员端点还需要ADMIN；公开健康、部分账号入口和专用设备授权的提醒轮询另按各自规则。公开ID不授予权限，子记录也必须验证归属。本页于2026年10月23日对照0.1.20源码核对，实际发布状态见[本版记录](release-0120.md)。[当前源码契约](openapi-current.json)覆盖190个显式MVC操作、声明DTO及已审查的动态正常响应，由`ApiContractTest`检测漂移。54处服务包装返回从实际泛型提取，14处动态响应按已审查白名单描述；私有备份预检／恢复包含格式1—4。Spring正则路径转为合法OpenAPI参数，原规则留在`x-spring-route`。旧迁移三个请求有明确的宽容接收约定及六版本标准字段指南；共同错误按实际来源分类，`default`响应和基础设施错误不作逐状态穷尽保证。不是替代所有业务校验的验证器。较早的[部分OpenAPI](openapi.yaml)仅保留历史参考。
 
 ## 本轮历史问题接口（源码已实现，尚未发布）
 
@@ -108,7 +108,7 @@
 
 旧版标准输入使用数值 `schemaVersion:1—6`、对象 `progress` 与 `reflections`；`planVersion` 缺省为unknown。缺少工作区、内置目录时预检产生警告，部分内容只能保留快照。工作区包含 `customPlans/customMainlines/taskTemplates/trash/deletionMarkers`；回收站至多1000项、删除标记至多10000项，由 `LegacyRecycling` 联合验证类型、编号、删除时间和父子引用。永久删除标记不伪造可恢复正文，也不删除当前新版数据。
 
-这些说明来自当前解析代码，不是六个历史版本的完整JSON Schema。旧解析器存在类型转换、可选字段补足和完整快照保留规则；在没有逐版本兼容样本及验证器前，三个请求继续明确标注动态输入，不用过严的字段白名单误拒旧文件，也不用空Schema伪装形式化已完成。
+三个请求的Schema明确使用 `x-intentionally-unconstrained-json`，不是尚未审查的 `x-dynamic-schema`：preview和snapshot确实能接收非对象JSON，import对错误输入返回校验结果而非网关Schema拦截。`x-canonical-legacy-envelopes`分别列出schema1—6的标准字段、进度／计时、复盘、目录、四种回收站快照和删除标记；允许保留未知字段，不给旧标识错误添加UUID约束。9项真实Servlet兼容用例覆盖六版本缺省历史字段、重复导入、未知字段保留，以及三类非对象输入的预检／保存／导入差异。该字段指南不是声称严格枚举Jackson所有类型转换或每个历史导出文件；不新增会拒绝原有备份的运行时验证器。这是有意的兼容边界，不再当成等待收紧验证的产品缺陷。
 
 | 结果 | 客户端处理 |
 | --- | --- |

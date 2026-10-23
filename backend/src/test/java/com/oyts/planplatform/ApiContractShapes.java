@@ -60,7 +60,7 @@ final class ApiContractShapes {
         }return root;
     }
     private void removeProperty(ObjectNode schema,String name){((ObjectNode)schema.get("properties")).remove(name);ArrayNode required=(ArrayNode)schema.get("required");for(int i=required.size()-1;i>=0;i--)if(required.get(i).asText().equals(name))required.remove(i);}
-    ObjectNode request(String key){return switch(key){case "POST /data/preview"->backupInput();case "POST /data/restore"->object("backup",backupInput(),"checksum",str().put("pattern","[a-f0-9]{64}"),"operationKey",uuid(),"confirmed",bool());default->null;};}
+    ObjectNode request(String key){return switch(key){case "POST /data/preview"->backupInput();case "POST /data/restore"->object("backup",backupInput(),"checksum",str().put("pattern","[a-f0-9]{64}"),"operationKey",uuid(),"confirmed",bool());default->new ApiLegacyContract(json).request(key);};}
     private ObjectNode backupRecords(){
         try{
             Field catalog=Class.forName("com.oyts.planplatform.data.BackupSchema").getDeclaredField("TABLES");catalog.setAccessible(true);

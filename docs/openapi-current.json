@@ -1,10 +1,10 @@
 {
   "openapi" : "3.0.3",
   "info" : {
+    "version" : "0.1.20-source",
     "title" : "计划舱当前源码路由与声明DTO契约",
-    "version" : "0.1.19-source",
-    "description" : "未发布候选。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。default响应和x-dynamic-schema仍不承诺具体结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。",
-    "x-contract-coverage" : "all-mvc-api-routes-declared-types-and-reviewed-service-delegations; unresolved dynamic fields explicitly marked"
+    "x-contract-coverage" : "all-mvc-api-routes-declared-types-and-reviewed-service-delegations; unresolved dynamic fields explicitly marked",
+    "description" : "当前源码契约，实际发布状态见对应版本记录。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。旧JSON按明确的宽容接收约定和标准字段指南描述，不新增严格验证器。default响应及基础设施错误不承诺穷尽结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。"
   },
   "servers" : [ {
     "url" : "/api"
@@ -13733,8 +13733,11 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "x-dynamic-schema" : "com.fasterxml.jackson.databind.JsonNode",
-                "description" : "动态JSON／非record声明，未从真实数据猜测结构；见对应控制器及专题契约。",
+                "x-intentionally-unconstrained-json" : true,
+                "description" : "任意可解析JSON可保存原始快照，不要求预检ready=true；不表示关系转换成功。",
+                "x-canonical-legacy-envelopes" : {
+                  "$ref" : "#/components/schemas/legacy.CanonicalEnvelopes"
+                },
                 "nullable" : false
               }
             }
@@ -13766,8 +13769,11 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "x-dynamic-schema" : "com.fasterxml.jackson.databind.JsonNode",
-                "description" : "动态JSON／非record声明，未从真实数据猜测结构；见对应控制器及专题契约。",
+                "x-intentionally-unconstrained-json" : true,
+                "description" : "兼容JsonNode入口；成功导入先要求schemaVersion按Jackson asInt解释为1—6、progress/reflections为对象及预检ready=true，再执行事务校验。错误输入仍可提交但不保证成功。标准字段见x-canonical-legacy-envelopes；该扩展不是额外拒绝旧数据的运行时验证器。",
+                "x-canonical-legacy-envelopes" : {
+                  "$ref" : "#/components/schemas/legacy.CanonicalEnvelopes"
+                },
                 "nullable" : false
               }
             }
@@ -13799,8 +13805,11 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "x-dynamic-schema" : "com.fasterxml.jackson.databind.JsonNode",
-                "description" : "动态JSON／非record声明，未从真实数据猜测结构；见对应控制器及专题契约。",
+                "x-intentionally-unconstrained-json" : true,
+                "description" : "任意可解析JSON可提交预检；不支持格式返回200且ready=false，不是成功导入。",
+                "x-canonical-legacy-envelopes" : {
+                  "$ref" : "#/components/schemas/legacy.CanonicalEnvelopes"
+                },
                 "nullable" : false
               }
             }
@@ -15151,14 +15160,14 @@
   "components" : {
     "securitySchemes" : {
       "bearerAuth" : {
-        "type" : "http",
         "scheme" : "bearer",
+        "type" : "http",
         "bearerFormat" : "JWT"
       },
       "reminderKey" : {
         "type" : "apiKey",
-        "name" : "X-Reminder-Key",
-        "in" : "header"
+        "in" : "header",
+        "name" : "X-Reminder-Key"
       }
     },
     "schemas" : {
@@ -21981,6 +21990,1470 @@
           }
         },
         "required" : [ "title", "dueDate", "done", "deleted", "version" ]
+      },
+      "legacy.CanonicalEnvelopes" : {
+        "allOf" : [ {
+          "type" : "object",
+          "additionalProperties" : true,
+          "properties" : {
+            "schemaVersion" : {
+              "type" : "integer",
+              "minimum" : 1,
+              "maximum" : 6
+            },
+            "planVersion" : {
+              "type" : "string"
+            },
+            "progress" : {
+              "type" : "object",
+              "additionalProperties" : {
+                "type" : "object",
+                "additionalProperties" : true,
+                "properties" : {
+                  "taskId" : {
+                    "type" : "string"
+                  },
+                  "status" : {
+                    "type" : "string",
+                    "enum" : [ "pending", "running", "paused", "completed", "partial", "skipped", "deferred" ]
+                  },
+                  "accumulatedSeconds" : {
+                    "type" : "integer"
+                  },
+                  "startedAt" : {
+                    "type" : "string",
+                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。",
+                    "nullable" : true
+                  },
+                  "completedAt" : {
+                    "type" : "string",
+                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。",
+                    "nullable" : true
+                  },
+                  "timeEntries" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "additionalProperties" : true,
+                      "properties" : {
+                        "id" : {
+                          "type" : "string"
+                        },
+                        "taskId" : {
+                          "type" : "string"
+                        },
+                        "startedAt" : {
+                          "type" : "string",
+                          "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                        },
+                        "endedAt" : {
+                          "type" : "string",
+                          "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                        },
+                        "seconds" : {
+                          "type" : "integer"
+                        },
+                        "source" : {
+                          "type" : "string",
+                          "enum" : [ "timer", "manual", "legacy" ]
+                        }
+                      }
+                    }
+                  },
+                  "acceptanceChecks" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "note" : {
+                    "type" : "string"
+                  },
+                  "deferTo" : {
+                    "type" : "string",
+                    "nullable" : true
+                  },
+                  "skipReason" : {
+                    "type" : "string",
+                    "nullable" : true
+                  },
+                  "updatedAt" : {
+                    "type" : "string",
+                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                  }
+                }
+              },
+              "properties" : { }
+            },
+            "reflections" : {
+              "type" : "object",
+              "additionalProperties" : {
+                "type" : "object",
+                "additionalProperties" : true,
+                "properties" : {
+                  "date" : {
+                    "type" : "string",
+                    "format" : "date"
+                  },
+                  "completedSummary" : {
+                    "type" : "string"
+                  },
+                  "unfinishedSummary" : {
+                    "type" : "string"
+                  },
+                  "blockers" : {
+                    "type" : "string"
+                  },
+                  "firstTaskTomorrow" : {
+                    "type" : "string"
+                  },
+                  "energy" : {
+                    "type" : "integer",
+                    "nullable" : true
+                  },
+                  "note" : {
+                    "type" : "string"
+                  },
+                  "updatedAt" : {
+                    "type" : "string",
+                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                  }
+                }
+              },
+              "properties" : { }
+            },
+            "gates" : {
+              "type" : "object",
+              "additionalProperties" : {
+                "type" : "object",
+                "additionalProperties" : true,
+                "properties" : {
+                  "gateId" : {
+                    "type" : "string"
+                  },
+                  "checks" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "type" : "boolean"
+                    },
+                    "properties" : { }
+                  },
+                  "note" : {
+                    "type" : "string"
+                  },
+                  "reviewedAt" : {
+                    "type" : "string",
+                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。",
+                    "nullable" : true
+                  }
+                }
+              },
+              "properties" : { }
+            },
+            "workspace" : {
+              "type" : "object",
+              "additionalProperties" : true,
+              "properties" : {
+                "activePlanId" : {
+                  "type" : "string"
+                },
+                "defaultPlanTags" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "additionalProperties" : true,
+                    "properties" : {
+                      "id" : {
+                        "type" : "string"
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "color" : {
+                        "type" : "string"
+                      },
+                      "isOverall" : {
+                        "type" : "boolean"
+                      }
+                    }
+                  }
+                },
+                "customPlans" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "additionalProperties" : true,
+                    "properties" : {
+                      "id" : {
+                        "type" : "string"
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "startDate" : {
+                        "type" : "string",
+                        "format" : "date"
+                      },
+                      "endDate" : {
+                        "type" : "string",
+                        "format" : "date"
+                      },
+                      "overallTagId" : {
+                        "type" : "string"
+                      },
+                      "tags" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "additionalProperties" : true,
+                          "properties" : {
+                            "id" : {
+                              "type" : "string"
+                            },
+                            "name" : {
+                              "type" : "string"
+                            },
+                            "color" : {
+                              "type" : "string"
+                            },
+                            "isOverall" : {
+                              "type" : "boolean"
+                            }
+                          }
+                        }
+                      },
+                      "tasks" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "additionalProperties" : true,
+                          "properties" : {
+                            "id" : {
+                              "type" : "string"
+                            },
+                            "date" : {
+                              "type" : "string",
+                              "format" : "date"
+                            },
+                            "startTime" : {
+                              "type" : "string"
+                            },
+                            "endTime" : {
+                              "type" : "string"
+                            },
+                            "plannedMinutes" : {
+                              "type" : "integer"
+                            },
+                            "category" : {
+                              "type" : "string"
+                            },
+                            "title" : {
+                              "type" : "string"
+                            },
+                            "description" : {
+                              "type" : "string"
+                            },
+                            "acceptance" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : {
+                              "type" : "boolean"
+                            },
+                            "tagId" : {
+                              "type" : "string"
+                            },
+                            "sourceRef" : {
+                              "type" : "string"
+                            },
+                            "resources" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "object",
+                                "additionalProperties" : true,
+                                "properties" : {
+                                  "label" : {
+                                    "type" : "string"
+                                  },
+                                  "url" : {
+                                    "type" : "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "customMainlines" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "additionalProperties" : true,
+                    "properties" : {
+                      "id" : {
+                        "type" : "string"
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "description" : {
+                        "type" : "string"
+                      },
+                      "color" : {
+                        "type" : "string"
+                      },
+                      "builtIn" : {
+                        "type" : "boolean"
+                      },
+                      "items" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "additionalProperties" : true,
+                          "properties" : {
+                            "id" : {
+                              "type" : "string"
+                            },
+                            "date" : {
+                              "type" : "string",
+                              "format" : "date"
+                            },
+                            "startTime" : {
+                              "type" : "string"
+                            },
+                            "endTime" : {
+                              "type" : "string"
+                            },
+                            "plannedMinutes" : {
+                              "type" : "integer"
+                            },
+                            "category" : {
+                              "type" : "string"
+                            },
+                            "title" : {
+                              "type" : "string"
+                            },
+                            "description" : {
+                              "type" : "string"
+                            },
+                            "acceptance" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : {
+                              "type" : "boolean"
+                            },
+                            "tagId" : {
+                              "type" : "string"
+                            },
+                            "sourceRef" : {
+                              "type" : "string"
+                            },
+                            "resources" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "object",
+                                "additionalProperties" : true,
+                                "properties" : {
+                                  "label" : {
+                                    "type" : "string"
+                                  },
+                                  "url" : {
+                                    "type" : "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "taskTemplates" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "additionalProperties" : true,
+                    "properties" : {
+                      "id" : {
+                        "type" : "string"
+                      },
+                      "date" : {
+                        "type" : "string",
+                        "format" : "date"
+                      },
+                      "startTime" : {
+                        "type" : "string"
+                      },
+                      "endTime" : {
+                        "type" : "string"
+                      },
+                      "plannedMinutes" : {
+                        "type" : "integer"
+                      },
+                      "category" : {
+                        "type" : "string"
+                      },
+                      "title" : {
+                        "type" : "string"
+                      },
+                      "description" : {
+                        "type" : "string"
+                      },
+                      "acceptance" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : {
+                        "type" : "boolean"
+                      },
+                      "tagId" : {
+                        "type" : "string"
+                      },
+                      "sourceRef" : {
+                        "type" : "string"
+                      },
+                      "resources" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "additionalProperties" : true,
+                          "properties" : {
+                            "label" : {
+                              "type" : "string"
+                            },
+                            "url" : {
+                              "type" : "string"
+                            }
+                          }
+                        }
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "resourceUrl" : {
+                        "type" : "string"
+                      }
+                    }
+                  }
+                },
+                "trash" : {
+                  "type" : "array",
+                  "items" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "additionalProperties" : true,
+                      "properties" : {
+                        "id" : {
+                          "type" : "string"
+                        },
+                        "type" : {
+                          "type" : "string",
+                          "enum" : [ "plan" ]
+                        },
+                        "title" : {
+                          "type" : "string"
+                        },
+                        "deletedAt" : {
+                          "type" : "string",
+                          "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                        },
+                        "payload" : {
+                          "type" : "object",
+                          "additionalProperties" : true,
+                          "properties" : {
+                            "plan" : {
+                              "type" : "object",
+                              "additionalProperties" : true,
+                              "properties" : {
+                                "id" : {
+                                  "type" : "string"
+                                },
+                                "name" : {
+                                  "type" : "string"
+                                },
+                                "startDate" : {
+                                  "type" : "string",
+                                  "format" : "date"
+                                },
+                                "endDate" : {
+                                  "type" : "string",
+                                  "format" : "date"
+                                },
+                                "overallTagId" : {
+                                  "type" : "string"
+                                },
+                                "tags" : {
+                                  "type" : "array",
+                                  "items" : {
+                                    "type" : "object",
+                                    "additionalProperties" : true,
+                                    "properties" : {
+                                      "id" : {
+                                        "type" : "string"
+                                      },
+                                      "name" : {
+                                        "type" : "string"
+                                      },
+                                      "color" : {
+                                        "type" : "string"
+                                      },
+                                      "isOverall" : {
+                                        "type" : "boolean"
+                                      }
+                                    }
+                                  }
+                                },
+                                "tasks" : {
+                                  "type" : "array",
+                                  "items" : {
+                                    "type" : "object",
+                                    "additionalProperties" : true,
+                                    "properties" : {
+                                      "id" : {
+                                        "type" : "string"
+                                      },
+                                      "date" : {
+                                        "type" : "string",
+                                        "format" : "date"
+                                      },
+                                      "startTime" : {
+                                        "type" : "string"
+                                      },
+                                      "endTime" : {
+                                        "type" : "string"
+                                      },
+                                      "plannedMinutes" : {
+                                        "type" : "integer"
+                                      },
+                                      "category" : {
+                                        "type" : "string"
+                                      },
+                                      "title" : {
+                                        "type" : "string"
+                                      },
+                                      "description" : {
+                                        "type" : "string"
+                                      },
+                                      "acceptance" : {
+                                        "type" : "array",
+                                        "items" : {
+                                          "type" : "string"
+                                        }
+                                      },
+                                      "required" : {
+                                        "type" : "boolean"
+                                      },
+                                      "tagId" : {
+                                        "type" : "string"
+                                      },
+                                      "sourceRef" : {
+                                        "type" : "string"
+                                      },
+                                      "resources" : {
+                                        "type" : "array",
+                                        "items" : {
+                                          "type" : "object",
+                                          "additionalProperties" : true,
+                                          "properties" : {
+                                            "label" : {
+                                              "type" : "string"
+                                            },
+                                            "url" : {
+                                              "type" : "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "progress" : {
+                              "type" : "object",
+                              "additionalProperties" : {
+                                "type" : "object",
+                                "additionalProperties" : true,
+                                "properties" : {
+                                  "taskId" : {
+                                    "type" : "string"
+                                  },
+                                  "status" : {
+                                    "type" : "string",
+                                    "enum" : [ "pending", "running", "paused", "completed", "partial", "skipped", "deferred" ]
+                                  },
+                                  "accumulatedSeconds" : {
+                                    "type" : "integer"
+                                  },
+                                  "startedAt" : {
+                                    "type" : "string",
+                                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。",
+                                    "nullable" : true
+                                  },
+                                  "completedAt" : {
+                                    "type" : "string",
+                                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。",
+                                    "nullable" : true
+                                  },
+                                  "timeEntries" : {
+                                    "type" : "array",
+                                    "items" : {
+                                      "type" : "object",
+                                      "additionalProperties" : true,
+                                      "properties" : {
+                                        "id" : {
+                                          "type" : "string"
+                                        },
+                                        "taskId" : {
+                                          "type" : "string"
+                                        },
+                                        "startedAt" : {
+                                          "type" : "string",
+                                          "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                                        },
+                                        "endedAt" : {
+                                          "type" : "string",
+                                          "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                                        },
+                                        "seconds" : {
+                                          "type" : "integer"
+                                        },
+                                        "source" : {
+                                          "type" : "string",
+                                          "enum" : [ "timer", "manual", "legacy" ]
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "acceptanceChecks" : {
+                                    "type" : "array",
+                                    "items" : {
+                                      "type" : "boolean"
+                                    }
+                                  },
+                                  "note" : {
+                                    "type" : "string"
+                                  },
+                                  "deferTo" : {
+                                    "type" : "string",
+                                    "nullable" : true
+                                  },
+                                  "skipReason" : {
+                                    "type" : "string",
+                                    "nullable" : true
+                                  },
+                                  "updatedAt" : {
+                                    "type" : "string",
+                                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                                  }
+                                }
+                              },
+                              "properties" : { }
+                            },
+                            "reflections" : {
+                              "type" : "object",
+                              "additionalProperties" : {
+                                "type" : "object",
+                                "additionalProperties" : true,
+                                "properties" : {
+                                  "date" : {
+                                    "type" : "string",
+                                    "format" : "date"
+                                  },
+                                  "completedSummary" : {
+                                    "type" : "string"
+                                  },
+                                  "unfinishedSummary" : {
+                                    "type" : "string"
+                                  },
+                                  "blockers" : {
+                                    "type" : "string"
+                                  },
+                                  "firstTaskTomorrow" : {
+                                    "type" : "string"
+                                  },
+                                  "energy" : {
+                                    "type" : "integer",
+                                    "nullable" : true
+                                  },
+                                  "note" : {
+                                    "type" : "string"
+                                  },
+                                  "updatedAt" : {
+                                    "type" : "string",
+                                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                                  }
+                                }
+                              },
+                              "properties" : { }
+                            }
+                          }
+                        }
+                      },
+                      "required" : [ "type", "payload" ]
+                    }, {
+                      "type" : "object",
+                      "additionalProperties" : true,
+                      "properties" : {
+                        "id" : {
+                          "type" : "string"
+                        },
+                        "type" : {
+                          "type" : "string",
+                          "enum" : [ "mainline" ]
+                        },
+                        "title" : {
+                          "type" : "string"
+                        },
+                        "deletedAt" : {
+                          "type" : "string",
+                          "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                        },
+                        "payload" : {
+                          "type" : "object",
+                          "additionalProperties" : true,
+                          "properties" : {
+                            "track" : {
+                              "type" : "object",
+                              "additionalProperties" : true,
+                              "properties" : {
+                                "id" : {
+                                  "type" : "string"
+                                },
+                                "name" : {
+                                  "type" : "string"
+                                },
+                                "description" : {
+                                  "type" : "string"
+                                },
+                                "color" : {
+                                  "type" : "string"
+                                },
+                                "builtIn" : {
+                                  "type" : "boolean"
+                                },
+                                "items" : {
+                                  "type" : "array",
+                                  "items" : {
+                                    "type" : "object",
+                                    "additionalProperties" : true,
+                                    "properties" : {
+                                      "id" : {
+                                        "type" : "string"
+                                      },
+                                      "date" : {
+                                        "type" : "string",
+                                        "format" : "date"
+                                      },
+                                      "startTime" : {
+                                        "type" : "string"
+                                      },
+                                      "endTime" : {
+                                        "type" : "string"
+                                      },
+                                      "plannedMinutes" : {
+                                        "type" : "integer"
+                                      },
+                                      "category" : {
+                                        "type" : "string"
+                                      },
+                                      "title" : {
+                                        "type" : "string"
+                                      },
+                                      "description" : {
+                                        "type" : "string"
+                                      },
+                                      "acceptance" : {
+                                        "type" : "array",
+                                        "items" : {
+                                          "type" : "string"
+                                        }
+                                      },
+                                      "required" : {
+                                        "type" : "boolean"
+                                      },
+                                      "tagId" : {
+                                        "type" : "string"
+                                      },
+                                      "sourceRef" : {
+                                        "type" : "string"
+                                      },
+                                      "resources" : {
+                                        "type" : "array",
+                                        "items" : {
+                                          "type" : "object",
+                                          "additionalProperties" : true,
+                                          "properties" : {
+                                            "label" : {
+                                              "type" : "string"
+                                            },
+                                            "url" : {
+                                              "type" : "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "progress" : {
+                              "type" : "object",
+                              "additionalProperties" : {
+                                "type" : "object",
+                                "additionalProperties" : true,
+                                "properties" : {
+                                  "taskId" : {
+                                    "type" : "string"
+                                  },
+                                  "status" : {
+                                    "type" : "string",
+                                    "enum" : [ "pending", "running", "paused", "completed", "partial", "skipped", "deferred" ]
+                                  },
+                                  "accumulatedSeconds" : {
+                                    "type" : "integer"
+                                  },
+                                  "startedAt" : {
+                                    "type" : "string",
+                                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。",
+                                    "nullable" : true
+                                  },
+                                  "completedAt" : {
+                                    "type" : "string",
+                                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。",
+                                    "nullable" : true
+                                  },
+                                  "timeEntries" : {
+                                    "type" : "array",
+                                    "items" : {
+                                      "type" : "object",
+                                      "additionalProperties" : true,
+                                      "properties" : {
+                                        "id" : {
+                                          "type" : "string"
+                                        },
+                                        "taskId" : {
+                                          "type" : "string"
+                                        },
+                                        "startedAt" : {
+                                          "type" : "string",
+                                          "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                                        },
+                                        "endedAt" : {
+                                          "type" : "string",
+                                          "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                                        },
+                                        "seconds" : {
+                                          "type" : "integer"
+                                        },
+                                        "source" : {
+                                          "type" : "string",
+                                          "enum" : [ "timer", "manual", "legacy" ]
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "acceptanceChecks" : {
+                                    "type" : "array",
+                                    "items" : {
+                                      "type" : "boolean"
+                                    }
+                                  },
+                                  "note" : {
+                                    "type" : "string"
+                                  },
+                                  "deferTo" : {
+                                    "type" : "string",
+                                    "nullable" : true
+                                  },
+                                  "skipReason" : {
+                                    "type" : "string",
+                                    "nullable" : true
+                                  },
+                                  "updatedAt" : {
+                                    "type" : "string",
+                                    "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                                  }
+                                }
+                              },
+                              "properties" : { }
+                            }
+                          }
+                        }
+                      },
+                      "required" : [ "type", "payload" ]
+                    }, {
+                      "type" : "object",
+                      "additionalProperties" : true,
+                      "properties" : {
+                        "id" : {
+                          "type" : "string"
+                        },
+                        "type" : {
+                          "type" : "string",
+                          "enum" : [ "mainline-item" ]
+                        },
+                        "title" : {
+                          "type" : "string"
+                        },
+                        "deletedAt" : {
+                          "type" : "string",
+                          "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                        },
+                        "payload" : {
+                          "type" : "object",
+                          "additionalProperties" : true,
+                          "properties" : {
+                            "mainlineId" : {
+                              "type" : "string"
+                            },
+                            "index" : {
+                              "type" : "integer"
+                            },
+                            "task" : {
+                              "type" : "object",
+                              "additionalProperties" : true,
+                              "properties" : {
+                                "id" : {
+                                  "type" : "string"
+                                },
+                                "date" : {
+                                  "type" : "string",
+                                  "format" : "date"
+                                },
+                                "startTime" : {
+                                  "type" : "string"
+                                },
+                                "endTime" : {
+                                  "type" : "string"
+                                },
+                                "plannedMinutes" : {
+                                  "type" : "integer"
+                                },
+                                "category" : {
+                                  "type" : "string"
+                                },
+                                "title" : {
+                                  "type" : "string"
+                                },
+                                "description" : {
+                                  "type" : "string"
+                                },
+                                "acceptance" : {
+                                  "type" : "array",
+                                  "items" : {
+                                    "type" : "string"
+                                  }
+                                },
+                                "required" : {
+                                  "type" : "boolean"
+                                },
+                                "tagId" : {
+                                  "type" : "string"
+                                },
+                                "sourceRef" : {
+                                  "type" : "string"
+                                },
+                                "resources" : {
+                                  "type" : "array",
+                                  "items" : {
+                                    "type" : "object",
+                                    "additionalProperties" : true,
+                                    "properties" : {
+                                      "label" : {
+                                        "type" : "string"
+                                      },
+                                      "url" : {
+                                        "type" : "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "progress" : {
+                              "type" : "object",
+                              "additionalProperties" : true,
+                              "properties" : {
+                                "taskId" : {
+                                  "type" : "string"
+                                },
+                                "status" : {
+                                  "type" : "string",
+                                  "enum" : [ "pending", "running", "paused", "completed", "partial", "skipped", "deferred" ]
+                                },
+                                "accumulatedSeconds" : {
+                                  "type" : "integer"
+                                },
+                                "startedAt" : {
+                                  "type" : "string",
+                                  "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。",
+                                  "nullable" : true
+                                },
+                                "completedAt" : {
+                                  "type" : "string",
+                                  "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。",
+                                  "nullable" : true
+                                },
+                                "timeEntries" : {
+                                  "type" : "array",
+                                  "items" : {
+                                    "type" : "object",
+                                    "additionalProperties" : true,
+                                    "properties" : {
+                                      "id" : {
+                                        "type" : "string"
+                                      },
+                                      "taskId" : {
+                                        "type" : "string"
+                                      },
+                                      "startedAt" : {
+                                        "type" : "string",
+                                        "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                                      },
+                                      "endedAt" : {
+                                        "type" : "string",
+                                        "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                                      },
+                                      "seconds" : {
+                                        "type" : "integer"
+                                      },
+                                      "source" : {
+                                        "type" : "string",
+                                        "enum" : [ "timer", "manual", "legacy" ]
+                                      }
+                                    }
+                                  }
+                                },
+                                "acceptanceChecks" : {
+                                  "type" : "array",
+                                  "items" : {
+                                    "type" : "boolean"
+                                  }
+                                },
+                                "note" : {
+                                  "type" : "string"
+                                },
+                                "deferTo" : {
+                                  "type" : "string",
+                                  "nullable" : true
+                                },
+                                "skipReason" : {
+                                  "type" : "string",
+                                  "nullable" : true
+                                },
+                                "updatedAt" : {
+                                  "type" : "string",
+                                  "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                                }
+                              },
+                              "nullable" : true
+                            }
+                          }
+                        }
+                      },
+                      "required" : [ "type", "payload" ]
+                    }, {
+                      "type" : "object",
+                      "additionalProperties" : true,
+                      "properties" : {
+                        "id" : {
+                          "type" : "string"
+                        },
+                        "type" : {
+                          "type" : "string",
+                          "enum" : [ "tag" ]
+                        },
+                        "title" : {
+                          "type" : "string"
+                        },
+                        "deletedAt" : {
+                          "type" : "string",
+                          "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                        },
+                        "payload" : {
+                          "type" : "object",
+                          "additionalProperties" : true,
+                          "properties" : {
+                            "planId" : {
+                              "type" : "string"
+                            },
+                            "index" : {
+                              "type" : "integer"
+                            },
+                            "tag" : {
+                              "type" : "object",
+                              "additionalProperties" : true,
+                              "properties" : {
+                                "id" : {
+                                  "type" : "string"
+                                },
+                                "name" : {
+                                  "type" : "string"
+                                },
+                                "color" : {
+                                  "type" : "string"
+                                },
+                                "isOverall" : {
+                                  "type" : "boolean"
+                                }
+                              }
+                            },
+                            "reassignedTaskIds" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "string"
+                              }
+                            },
+                            "replacementTagId" : {
+                              "type" : "string",
+                              "nullable" : true
+                            }
+                          }
+                        }
+                      },
+                      "required" : [ "type", "payload" ]
+                    } ]
+                  },
+                  "maxItems" : 1000
+                },
+                "deletionMarkers" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "additionalProperties" : true,
+                    "properties" : {
+                      "id" : {
+                        "type" : "string"
+                      },
+                      "type" : {
+                        "type" : "string",
+                        "enum" : [ "plan", "mainline", "mainline-item", "tag" ]
+                      },
+                      "entityId" : {
+                        "type" : "string"
+                      },
+                      "parentId" : {
+                        "type" : "string",
+                        "nullable" : true
+                      },
+                      "replacementId" : {
+                        "type" : "string",
+                        "nullable" : true
+                      },
+                      "deletedAt" : {
+                        "type" : "string",
+                        "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                      }
+                    }
+                  },
+                  "maxItems" : 10000
+                },
+                "updatedAt" : {
+                  "type" : "string",
+                  "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+                }
+              }
+            },
+            "migrationCatalog" : {
+              "type" : "object",
+              "additionalProperties" : true,
+              "properties" : {
+                "defaultPlan" : {
+                  "type" : "object",
+                  "additionalProperties" : true,
+                  "properties" : {
+                    "id" : {
+                      "type" : "string"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "startDate" : {
+                      "type" : "string",
+                      "format" : "date"
+                    },
+                    "endDate" : {
+                      "type" : "string",
+                      "format" : "date"
+                    },
+                    "overallTagId" : {
+                      "type" : "string"
+                    },
+                    "tags" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "additionalProperties" : true,
+                        "properties" : {
+                          "id" : {
+                            "type" : "string"
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "color" : {
+                            "type" : "string"
+                          },
+                          "isOverall" : {
+                            "type" : "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "tasks" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "additionalProperties" : true,
+                        "properties" : {
+                          "id" : {
+                            "type" : "string"
+                          },
+                          "date" : {
+                            "type" : "string",
+                            "format" : "date"
+                          },
+                          "startTime" : {
+                            "type" : "string"
+                          },
+                          "endTime" : {
+                            "type" : "string"
+                          },
+                          "plannedMinutes" : {
+                            "type" : "integer"
+                          },
+                          "category" : {
+                            "type" : "string"
+                          },
+                          "title" : {
+                            "type" : "string"
+                          },
+                          "description" : {
+                            "type" : "string"
+                          },
+                          "acceptance" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : {
+                            "type" : "boolean"
+                          },
+                          "tagId" : {
+                            "type" : "string"
+                          },
+                          "sourceRef" : {
+                            "type" : "string"
+                          },
+                          "resources" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "object",
+                              "additionalProperties" : true,
+                              "properties" : {
+                                "label" : {
+                                  "type" : "string"
+                                },
+                                "url" : {
+                                  "type" : "string"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "builtInMainlines" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "additionalProperties" : true,
+                    "properties" : {
+                      "id" : {
+                        "type" : "string"
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "description" : {
+                        "type" : "string"
+                      },
+                      "color" : {
+                        "type" : "string"
+                      },
+                      "builtIn" : {
+                        "type" : "boolean"
+                      },
+                      "items" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "additionalProperties" : true,
+                          "properties" : {
+                            "id" : {
+                              "type" : "string"
+                            },
+                            "date" : {
+                              "type" : "string",
+                              "format" : "date"
+                            },
+                            "startTime" : {
+                              "type" : "string"
+                            },
+                            "endTime" : {
+                              "type" : "string"
+                            },
+                            "plannedMinutes" : {
+                              "type" : "integer"
+                            },
+                            "category" : {
+                              "type" : "string"
+                            },
+                            "title" : {
+                              "type" : "string"
+                            },
+                            "description" : {
+                              "type" : "string"
+                            },
+                            "acceptance" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : {
+                              "type" : "boolean"
+                            },
+                            "tagId" : {
+                              "type" : "string"
+                            },
+                            "sourceRef" : {
+                              "type" : "string"
+                            },
+                            "resources" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "object",
+                                "additionalProperties" : true,
+                                "properties" : {
+                                  "label" : {
+                                    "type" : "string"
+                                  },
+                                  "url" : {
+                                    "type" : "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "exportedAt" : {
+              "type" : "string",
+              "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+            },
+            "updatedAt" : {
+              "type" : "string",
+              "description" : "旧时间支持ISO Instant、带偏移量时间和按Asia/Shanghai解释的本地日期时间；不是仅UTC格式。"
+            }
+          },
+          "required" : [ "schemaVersion", "progress", "reflections" ]
+        }, {
+          "oneOf" : [ {
+            "type" : "object",
+            "additionalProperties" : true,
+            "properties" : {
+              "schemaVersion" : {
+                "type" : "integer",
+                "minimum" : 1,
+                "maximum" : 1
+              }
+            },
+            "required" : [ "schemaVersion" ],
+            "description" : "旧标准格式1的兼容字段指南；workspace与catalog可缺省。早期可缺timeEntries/acceptanceChecks，schema2可缺customMainlines、schema3可缺defaultPlanTags、schema4可缺trash/deletionMarkers。未知字段保留在快照；关系及时间另由预检/事务验证。"
+          }, {
+            "type" : "object",
+            "additionalProperties" : true,
+            "properties" : {
+              "schemaVersion" : {
+                "type" : "integer",
+                "minimum" : 2,
+                "maximum" : 2
+              }
+            },
+            "required" : [ "schemaVersion" ],
+            "description" : "旧标准格式2的兼容字段指南；workspace与catalog可缺省。早期可缺timeEntries/acceptanceChecks，schema2可缺customMainlines、schema3可缺defaultPlanTags、schema4可缺trash/deletionMarkers。未知字段保留在快照；关系及时间另由预检/事务验证。"
+          }, {
+            "type" : "object",
+            "additionalProperties" : true,
+            "properties" : {
+              "schemaVersion" : {
+                "type" : "integer",
+                "minimum" : 3,
+                "maximum" : 3
+              }
+            },
+            "required" : [ "schemaVersion" ],
+            "description" : "旧标准格式3的兼容字段指南；workspace与catalog可缺省。早期可缺timeEntries/acceptanceChecks，schema2可缺customMainlines、schema3可缺defaultPlanTags、schema4可缺trash/deletionMarkers。未知字段保留在快照；关系及时间另由预检/事务验证。"
+          }, {
+            "type" : "object",
+            "additionalProperties" : true,
+            "properties" : {
+              "schemaVersion" : {
+                "type" : "integer",
+                "minimum" : 4,
+                "maximum" : 4
+              }
+            },
+            "required" : [ "schemaVersion" ],
+            "description" : "旧标准格式4的兼容字段指南；workspace与catalog可缺省。早期可缺timeEntries/acceptanceChecks，schema2可缺customMainlines、schema3可缺defaultPlanTags、schema4可缺trash/deletionMarkers。未知字段保留在快照；关系及时间另由预检/事务验证。"
+          }, {
+            "type" : "object",
+            "additionalProperties" : true,
+            "properties" : {
+              "schemaVersion" : {
+                "type" : "integer",
+                "minimum" : 5,
+                "maximum" : 5
+              }
+            },
+            "required" : [ "schemaVersion" ],
+            "description" : "旧标准格式5的兼容字段指南；workspace与catalog可缺省。早期可缺timeEntries/acceptanceChecks，schema2可缺customMainlines、schema3可缺defaultPlanTags、schema4可缺trash/deletionMarkers。未知字段保留在快照；关系及时间另由预检/事务验证。"
+          }, {
+            "type" : "object",
+            "additionalProperties" : true,
+            "properties" : {
+              "schemaVersion" : {
+                "type" : "integer",
+                "minimum" : 6,
+                "maximum" : 6
+              }
+            },
+            "required" : [ "schemaVersion" ],
+            "description" : "旧标准格式6的兼容字段指南；workspace与catalog可缺省。早期可缺timeEntries/acceptanceChecks，schema2可缺customMainlines、schema3可缺defaultPlanTags、schema4可缺trash/deletionMarkers。未知字段保留在快照；关系及时间另由预检/事务验证。"
+          } ]
+        } ]
       }
     }
   },

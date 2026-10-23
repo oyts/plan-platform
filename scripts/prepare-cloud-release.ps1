@@ -33,6 +33,7 @@ if (-not $SkipTests) {
     if (-not $env:PLAYWRIGHT_BROWSERS_PATH -and (Test-Path -LiteralPath $localBrowsers)) { $env:PLAYWRIGHT_BROWSERS_PATH = $localBrowsers }
     $browserArguments = @('--prefix','web','run','test:e2e','--')
     if ($TestScope -eq 'affected') { $browserArguments += @($affectedTests.browser) }
+    if ($TestScope -eq 'affected' -and @($affectedTests.browser).Count -eq 1 -and $affectedTests.browser[0] -eq 'e2e/historical-closure.spec.ts') { $browserArguments += @('--config','playwright.historical.config.ts') }
     if ($TestScope -eq 'full' -or @($affectedTests.browser).Count) {
         & npm.cmd @browserArguments
         if ($LASTEXITCODE -ne 0) { throw 'Selected browser acceptance failed; no release archive prepared.' }

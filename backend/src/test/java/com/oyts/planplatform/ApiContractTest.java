@@ -77,6 +77,23 @@ class ApiContractTest {
         if(node.isContainerNode())node.forEach(child->assertReviewed(child,artifact,seen));
     }
 
+    @Test void legacyRequestsDeclareIntentionalToleranceAndSixCanonicalVersions()throws Exception{
+        JsonNode artifact=json.readTree(Path.of("../docs/openapi-current.json").toFile());
+        for(String path:List.of("/migrations/legacy/preview","/migrations/legacy/import","/migrations/legacy-snapshot")){
+            JsonNode shape=artifact.path("paths").path(path).path("post").path("requestBody").path("content").path("application/json").path("schema");
+            assertReviewed(shape,artifact,new HashSet<>());
+            assertThat(shape.path("x-intentionally-unconstrained-json").asBoolean()).isTrue();
+            assertThat(shape.path("x-canonical-legacy-envelopes").path("$ref").asText()).isEqualTo("#/components/schemas/legacy.CanonicalEnvelopes");
+            JsonNode canonical=artifact.at("/components/schemas/legacy.CanonicalEnvelopes");
+            JsonNode versions=canonical.at("/allOf/1/oneOf");assertThat(versions.size()).isEqualTo(6);
+            for(int v=1;v<=6;v++){
+                assertThat(versions.get(v-1).at("/properties/schemaVersion/minimum").asInt()).isEqualTo(v);
+                assertThat(versions.get(v-1).path("additionalProperties").asBoolean()).isTrue();
+                assertThat(canonical.at("/allOf/0/properties/workspace/properties/trash/maxItems").asInt()).isEqualTo(1000);
+            }
+        }
+    }
+
     @Test void currentRoutesAndDeclaredDtosMatchTheCheckedInContract() throws Exception {
         // The test profile deliberately has an older fixture version; document the real source metadata.
         var releaseVersion=java.util.regex.Pattern.compile("(?m)^  version: ([0-9]+\\.[0-9]+\\.[0-9]+)\\s*$")
@@ -86,7 +103,7 @@ class ApiContractTest {
         ObjectNode contract=json.createObjectNode();contract.put("openapi","3.0.3");
         contract.set("info",json.valueToTree(Map.of("title","计划舱当前源码路由与声明DTO契约","version",sourceVersion+"-source",
             "x-contract-coverage","all-mvc-api-routes-declared-types-and-reviewed-service-delegations; unresolved dynamic fields explicitly marked",
-            "description","未发布候选。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。default响应和x-dynamic-schema仍不承诺具体结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。")));
+            "description","当前源码契约，实际发布状态见对应版本记录。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。旧JSON按明确的宽容接收约定和标准字段指南描述，不新增严格验证器。default响应及基础设施错误不承诺穷尽结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。")));
         contract.set("servers",json.valueToTree(List.of(Map.of("url","/api"))));
         contract.set("x-shared-failure-families",ApiContractErrors.catalog(json));
         contract.set("security",json.valueToTree(List.of(Map.of("bearerAuth",List.of()))));
@@ -111,7 +128,8 @@ class ApiContractTest {
                     for(Parameter p:method.getParameters()){
                         RequestBody body=p.getAnnotation(RequestBody.class);
                         if(body!=null){ObjectNode request=op.putObject("requestBody");request.put("required",body.required());
-                            ObjectNode bodySchema=schema(json.constructType(p.getParameterizedType()),p.getAnnotations());
+                            ObjectNode reviewedRequest=reviewed.request(key);
+                            ObjectNode bodySchema=reviewedRequest!=null?reviewedRequest:schema(json.constructType(p.getParameterizedType()),p.getAnnotations());
                             if(body.required())bodySchema.put("nullable",false);
                             request.putObject("content").putObject("application/json").set("schema",bodySchema);continue;}
                         PathVariable pv=p.getAnnotation(PathVariable.class);RequestParam qp=p.getAnnotation(RequestParam.class);RequestHeader hp=p.getAnnotation(RequestHeader.class);
@@ -153,7 +171,7 @@ class ApiContractTest {
         ObjectNode components=contract.putObject("components");ObjectNode security=components.putObject("securitySchemes");
         security.set("bearerAuth",json.valueToTree(Map.of("type","http","scheme","bearer","bearerFormat","JWT")));
         security.set("reminderKey",json.valueToTree(Map.of("type","apiKey","in","header","name","X-Reminder-Key")));
-        ObjectNode types=components.putObject("schemas");schemas.forEach(types::set);contract.put("x-operation-count",operations.size());
+        ObjectNode types=components.putObject("schemas");schemas.forEach(types::set);types.set("legacy.CanonicalEnvelopes",new ApiLegacyContract(json).canonical());contract.put("x-operation-count",operations.size());
         Path destination=Path.of("../docs/openapi-current.json").toAbsolutePath().normalize();
         if("true".equals(System.getProperty("contract.update"))){Files.writeString(destination,json.writerWithDefaultPrettyPrinter().writeValueAsString(contract)+"\n");}
         // Normalize numeric node widths just as the checked-in JSON is parsed (Min.value is long).

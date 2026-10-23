@@ -32,6 +32,7 @@ services:
       REGISTRATION_ENABLED: "false"
       REFRESH_COOKIE_SECURE: "true"
       EMAIL_VERIFICATION_ENABLED: "false"
+      EMAIL_CHANGE_ENABLED: ${EMAIL_CHANGE_ENABLED:-false}
       PASSWORD_RESET_ENABLED: "false"
       AI_ENABLED: ${AI_ENABLED:-false}
       AI_MODEL: ${AI_MODEL:-deepseek-flash}

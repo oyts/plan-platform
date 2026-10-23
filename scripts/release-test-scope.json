@@ -1,8 +1,8 @@
 {
-  "version": "0.1.19",
+  "version": "0.1.20",
   "historicalClosure": {
-    "status":"in-progress-unreleased",
-    "reason":"User-approved historical closure: transactional old-batch recycling supplement V29, dual-mailbox email change V30 (production disabled), shared UI and export-only Windows SaveAs. Test only new/security/export/legacy behavior and API contract drift. Formal production/artifacts remain0.1.19/24. Exactly two owner-approved real verification emails accepted and confirmed in an isolated service; no paid AI.",
+    "status":"three-platform-0.1.20-released-github-archive-pending",
+    "reason":"Historical closure delivered as0.1.20/25 with owner-approved production email change enabled. New/affected tests and publication gates only. Initial results and dated followups below remain historical, not counts for the final release. Final metadata/evidence in release0120; no account automatically changed, no public APK or registration.",
     "backend":["LegacySupplementIntegrationTest","LegacyBackfillPreviewIntegrationTest","LegacyRecyclingTest","LegacyRecyclingIntegrationTest","EmailChangeIntegrationTest","MailRequestLimiterTest","EmailVerificationExperienceTest","AuthPlanIntegrationTest#portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack"],
     "contract":["ApiContractTest","ApiErrorContractTest"],
     "frontendUnit":["src/download.test.ts","src/aiWorkbench.test.ts"],
@@ -21,12 +21,38 @@
     "oct23":{"androidFullFlowsPassed":4,"localSmtpMessages":2,"realSmtpMessages":2,"bothOwnerMailboxesConfirmed":true,"realEmailChangeAndOldSessionRejectionPassed":true,"formalAdminEmailChanged":false,"apiContractTestsPassed":4,"serviceDelegationShapes":54,"wireWhitelistShapes":14,"normalResponseDynamicPlaceholders":0,"legacyDynamicRequestSchemas":3,"smtpSinkTestsPassed":3,"androidLockedWakePassed":true,"androidNoticeTapPassed":true,"androidOfflineQueueDisablesNotificationsPassed":true,"rebootFollowup":"Authorization retained and fresh poll observed; return after task start correctly ineligible, future alarm delivery still unproven","externalShareReceivedBytesVerified":true,"externalShareBytes":726,"productionChanged":false,"runtimeSourceChanged":false},
     "oct23Evidence":["acceptance-results/historical-closure/android-flows/2026-10-23T03-57-06-633Z/report.json","acceptance-results/historical-closure/real-mail/report.json","acceptance-results/historical-closure/reminder-boundaries/2026-10-23T04-07-11-948Z/report.json","acceptance-results/historical-closure/reminder-boundaries/2026-10-23T04-18-13-811Z/report.json","acceptance-results/historical-closure/api-contract-response-final.log","acceptance-results/historical-closure/synthetic-mailbox-final.log"],
     "pcCsvOct23":{"status":"PASS_WITH_USER_SAVE_HANDOFF","bytes":155,"exactlyOneUtf8Bom":true,"syntheticChineseContentVerified":true,"sha256":"6d32846039b5304d806664f77d3d02080cbaad780c73d209b90a11f8bf9f563b","evidence":"acceptance-results/historical-closure/pc/2026-10-23T04-46-23-706Z/csv-save-as-observations.json"},
-    "pending":["Legacy raw migration request schemas/error-status exhaustiveness beyond reviewed normal responses","Versioned signing, production snapshot/confirmation, formal upgrade retention and publication gates","Production email-change enable confirmation (real isolated dual-mailbox acceptance passed)"],
+    "pending":["GitHub v0.1.20 Windows-only archive"],
+    "finalReleaseDetails":"docs/release-0120.md",
+    "coverageBoundary":"Legacy intake intentionally tolerates raw JSON and unknown historical fields; reviewed schema1-6 guide and9 integration cases are not a strict exhaustive historical validator. Shared failure families are documented, infrastructure/security/network failures not exhaustively enumerated. These are explicit contract boundaries, not pending product implementation.",
     "rebootFutureFinal":{"status":"PASS","bootAuthorizationRetained":true,"freshServerPoll":true,"futureNativeNotificationPresent":true,"formalAppTouched":false,"ownerApprovedSingleReboot":true,"realEmails":0,"paidAiCalls":0,"evidence":"acceptance-results/historical-closure/reminder-boundaries/2026-10-23T05-58-18-300Z/report.json","limits":"Independent synthetic package; earlier late-return FAIL remains retained. No new formal installation or production change."},
     "finalContractEvidence":"acceptance-results/historical-closure/api-contract-metadata-final.log",
     "finalContractSourceVersion":"0.1.19-source",
     "oct23ErrorAndClockFollowup":{"sharedFailureFamiliesDocumented":true,"errorContractTestsPassed":5,"routeContractTestsPassed":4,"clockUnitTestsPassed":3,"rebootFixtureLeadMinutes":10,"lateReturnVerdict":"INCONCLUSIVE, not product delivery failure","deviceOperations":0,"productionChanged":false,"runtimeSourceChanged":false,"evidence":["acceptance-results/historical-closure/api-errors-final2.log"],"commands":["mvn -q -f backend/pom.xml -Dplan.build.directory=target-historical -Dtest=ApiErrorContractTest,ApiContractTest test","node --test scripts/test-reminder-boundary-clock.mjs"],"limits":"Raw legacy request schemas and exhaustive per-operation failures remain outside formal coverage. New future-window helper is unit-tested only; no postboot device PASS claim."},
     "details":"docs/historical-closure-progress.md"
+  },
+  "release0120": {
+    "status":"three-platform-released-github-archive-pending",
+    "version":"0.1.20",
+    "androidVersionCode":25,
+    "productionDirectory":"/home/oyts/plan-platform/releases/0.1.20-b1a78701",
+    "results":{"backendDistinctPassed":63,"frontendPassed":16,"browserDistinctPassed":12,"finalContractPassed":5,"snapshotGuardsPassed":5,"activationGuardsPassed":4,"clockTestsPassed":3,"httpsGroupsPassed":6,"windowsPublicGroupsPassed":5,"androidProtectedGroupsPassed":4,"androidFormalReadonlyGroupsPassed":4,"androidNativeUpdateCheckGroupsPassed":2,"windowsOriginalFilesUnchangedBeforeLaunch":556,"snapshotTablesRestoredTwice":49,"originalBusinessTablesUnchanged":48,"paidAiCalls":0,"realTestEmails":0},
+    "migration":"V28->V30; immutable real production snapshot restored twice; original48 business projections unchanged,2 new tables empty; actual prior0.1.19 image boots. Separate post-upgrade private OSS roundtrip passed.",
+    "apiSha256":"f46a8a7efd93e209be853bf991949fc837c88ba250b9be4499983e3a8d7bf352",
+    "archiveSha256":"b1a787012f5785b52fbd0b2950352309331a89a87f085b72d9b597aa6a8ce88f",
+    "windowsSha256":"974df4aa8abb43f12c85c60d289849a86b4f04042a6eb2f806978df7500ef33f",
+    "androidSha256":"3ba9f4020e4c3c614c87b252a0835de50b20e37da4c361120a37d3b7a6cf579d",
+    "signedCandidate":"production-artifacts/client-release/0.1.20/20261023T091841Z-57e81c7c",
+    "evidence":["acceptance-results/historical-closure/release-0120-build.log","acceptance-results/historical-closure/browser-0120-owner-final.log","acceptance-results/historical-closure/contract-0120-refs-final.log","remote release-drills/roadmap-20261023092757-cf92e5ec/report.json","acceptance-results/public-web/20261023-093513-f128f3/report.json","acceptance-results/native-historical-0120/windows-formal.json","acceptance-results/native-historical-0120/after-20261023T093716249890Z.json","acceptance-results/native-historical-0120/update-check-20261023T094443590160Z.json","acceptance-results/windows-public-cloud/2026-10-23T09-48-05-787Z-08fbe262/report.json","acceptance-results/invited-android/2026-10-23T09-43-02-807Z-7ffe0804/report.json"],
+    "formalQueueBefore":[0,0],
+    "formalQueueAfterColdReopen":[0,0],
+    "bothNativeLatestVersionChecksPassed":true,
+    "automaticDownloadChecked":false,
+    "productionEmailChangeEnabled":true,
+    "publicRegistrationEnabled":false,
+    "publicApkEnabled":false,
+    "limits":"No formal nonempty queue or real-plan-content claim (Windows list empty). Installation not a fresh in-app cross-version install test. Prior real-mail, file dialogs and reminder lifecycle evidence retained separately; Windows SaveAs user-assisted path choice, not fully automatic. Initial browser child-cleanup hang and missing browser-path verifier failure retained; final owner runs exited0.",
+    "pending":["GitHub Windows-only archive"],
+    "details":"docs/release-0120.md"
   },
   "documentationHandoff": {
     "status": "source-and-evidence-consistency-accepted",
@@ -288,7 +314,7 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Unreleased historical closure on formal0.1.19: old-batch recycling, dual-mailbox change, narrow Windows export SaveAs and API route/DTO drift only. No unrelated full regression, paid AI or real mail. Remaining native and publication gates are explicit in historicalClosure.",
+  "reason": "Historical closure0.1.20: V29 recycling supplements, V30 dual-mailbox changes, Windows export SaveAs and API compatibility contract. Only new/affected tests; no unrelated full regression or paid AI. Native upgrade/signature/production snapshot gates required. Owner approved production email-change enable; no automatic change to any account.",
   "frontendUnit": ["src/download.test.ts","src/aiWorkbench.test.ts"],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",
@@ -334,6 +360,8 @@
     "MailRequestLimiterTest",
     "EmailVerificationExperienceTest",
     "ApiContractTest",
+    "ApiErrorContractTest",
+    "LegacyWireContractIntegrationTest",
     "AuthPlanIntegrationTest#portableLegacyBackupCanBePreviewedImportedIdempotentlyAndRolledBack"
   ],
   "android": [],

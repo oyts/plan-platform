@@ -11,6 +11,10 @@ spec.loader.exec_module(m)
 
 
 class SnapshotGuards(unittest.TestCase):
+    def test_closure_uses_exact_previous_version_and_schema(self):
+        self.assertEqual(m.selected_profile('historical-closure'),('0.1.20','0.1.19',28,30))
+        self.assertEqual(m.selected_profile('templates'),('0.1.19','0.1.18',27,28))
+        with self.assertRaises(RuntimeError):m.selected_profile('unknown')
     def backup(self, folder, body):
         p=Path(folder)/'synthetic.sql.gz'
         p.write_bytes(gzip.compress(body))
