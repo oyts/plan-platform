@@ -2,7 +2,7 @@
   "version":"0.1.20",
   "androidVersionCode":25,
   "updatedDate":"2026-10-23",
-  "status":"three-platform-released-github-archive-pending",
+  "status":"complete-three-platform-released-and-github-archived",
   "automationEnabled":false,
   "stopAtFiveHourRemainingPercent":10,
   "production":{
@@ -53,12 +53,15 @@
   },
   "documentationChecks":{"jsonValid":3,"markdownFiles":11,"localLinks":117,"releaseReportsCrossChecked":3,"artifactHashesRechecked":2,"ownerStableHandoffEditPreserved":true},
   "github":{
-    "status":"pending",
+    "status":"PUBLISHED",
     "tag":"v0.1.20",
+    "tagCommit":"4d76d228f5d4cda08ee687142a488ff5c5fe39dd",
+    "url":"https://github.com/oyts/plan-platform/releases/tag/v0.1.20",
+    "assets":["Plan.Cabin_0.1.20_x64-setup.exe","Plan.Cabin_0.1.20_x64-setup.exe.sig","SHA256SUMS.txt"],
     "windowsOnlyAssets":true,
     "preflightOwnerAndWriteAccessAccepted":true
   },
-  "remaining":["Review and commit code/docs including owner-approved stable-handoff edit","Push immutable v0.1.20 and publish verified Windows-only GitHub assets","Record actual archive result and final clean state"],
-  "nextCommand":"node scripts/github-windows-release.mjs --publish production-artifacts/windows-public-release/0.1.20/20261023T094541539Z-5MCaC2",
-  "warning":"Run nextCommand only after verified source is committed/pushed and v0.1.20 exists; never rerun deployment, real email, reminder reboot or installation to finish documentation. No credentials or private test records belong in Git."
+  "remaining":[],
+  "nextCommand":null,
+  "warning":"Closure complete. Do not rerun publication, deployment, real email, reminder reboot or installation for documentation. Tag stays immutable; later documentation-only commits may lead main. New product scope requires the next agreed plan. No credentials or private test records belong in Git."
 }

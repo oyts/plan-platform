@@ -67,6 +67,6 @@ sh /home/oyts/plan-platform/android-private/staging/android-25-70dde9cc/rollback
 
 ## 归档与保留边界
 
-GitHub使用不可变标签`v0.1.20`，只归档Windows EXE、更新签名和SHA256SUMS；私测APK不上传公开Release。归档实际状态与提交见机器检查点`docs/release-0120-resume.json`。
+[GitHub v0.1.20](https://github.com/oyts/plan-platform/releases/tag/v0.1.20)已发布，不可变标签指向`4d76d228f5d4cda08ee687142a488ff5c5fe39dd`，只归档Windows EXE、更新签名和SHA256SUMS；私测APK未上传公开Release。实际检查点见`docs/release-0120-resume.json`。后续纯资料提交可以领先于标签，不移动标签、不重新制作安装包。
 
 本轮约定的历史功能及验收缺口已收口，但不承诺关机、系统强停、所有厂商冻结场景通知必达，不把兼容字段指南当完整历史文件严格Schema，不将网络异常穷尽化。APP／公安备案、1.0命名、公众注册、公开Android下载、团队协作和小程序仍须另行规划或确认。自动续做保持关闭，额度不足直接通知维护者。

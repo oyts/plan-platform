@@ -11,7 +11,7 @@
 | Android | 0.1.20，构建25 | 私下正式APK、登录受限更新源；官网APK／二维码关闭 |
 | 个人备份 | schemaVersion 4，接受1—3 | 含个人模板及日周复盘；先预检、确认后恢复为新记录 |
 | 邮箱变更 | 已按维护者确认启用 | 双邮箱主动验证及最终密码确认；不会自动变更管理员邮箱 |
-| GitHub | 源码与Windows-only归档 | 归档实际状态／提交见`release-0120-resume.json`，无公开APK |
+| GitHub | v0.1.20已归档 | [源码与Windows附件](https://github.com/oyts/plan-platform/releases/tag/v0.1.20)，无公开APK |
 
 正式标签保持不可变；后续纯资料提交可以领先于标签，不移动标签、不重新制作安装包。Windows的更新签名不等于提供了Authenticode发布者证书。
 
