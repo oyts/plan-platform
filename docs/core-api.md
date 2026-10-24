@@ -1,6 +1,21 @@
 # 核心接口与失败语义
 
-基础路径为 `/api`。普通业务需要Bearer Access Token，管理员端点还需要ADMIN；公开健康、部分账号入口和专用设备授权的提醒轮询另按各自规则。公开ID不授予权限，子记录也必须验证归属。本页于2026年10月23日对照0.1.20源码核对，实际发布状态见[本版记录](release-0120.md)。[当前源码契约](openapi-current.json)覆盖190个显式MVC操作、声明DTO及已审查的动态正常响应，由`ApiContractTest`检测漂移。54处服务包装返回从实际泛型提取，14处动态响应按已审查白名单描述；私有备份预检／恢复包含格式1—4。Spring正则路径转为合法OpenAPI参数，原规则留在`x-spring-route`。旧迁移三个请求有明确的宽容接收约定及六版本标准字段指南；共同错误按实际来源分类，`default`响应和基础设施错误不作逐状态穷尽保证。不是替代所有业务校验的验证器。较早的[部分OpenAPI](openapi.yaml)仅保留历史参考。
+基础路径为 `/api`。普通业务需要Bearer Access Token，管理员端点还需要ADMIN；公开健康、部分账号入口和专用设备授权的提醒轮询另按各自规则。公开ID不授予权限，子记录也必须验证归属。本页于2026年10月24日对照0.1.22源码核对，实际发布状态见[本版记录](release-0122.md)。[当前源码契约](openapi-current.json)覆盖196个显式MVC操作、声明DTO及已审查的动态正常响应，由`ApiContractTest`检测漂移。私有备份预检／恢复包含格式1—4。Spring正则路径转为合法OpenAPI参数，原规则留在`x-spring-route`。旧迁移三个请求有明确的宽容接收约定及六版本标准字段指南；共同错误按实际来源分类，`default`响应和基础设施错误不作逐状态穷尽保证。不是替代所有业务校验的验证器。较早的[部分OpenAPI](openapi.yaml)仅保留历史参考。
+
+## 长规划与外部协作（0.1.22）
+
+会话以`/ai/sessions/{id}`为前缀，均验证所有权及版本。能力返回`longPlanningEnabled`／`collaborationEnabled`和容量；旧客户端不获自动写入授权。
+
+| 方法／后缀 | 规则 |
+| --- | --- |
+| POST `/long-plan` | `{version,coverage,confirmed:true}`；完整草稿核对后持久保存范围、稳定ID和至多10批。已存在流程不能重置预算。 |
+| PUT `/batch` | `{version,draftJson}`；只接受当前批完整条目，合并后整图校验，未选内容及日期／阶段／依赖保留；事务完成一批。 |
+| POST `/jobs` | `intent:OUTLINE`只生成大纲；`intent:BATCH`只发送当前批。提交前预占工作流和每日预算；不后台串发。 |
+| POST `/collaboration/export` | `{version,instructions,consent:true}`；仅当前草稿、要求和约束，私有对象快照留服务端。 |
+| POST `/collaboration/preview` | `{version,source}`；只读校验／差异／绑定与fingerprint，不改版本或业务。 |
+| POST `/collaboration/accept` | `{version,source,fingerprint,confirmed:true}`；锁和同事务复核快照，只保存草稿，不等于应用。 |
+
+普通草稿／协作预检和接受请求有1MiB字节上限，再受128000／160000字符限制；普通聊天仍256000字节。未完流程不得整体改写或应用，陈旧版本／对象快照409，其他用户404。外部独立副本不带原对象写权限。每流程12次提交、24次上游、输入1536000／输出98304 Token、1440秒及7天边界持久保存；详见[阶段记录](ai-long-planning-progress.md)。存在新流程时旧后端降级由回退守卫拒绝。
 
 ## 历史问题接口（已随0.1.20发布）
 
@@ -14,7 +29,7 @@
 | POST `/auth/email-change/{id}/cancel` | 本人登录后撤销请求，204；不更改登录邮箱。已完成变更不可借此回退 |
 | POST `/auth/email-change/complete` | 本人`{requestId,currentPassword,confirmed:true}`，两个邮箱已验证才204；原／新地址、密码指纹、账号状态和会话代次复核。竞争占用409，整批回滚；成功后旧JWT／刷新／找回／验证及提醒授权撤销 |
 
-邮箱变更在生产仍默认关闭（`EMAIL_CHANGE_ENABLED=false`）。2026年10月23日已在独立H2候选完成本人双邮箱真实验收：仅发送两封验证邮件，两侧本人主动确认后最终变更、旧会话拒绝和新邮箱登录均通过；没有修改管理员正式账号，详见[历史收口记录](historical-closure-progress.md)。普通会话撤销和本机队列保留是不同概念；更改邮箱不删除计划，不自动清除／提交本机离线队列。账号必须用新邮箱重新登录，24小时离线身份边界不变。
+邮箱变更配置默认关闭（`EMAIL_CHANGE_ENABLED=false`），当前生产经维护者确认已随0.1.20启用。2026年10月23日已在独立H2候选完成本人双邮箱真实验收：仅发送两封验证邮件，两侧本人主动确认后最终变更、旧会话拒绝和新邮箱登录均通过；没有修改管理员正式账号，详见[历史收口记录](historical-closure-progress.md)。普通会话撤销和本机队列保留是不同概念；更改邮箱不删除计划，不自动清除／提交本机离线队列。账号必须用新邮箱重新登录，24小时离线身份边界不变。
 
 新验证邮件把能力放在`/change-email#request=…&side=…&token=…`片段中。页面只在内存暂存并移除片段，用户点击后POST；不放URL查询、日志、普通幂等缓存或离线队列。打开验证页可不登录；最终改邮箱必须在原账号登录状态完成。
 

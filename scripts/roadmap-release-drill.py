@@ -16,7 +16,7 @@ def selected_profile(profile):
     profiles = {'roadmap': ('0.1.15','0.1.14',19,23), 'mail-operations': ('0.1.16','0.1.15',23,24),
                 'ai-workbench': ('0.1.17','0.1.16',24,25), 'reflection': ('0.1.18','0.1.17',25,27),
                 'templates': ('0.1.19','0.1.18',27,28), 'historical-closure': ('0.1.20','0.1.19',28,30),
-                'ai-reliability': ('0.1.21','0.1.20',30,31)}
+                'ai-reliability': ('0.1.21','0.1.20',30,31), 'ai-long': ('0.1.22','0.1.21',31,32)}
     require(profile in profiles, 'Unknown migration profile.')
     return profiles[profile]
 
@@ -61,7 +61,7 @@ def snapshot_restore(backup, sql, environment):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--directory', required=True)
-    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench', 'reflection', 'templates', 'historical-closure', 'ai-reliability'], default='roadmap')
+    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench', 'reflection', 'templates', 'historical-closure', 'ai-reliability', 'ai-long'], default='roadmap')
     parser.add_argument('--archive-sha256')
     parser.add_argument('--api-sha256')
     args = parser.parse_args()
@@ -71,15 +71,16 @@ def main():
     templates = args.profile == 'templates'
     closure = args.profile == 'historical-closure'
     reliability = args.profile == 'ai-reliability'
+    long_planning = args.profile == 'ai-long'
     new_version, old_version, source_schema, target_schema = selected_profile(args.profile)
-    if workbench or reflection or templates or closure or reliability:
+    if workbench or reflection or templates or closure or reliability or long_planning:
         require(all(re.fullmatch('[a-f0-9]{64}', value or '') for value in [args.archive_sha256, args.api_sha256]), 'Accepted archive and API hashes required.')
     release = Path(args.directory).resolve()
     require(re.fullmatch(r'/home/[a-zA-Z0-9_-]+/plan-platform/releases/' + re.escape(new_version) + r'-[a-f0-9]+', str(release)), 'Expected selected managed release.')
     root = release.parent.parent
     previous = (root / 'current').resolve()
     require(previous.parent == release.parent and previous != release, 'An existing previous release is required.')
-    if workbench or reflection or templates or closure or reliability:
+    if workbench or reflection or templates or closure or reliability or long_planning:
         require(hashlib.sha256((release / 'release.tar.gz').read_bytes()).hexdigest() == args.archive_sha256, 'Accepted archive differs.')
         require(hashlib.sha256((release / 'backend/api.jar').read_bytes()).hexdigest() == args.api_sha256, 'Accepted API differs.')
     if mail:
@@ -126,7 +127,7 @@ def main():
                 and re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+-[a-f0-9]+', backup.parent.parent.name)
                 and re.fullmatch(r'plan_platform-mysql-[0-9]{8}-[0-9]{6}\.sql\.gz', backup.name)
                 and backup.is_file(), 'Unexpected backup path.')
-        if reflection or templates or closure or reliability:
+        if reflection or templates or closure or reliability or long_planning:
             database, restore_proof = snapshot_restore(backup, sql, environment)
             report['snapshotRestore'] = restore_proof
         else:
@@ -141,7 +142,7 @@ def main():
         columns = {}
         # Compare every original field for tables extended by V26/V27, rather
         # than comparing a whole-table checksum whose column layout changes.
-        projected = ['ai_quota_requests','ai_sessions','ai_jobs'] if reliability else (['task_progress', 'weekly_reviews', 'restored_weekly_reviews', 'ai_sessions'] if reflection else ([] if mail or workbench or templates or closure else ['users', 'task_templates', 'mainlines']))
+        projected = ['ai_sessions'] if long_planning else ['ai_quota_requests','ai_sessions','ai_jobs'] if reliability else (['task_progress', 'weekly_reviews', 'restored_weekly_reviews', 'ai_sessions'] if reflection else ([] if mail or workbench or templates or closure else ['users', 'task_templates', 'mainlines']))
         for table in projected:
             columns[table] = sql("SELECT column_name FROM information_schema.columns WHERE table_schema='" + database + "' AND table_name='" + table + "' ORDER BY ordinal_position;").splitlines()
             require(columns[table] and all(re.fullmatch('[a-z0-9_]+', c) for c in columns[table]), 'Invalid column projection.')
@@ -196,7 +197,11 @@ def main():
         boot('plan-platform-api:' + new_version, '', new_version)
         require(version(database) == target_schema, 'Target migration missing.')
         require(before == fingerprints(), 'Existing private business fields changed during migration.')
-        if reflection:
+        if long_planning:
+            for table in ['ai_long_plans','ai_long_jobs','ai_collaborations']:
+                require(sql('SELECT COUNT(*) FROM '+database+'.'+table+';')=='0','Unexpected long-planning backfill.')
+            require(sql('SELECT COUNT(*) FROM '+database+'.ai_sessions WHERE outline_only<>FALSE;')=='0','Old sessions must not become outlines.')
+        elif reflection:
             require(sql('SELECT COUNT(*) FROM ' + database + ".task_progress p WHERE ever_started<>(started_at IS NOT NULL OR accumulated_seconds>0 OR status IN ('RUNNING','PAUSED','PARTIAL','COMPLETED') OR EXISTS (SELECT 1 FROM " + database + '.time_entries t WHERE t.progress_id=p.id));') == '0', 'History-protection backfill differs.')
             for table in ['native_reminder_preferences', 'native_reminder_devices', 'native_reminder_deliveries', 'daily_reviews', 'restored_daily_reviews', 'reflection_preferences', 'reflection_guides', 'reflection_coaching']:
                 require(sql('SELECT COUNT(*) FROM ' + database + '.' + table + ';') == '0', 'Unexpected new-feature mutation.')
@@ -225,7 +230,7 @@ def main():
         require(version('plan_platform') == source_schema and public_health() == before_health, 'Production changed during isolated rehearsal.')
         report.update(status='PASS', backup=str(backup), restoredDatabase=database, previousImage=old_image,
                       originalTablesChecked=len(before), originalProjectionTables=list(columns), migration='V19 -> V23',
-                      rollback='Actual previous image; governance not exercised, rollback still requires generation guard.',
+                      rollback='Actual previous image read compatibility; production rollback requires credential and long-planning guards. No new protocol work created in this immutable snapshot.',
                       targetImage='plan-platform-api:' + new_version,
                       archiveSha256=hashlib.sha256((release / 'release.tar.gz').read_bytes()).hexdigest(),
                       apiSha256=hashlib.sha256((release / 'backend/api.jar').read_bytes()).hexdigest())
