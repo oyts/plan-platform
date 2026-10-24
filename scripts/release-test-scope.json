@@ -1,7 +1,7 @@
 {
   "version": "0.1.22",
   "coreAiLongPlanning": {
-    "status":"stage2-released-0.1.22-native-and-publication-accepted-github-archiving",
+    "status":"complete-stage2-released-0.1.22-native-publication-and-github-accepted",
     "results":{"backendDistinctPassed":74,"businessBackendPassed":64,"contractPassed":10,"frontendPassed":27,"browserNewPassed":12,"browserAffectedDistinctPassed":32,"pcScopedPassed":true,"androidOriginalCoreGroupsPassed":2,"androidFollowupGroupsPassed":4,"androidShareCancelGroupPassed":1,"mysqlOriginalTablesUnchanged":51,"mysqlRestoredTables":55,"mysqlFinalBodyLimitGroupsPassed":2,"productionSnapshotTablesRestoredTwice":52,"formalWindowsOriginalFilesUnchanged":573,"formalWindowsColdReopenPassed":true,"formalWindowsLoginRequiredOwner":true,"formalAndroidUpgradeGroupsPassed":4,"formalAndroidUpdateGroupsPassed":2,"httpsNewGroupsPassed":6,"windowsPublicGroupsPassed":5,"androidProtectedGroupsPassed":4,"paidAiCalls":0,"realTestEmails":0},
     "limits":"Original full synthetic MySQL f03ebc54; final HTTP capacity f0caa89f separately passed real MySQL. Signed0.1.22 c3ba4881 JAR independently migrated a production snapshot. Android independent evidence spans original2+followup4+share1, not one uninterrupted run. PC system dialogs partly owner-operated; formal upgrade required owner login after transient restart502, then cold reopen retained login. Real queues were0/0, not a nonempty formal queue upgrade proof. No fresh paid-provider or application-internal cross-version installation claim.",
     "details":"docs/ai-long-planning-progress.md"

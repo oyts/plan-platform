@@ -46,6 +46,8 @@ Windows阶段production-artifacts/windows-public-release/0.1.22/20261024T1158044
 
 公网证据acceptance-results/windows-public-cloud/2026-10-24T12-01-05-152Z-7b43f16e/report.json、invited-android/2026-10-24T11-58-38-552Z-859e457b/report.json，正式双端native-ai-long-0122/。本轮同身份覆盖不冒充应用内跨版本安装测试。
 
+不可变标签v0.1.22指向2028ca68d56859f97d7a6ef8b2ffdcbe47d52731；GitHub已发布EXE、更新签名与SHA256SUMS三个Windows附件，没有公开APK。后续仅资料一致性提交可以领先标签，不移动标签或重打已发布包。阶段2所有发布门槛已收口，阶段3须维护者另行启动。
+
 ## 证据
 
 细节见[阶段2检查点](ai-long-planning-progress.md)。本轮新增报告位于acceptance-results/ai-long/、ai-long/android-followup/、native-ai-long-0122/、public-web/20261024-115415-8b6a0e/。私有运行资料由Git忽略，不将敏感原文抄入文档。

@@ -1,6 +1,6 @@
 {
   "version":"0.1.22","androidVersionCode":27,
-  "status":"three-platform-released-github-archiving",
+  "status":"complete-stage2-three-platform-released-and-github-archived",
   "automationEnabled":false,"stopAtFiveHourRemainingPercent":20,
   "candidate":"production-artifacts/client-release/0.1.22/20261024T113905Z-bc422b46",
   "apiSha256":"c3ba488184f2738495d5dd39839fd35b8671b818755edc6d013f3c7312c14b71",
@@ -23,7 +23,7 @@
   "androidProtectedStage":"production-artifacts/invited-android/0.1.22/candidate-tVHoII",
   "androidStaticRun":"android-27-c6141ed2",
   "paidAiCalls":0,"realTestEmails":0,
-  "github":{"tag":"v0.1.22","status":"pending","windowsOnlyAssets":true,"androidPublicAsset":false},
-  "remaining":["Sensitive source review, commit/push, immutable tag and Windows-only GitHub release"],
+  "github":{"tag":"v0.1.22","status":"published","tagCommit":"2028ca68d56859f97d7a6ef8b2ffdcbe47d52731","url":"https://github.com/oyts/plan-platform/releases/tag/v0.1.22","windowsOnlyAssets":true,"androidPublicAsset":false},
+  "remaining":[],
   "warning":"Do not repeat production migration, signing, installs or paid campaigns. No automatic continuation or new phase without owner request."
 }
