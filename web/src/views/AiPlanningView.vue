@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { api, apiMessage, currentQueueOwner } from '@/api/client';
 import { listOperations, onQueueChange } from '@/offlineQueue';
@@ -7,6 +7,8 @@ import { aiModeNames, aiInitialMode, aiPending, aiState, aiAppliedPath, aiExtern
 import type { AiUsage } from '@/aiQuota';
 import AiDraftEditor from '@/components/AiDraftEditor.vue';
 import AiChangePreview from '@/components/AiChangePreview.vue';
+import AiLongPlanPanel from '@/components/AiLongPlanPanel.vue';
+import AiCollaborationPanel from '@/components/AiCollaborationPanel.vue';
 import { pacingPrompts } from '@/aiPacing';
 import {aiFailureGuidance,aiDiagnosticGuidance,aiQuotaHint,aiSubmitUncertain} from '@/aiExperience';
 import AiWorkspaceShelf from '@/components/AiWorkspaceShelf.vue';
@@ -20,15 +22,16 @@ const mobilePanel = ref<'chat'|'draft'>('chat'), conversationFilter = ref('ALL')
 const remoteSession = ref<AiSession | null>(null), chatScroll = ref<HTMLElement>();
 const workspaceStyle = ref<Record<string,string>>({});
 const keyboardOpen=ref(false);let viewportPeak=0;
-const capability = ref({ available: false, message: '正在确认 AI 服务状态…', maxInputChars: 8000, adjustmentEnabled: false, intentEnabled:false, requirementsEnabled:false });
+const capability = ref({ available: false, message: '正在确认 AI 服务状态…', maxInputChars: 8000, adjustmentEnabled: false, intentEnabled:false, requirementsEnabled:false,longPlanningEnabled:false,collaborationEnabled:false,limits:{items:100,stages:30,draftChars:128000,workspaceBytes:245760,contextChars:16000} });
 const requirementsDraft=ref('');
+const collaboration=ref({instructions:'',source:''});
 const requirementsDirty=computed(()=>!!session.value && requirementsDraft.value!==(session.value.requirementsText??''));
 const quota = ref<AiUsage | null>(null), summaries = ref<AiSummary[]>([]), session = ref<AiSession | null>(null);
 const mode = ref<AiMode | ''>(aiInitialMode(route.query.mode) ?? ''), consent = ref(false), message = ref(''), error = ref(''), notice = ref('');
 const busy = ref(false), loading = ref(true), draft = ref<AiDraft | null>(null), dirty = ref(false), confirmed = ref(false), importJson = ref(''), uncertain = ref(false);
 const pending = computed(() => aiPending(session.value));
-const unsaved=computed(()=>requirementsDirty.value || (dirty.value||Boolean(message.value.trim())||Boolean(importJson.value.trim()))&&!locallySaved.value);
-const workspaceContent = computed<WorkspaceContent>(()=>({schemaVersion:1,mode:mode.value||null,message:message.value,importJson:importJson.value,draft:draft.value,sourceSessionId:session.value?.id??retainedSource.value.id,sourceVersion:session.value?.version??retainedSource.value.version}));
+const unsaved=computed(()=>requirementsDirty.value || (dirty.value||Boolean(message.value.trim())||Boolean(importJson.value.trim())||Boolean(collaboration.value.instructions)||Boolean(collaboration.value.source))&&!locallySaved.value);
+const workspaceContent = computed<WorkspaceContent>(()=>({schemaVersion:1,mode:mode.value||null,message:message.value,importJson:importJson.value,draft:draft.value,sourceSessionId:session.value?.id??retainedSource.value.id,sourceVersion:session.value?.version??retainedSource.value.version,...((collaboration.value.instructions||collaboration.value.source)?{collaboration:{...collaboration.value}}:{})}));
 const workspaceContext = computed(()=>session.value?.id??String(route.query.session??`new:${route.query.mode??''}:${route.query.target??''}`));
 const filteredSummaries = computed(()=>summaries.value.filter(item=>conversationFilter.value==='ALL'||(conversationFilter.value==='APPLIED'?item.applied:conversationFilter.value==='PROCESSING'?item.processing:!item.applied&&!item.processing)));
 const requestedTarget = computed(() => typeof route.query.target === 'string' && /^[a-f0-9-]{36}$/.test(route.query.target) ? route.query.target : null);
@@ -39,6 +42,8 @@ const pacing = computed(() => session.value?.adjustment ? pacingPrompts(session.
 function usePacing(text: string) { if (message.value.trim() && !window.confirm('用这个示例替换尚未发送的要求？')) return; message.value = text; }
 const externalFormat = computed(() => session.value?.adjustment && draft.value ? aiExternalAdjustmentPrompt(session.value.adjustment, draft.value) : requestedTarget.value ? '请先勾选说明并载入所选内容，再复制保留原标识的调整格式。' : mode.value ? aiExternalPrompt(mode.value) : '请先选择模式。');
 const editable = computed(() => !busy.value && !pending.value && !session.value?.applied);
+const incomplete=computed(()=>!!session.value?.longPlan&&!session.value.longPlan.complete);
+const readyToApply=computed(()=>!incomplete.value&&(!session.value?.outlineOnly||!!session.value?.longPlan?.complete));
 const resultPath = computed(() => aiAppliedPath(session.value?.applied?.path));
 let timer: ReturnType<typeof setTimeout> | undefined; let disposed = false; let generation = 0;let pollFailures=0;
 async function checkQueue() { const owner = currentQueueOwner(); queued.value = owner ? (await listOperations(owner)).length : 0; }
@@ -49,11 +54,11 @@ function restoreWorkspace(value: WorkspaceContent) {
   const compatible=!!session.value&&value.sourceSessionId===session.value.id&&value.sourceVersion===session.value.version&&!session.value.applied&&!pending.value;
   remoteSession.value=session.value;retainedSource.value={id:value.sourceSessionId,version:value.sourceVersion};
   if(!compatible){session.value=null;detached.value=true;generation++;clearTimeout(timer);}
-  mode.value=value.mode??'';message.value=value.message;importJson.value=value.importJson;draft.value=value.draft?structuredClone(value.draft):null;
+  collaboration.value=value.collaboration?{...value.collaboration}:{instructions:'',source:''};mode.value=value.mode??'';message.value=value.message;importJson.value=value.importJson;draft.value=value.draft?structuredClone(value.draft):null;
   confirmed.value=false;consent.value=false;dirty.value=!!draft.value;locallySaved.value=true;
   notice.value=compatible?'已恢复本机内容，请核对并保存到当前对话；没有调用 AI。':'已载入独立草稿。请保存云端后通过“新建对话继续此草稿”重新核对；不会复活旧会话。';
 }
-async function resumedWorkspace(value: AiSession, content: WorkspaceContent){accept(value);message.value=content.message;importJson.value=content.importJson;consent.value=true;confirmed.value=false;await router.replace({path:'/ai',query:{session:value.id}});await loadSummary();notice.value='已创建新的对话；发送或生成仍需你明确操作。';}
+async function resumedWorkspace(value: AiSession, content: WorkspaceContent){accept(value);message.value=content.message;importJson.value=content.importJson;collaboration.value=content.collaboration?{...content.collaboration}:{instructions:'',source:''};consent.value=true;confirmed.value=false;await router.replace({path:'/ai',query:{session:value.id}});await loadSummary();notice.value='已创建新的对话；发送或生成仍需你明确操作。';}
 async function changeMode(value:AiMode){
   if(isAdjustment.value||pending.value||busy.value||detached.value)return;
   if(!session.value){mode.value=value;return;}
@@ -62,7 +67,9 @@ async function changeMode(value:AiMode){
   await shelf.value?.saveNow();await fresh();mode.value=value;
 }
 function clearInput(){if(!window.confirm('只清空尚未发送的文字和外部 JSON 输入？不删除草稿、对话或已生成计划。'))return;message.value='';importJson.value='';}
-function updateViewport(){const v=window.visualViewport;if(v){viewportPeak=Math.max(viewportPeak,v.height);keyboardOpen.value=viewportPeak-v.height>120;workspaceStyle.value={'--ai-viewport':`${v.height}px`};}}
+function updateViewport(){const v=window.visualViewport;if(v){viewportPeak=Math.max(viewportPeak,v.height);keyboardOpen.value=viewportPeak-v.height>120;workspaceStyle.value={'--ai-viewport':`${v.height}px`};if(keyboardOpen.value){const field=document.activeElement;if(field instanceof HTMLTextAreaElement || field instanceof HTMLInputElement)requestAnimationFrame(()=>field.scrollIntoView({block:'nearest',behavior:'instant'}));}}}
+const panelScroll:{chat:number;draft:number}={chat:0,draft:0};
+watch(mobilePanel,async(value,old)=>{if(window.innerWidth>900)return;panelScroll[old]=window.scrollY;await nextTick();window.scrollTo({top:panelScroll[value],behavior:'instant'});});
 async function loadSummary() { summaries.value = (await api.get<AiSummary[]>('/ai/sessions')).data; }
 async function loadQuota() { quota.value = (await api.get<AiUsage>('/ai/quota')).data; }
 function schedule() { clearTimeout(timer); if (!disposed && pending.value) timer = setTimeout(() => void refresh(false), Math.min(15000,1500*2**Math.min(pollFailures,4))); }
@@ -77,7 +84,7 @@ async function open(id: string) {
   if(shelf.value && !(await shelf.value.saveNow()) && !window.confirm('本机保存失败，切换可能丢失编辑，仍要继续？'))return;
   if (unsaved.value && !window.confirm('切换会放弃尚未保存的草稿修改或尚未发送的文字，是否继续？')) return;
   busy.value = true; error.value = ''; clearTimeout(timer); const expected = ++generation;
-  try { const data = (await api.get<AiSession>(`/ai/sessions/${id}`)).data; if (expected !== generation || disposed) return; accept(data);message.value='';importJson.value='';consent.value = true; await router.replace({ path: '/ai', query: { session: id } }); }
+  try { const data = (await api.get<AiSession>(`/ai/sessions/${id}`)).data; if (expected !== generation || disposed) return; accept(data);message.value='';importJson.value='';collaboration.value={instructions:'',source:''};consent.value = true; await router.replace({ path: '/ai', query: { session: id } }); }
   catch (reason) { error.value = apiMessage(reason); } finally { busy.value = false; schedule(); }
 }
 async function create() {
@@ -98,7 +105,7 @@ async function loadSelection() {
 async function send(intent:AiIntent='AUTO') {
   if (busy.value || pending.value || uncertain.value || dirty.value || requirementsDirty.value || detached.value) return;
   busy.value = true; error.value = ''; notice.value = '';
-  try { if (!session.value) await create(); const text=message.value.trim() || (intent==='GENERATE'?'请根据需求笔记生成完整草稿供我核对。':'请根据当前需求修订草稿，保留未要求修改的内容。');await api.post(`/ai/sessions/${session.value!.id}/jobs`, { message: text, version: session.value!.version, operationKey: crypto.randomUUID(),...(capability.value.intentEnabled?{intent}:{}) }); message.value = ''; await refresh(false); }
+  try { if (!session.value) await create(); const text=message.value.trim() || (intent==='BATCH'?'请细化本批内容，保持日期、标识和依赖不变。':intent==='OUTLINE'?'请根据需求笔记生成覆盖全部范围的简短大纲，待我分批细化。':intent==='GENERATE'?'请根据需求笔记生成完整草稿供我核对。':'请根据当前需求修订草稿，保留未要求修改的内容。');await api.post(`/ai/sessions/${session.value!.id}/jobs`, { message: text, version: session.value!.version, operationKey: crypto.randomUUID(),...(capability.value.intentEnabled?{intent}:{}) }); message.value = ''; await refresh(false); }
   catch (reason) { error.value = apiMessage(reason); uncertain.value = aiSubmitUncertain(reason); }
   finally { busy.value = false; schedule(); }
 }
@@ -120,8 +127,10 @@ async function saveDraft() {
   try { accept((await api.put<AiSession>(`/ai/sessions/${session.value.id}/draft`, { version: session.value.version, draftJson: JSON.stringify(draft.value) })).data); notice.value = session.value.adjustment ? '调整草稿已保存，原对象尚未改变。' : '草稿已保存，还没有生成真实计划。'; }
   catch (reason) { error.value = apiMessage(reason); } finally { busy.value = false; }
 }
+async function startLongPlan(coverage:string){if(!session.value)return;busy.value=true;error.value='';try{accept((await api.post<AiSession>(`/ai/sessions/${session.value.id}/long-plan`,{version:session.value.version,coverage,confirmed:true})).data);notice.value='已确认大纲。尚未调用AI；每一批都需要单独发送。';}catch(e){error.value=apiMessage(e);}finally{busy.value=false;}}
+async function saveBatch(){if(!session.value||!draft.value)return;const next=session.value.longPlan?.batches.find(b=>!b.complete);if(!next||!window.confirm(`确认第${next.number}批已手动细化完成？只保存草稿，不调用AI或修改真实计划。`))return;busy.value=true;error.value='';try{const partial={...draft.value,items:draft.value.items.filter(i=>next.itemIds.includes(i.localId))};accept((await api.put<AiSession>(`/ai/sessions/${session.value.id}/batch`,{version:session.value.version,draftJson:JSON.stringify(partial)})).data);notice.value='本批已手动完成，其余批次和执行历史不变。';}catch(e){error.value=apiMessage(e);}finally{busy.value=false;}}
 async function apply() {
-  if (!session.value || !confirmed.value || dirty.value || requirementsDirty.value || detached.value || remoteSession.value&&remoteSession.value.version!==session.value.version) return;
+  if (!session.value || !readyToApply.value || !confirmed.value || dirty.value || requirementsDirty.value || detached.value || remoteSession.value&&remoteSession.value.version!==session.value.version) return;
   busy.value = true; error.value = '';
   try { if (session.value.adjustment) await assertCleanQueue(); await api.post(`/ai/sessions/${session.value.id}/apply`, { version: session.value.version, confirmed: true }); await refresh(false); notice.value = session.value.adjustment ? '已应用修改，原执行记录和未修改事项保留。' : '已生成，可进入对应模式查看。'; }
   catch (reason) { error.value = apiMessage(reason); } finally { busy.value = false; }
@@ -141,7 +150,7 @@ async function remove() {
 async function fresh() {
   await shelf.value?.saveNow();
   if (unsaved.value && !window.confirm('新建对话会放弃尚未保存的草稿修改或尚未发送的文字，是否继续？')) return;
-  generation++; clearTimeout(timer); session.value = null; requirementsDraft.value='';draft.value = null; dirty.value = false; confirmed.value = false; consent.value = false; uncertain.value = false; message.value = '';importJson.value='';detached.value=false;retainedSource.value={id:null,version:null};remoteSession.value=null;error.value = ''; notice.value = ''; mode.value = ''; await router.replace('/ai');
+  generation++; clearTimeout(timer); session.value = null; requirementsDraft.value='';draft.value = null; dirty.value = false; confirmed.value = false; consent.value = false; uncertain.value = false; message.value = '';importJson.value='';collaboration.value={instructions:'',source:''};detached.value=false;retainedSource.value={id:null,version:null};remoteSession.value=null;error.value = ''; notice.value = ''; mode.value = ''; await router.replace('/ai');
 }
 function changed() { dirty.value = true; confirmed.value = false; }
 async function copyFormat() { if (!mode.value) return; try { await navigator.clipboard.writeText(externalFormat.value); notice.value = '格式说明已复制，可发给外部 AI。'; } catch { error.value = '无法自动复制，请在下方格式说明中手动选择并复制。'; } }
@@ -162,10 +171,11 @@ onUnmounted(() => { disposed = true; clearTimeout(timer); stopQueueWatch();windo
     <p v-if="error" class="error-text" role="alert">{{ error }}</p><p v-if="notice" class="helper-text" role="status">{{ notice }}</p>
     <p v-if="!capability.available && !loading" class="ai-service-note">{{ capability.message }} <router-link to="/plans">手动周期计划</router-link> · <router-link to="/mainlines">手动目标路线</router-link> · <router-link to="/todos">手动待办</router-link></p>
     <div class="ai-toolbar"><label>对话分类<select v-model="conversationFilter"><option value="ALL">全部对话</option><option value="DRAFT">未完成规划</option><option value="APPLIED">已应用结果</option><option value="PROCESSING">处理中的任务</option></select></label><label>最近对话<select :value="session?.id ?? ''" :disabled="busy" @change="open(($event.target as HTMLSelectElement).value)"><option value="" disabled>选择已保存的对话</option><option v-for="item in filteredSummaries" :key="item.id" :value="item.id">{{ item.adjustment ? '调整 · ' : '' }}{{ item.mode ? aiModeNames[item.mode] : '模式待定' }} · {{ new Date(item.createdAt).toLocaleString('zh-CN') }}{{ item.applied ? ' · 已应用' : item.processing?' · 处理中':' · 未应用' }}</option></select></label><p v-if="quota">今日剩余 <strong>{{ quota.remaining }}</strong> / {{ quota.dailyLimit }} 次 · 已用 {{ quota.used }} · 占用 {{ quota.pending }}<span v-if="quota.paused"> · AI 已暂停</span></p><button v-if="session" class="text-btn danger-text" :disabled="busy || pending" @click="remove">删除对话</button></div>
-    <AiWorkspaceShelf v-if="!loading" :key="auth.user?.id" ref="shelf" :content="workspaceContent" :context="workspaceContext" :ready="!busy" :pending="pending" :modified="requirementsDirty || dirty || !!message || !!importJson" @protected="locallySaved=$event" @restore="restoreWorkspace" @resumed="resumedWorkspace"/>
+    <AiWorkspaceShelf v-if="!loading" :key="auth.user?.id" ref="shelf" :content="workspaceContent" :context="workspaceContext" :ready="!busy" :pending="pending" :modified="requirementsDirty || dirty || !!message || !!importJson || !!collaboration.instructions || !!collaboration.source" @protected="locallySaved=$event" @restore="restoreWorkspace" @resumed="resumedWorkspace"/>
     <p v-if="detached" class="ai-service-note" role="status">当前是独立保存副本，可编辑和导出，不可直接发送或生成。请展开草稿箱，保存云端后选择“新建对话继续此草稿”；调整旧对象时需重新核对最新快照。</p>
     <details v-if="remoteSession && draft" class="ai-service-note"><summary>比较本机草稿与云端对话</summary><p>本机修改保留，云端版本 {{remoteSession.version}}；没有自动合并。若版本不同，请另存独立草稿后重新核对。</p><div class="ai-compare"><div><h3>本机内容</h3><pre>{{JSON.stringify(draft,null,2)}}</pre></div><div><h3>云端内容</h3><pre>{{JSON.stringify(remoteSession.draft,null,2)}}</pre></div></div></details>
     <p class="helper-text" aria-label="AI 额度说明">{{aiQuotaHint(quota)}}</p>
+    <p v-if="capability.longPlanningEnabled" class="helper-text" aria-label="AI 规划容量">同一草稿最多100项／30阶段、128000字；消息与需求笔记各最多8000字，调用上下文最多{{capability.limits?.contextChars??16000}}字，独立工作区240 KiB。容量是不同限制，不代表一次输出能装下全部内容；大范围建议先生成大纲、再明确分批细化。超过容量请自己选择拆为多份规划，不会静默省略。</p>
     <details class="ai-service-note ai-help"><summary>不确定下一步怎么做？</summary><ol><li>说明目标、每次可投入多久、有没有期限；不确定模式可以先让 AI 推荐。</li><li>收到草稿后可以手改，也可以继续对话；手改后先保存。</li><li>核对内容并勾选确认，再点击生成或应用。仅收到回复不会创建计划。</li></ol><p><router-link to="/learn/ai">进入 AI 四步教学</router-link> · <router-link to="/plans">手动周期计划</router-link> · <router-link to="/mainlines">手动目标路线</router-link> · <router-link to="/todos">手动待办</router-link></p><p>若请求结果不确定，先刷新最近对话核对，不要反复发送。需要反馈时只提供错误分类、发生时间和客户端版本，不要发送密码、完整邀请链接或私人对话。</p></details>
     <p v-if="isAdjustment && queued !== 0" class="error-text" role="status">{{ queued > 0 ? `本机仍有 ${queued} 项待同步操作或冲突，请先到同步中心处理，再应用 AI 调整。` : '暂时无法核对本机队列，应用前会重新检查。' }}<router-link to="/sync">进入同步中心</router-link></p>
     <details v-if="mode" class="ai-service-note"><summary>给外部 AI 的格式说明</summary><p>内置 AI 不可用时，可复制这段说明给外部 AI，再在下方导入返回的草稿。{{ isAdjustment ? '调整格式会包含所选对象的事项和说明，请确认愿意向你选用的外部 AI 提供这些内容。' : '' }}</p><label class="ai-format">外部 AI 格式说明<textarea :value="externalFormat" readonly rows="8" /></label><button class="btn" :disabled="!!requestedTarget && !session" @click="copyFormat">复制格式说明</button></details>
@@ -185,19 +195,19 @@ onUnmounted(() => { disposed = true; clearTimeout(timer); stopQueueWatch();windo
             <button v-if="requestedTarget && !session && !detached" class="btn" type="button" :disabled="busy || !consent || !capability.adjustmentEnabled || queued !== 0" @click="loadSelection">载入所选内容（不调用 AI）</button>
             <p v-if="dirty || requirementsDirty" class="helper-text">先保存草稿修改和需求笔记，再让 AI 继续调整。</p><p v-if="uncertain" class="helper-text">请先刷新确认本次请求状态，再继续发送。</p>
             <p v-if="capability.intentEnabled" class="helper-text">“发送并讨论”只交流，不更新草稿；需求确定后，再生成或修改草稿。真实计划仍需预览确认。</p>
-            <div class="button-row"><button class="btn" type="button" :disabled="busy||pending" @click="clearInput">清空输入</button><button class="btn primary" :disabled="detached || busy || pending || uncertain || dirty || requirementsDirty || !capability.available || !message.trim() || (!session && !consent) || !quota?.remaining || (isAdjustment && queued !== 0)">{{ pending ? 'AI 正在处理…' : capability.intentEnabled ? '发送并讨论' : '发送给 AI' }}</button><button v-if="capability.intentEnabled" class="btn" type="button" :disabled="detached || busy || pending || uncertain || dirty || requirementsDirty || !capability.available || !mode || (!message.trim() && !session?.requirementsText?.trim() && !draft) || (!session && !consent) || !quota?.remaining || (isAdjustment && queued !== 0)" @click="send(draft ? 'REVISE' : 'GENERATE')">{{ draft ? '按要求修改草稿' : '生成规划草稿' }}</button></div>
+            <div class="button-row"><button class="btn" type="button" :disabled="busy||pending" @click="clearInput">清空输入</button><button class="btn primary" :disabled="detached || busy || pending || uncertain || dirty || requirementsDirty || !capability.available || !message.trim() || (!session && !consent) || !quota?.remaining || (isAdjustment && queued !== 0)">{{ pending ? 'AI 正在处理…' : capability.intentEnabled ? '发送并讨论' : '发送给 AI' }}</button><button v-if="capability.intentEnabled" class="btn" type="button" :disabled="incomplete || detached || busy || pending || uncertain || dirty || requirementsDirty || !capability.available || !mode || (!message.trim() && !session?.requirementsText?.trim() && !draft) || (!session && !consent) || !quota?.remaining || (isAdjustment && queued !== 0)" :title="incomplete ? '请先完成当前分批流程' : undefined" @click="incomplete ? undefined : send(draft ? 'REVISE' : 'GENERATE')">{{ draft ? '按要求修改草稿' : '生成规划草稿' }}</button><button v-if="capability.longPlanningEnabled && !session?.longPlan" class="btn" type="button" :disabled="detached || busy || pending || uncertain || dirty || requirementsDirty || !capability.available || !mode || (!session && !consent) || !quota?.remaining || (isAdjustment && queued !== 0)" @click="send('OUTLINE')">先生成完整大纲</button></div>
           </form>
         </div>
       </section>
       <section class="section ai-preview" aria-labelledby="ai-preview-title"><header class="section-title"><h2 id="ai-preview-title"><span>02</span> {{ isAdjustment ? '调整预览' : '草稿预览' }}</h2><span v-if="draft">{{ draft.items.length }} 项</span></header>
-        <div class="ai-preview-body"><template v-if="draft"><p class="helper-text">{{ aiModeNames[draft.mode] }} · {{ dirty ? '编辑内容待核对' : '已保存对话草稿' }}。此处编辑不会直接改变真实业务。</p>
+        <div class="ai-preview-body"><template v-if="draft"><AiLongPlanPanel v-if="session && capability.longPlanningEnabled && !session.applied" :session="session" :draft="draft" :disabled="!editable || requirementsDirty || detached" :dirty="dirty" :can-call="capability.available && !!quota?.remaining && !uncertain" @start="startLongPlan" @send="send('BATCH')" @manual="saveBatch" @change="changed"/><p v-if="session?.outlineOnly && !readyToApply" role="status">当前只是大纲，请先完成分批细化，不会生成真实业务。</p><p class="helper-text">{{ aiModeNames[draft.mode] }} · {{ dirty ? '编辑内容待核对' : '已保存对话草稿' }}。此处编辑不会直接改变真实业务。</p>
           <AiChangePreview v-if="session?.adjustment" :adjustment="session.adjustment" :draft="draft"/>
-          <AiDraftEditor :key="`${session?.id}:${session?.version}`" :draft="draft" :adjustment="session?.adjustment" :disabled="!editable" @change="changed"/>
-          <button class="btn" :disabled="!session || !editable || !dirty || requirementsDirty || detached" @click="saveDraft">保存草稿修改</button>
-          <template v-if="!session?.applied"><label class="ai-consent"><input v-model="confirmed" type="checkbox" :disabled="detached || !session || !editable || dirty || requirementsDirty || (isAdjustment && (!differences.length || queued !== 0))"/>{{ isAdjustment ? '我已逐项核对前后差异，确认将建议应用到原对象，保留执行历史。' : `我已核对 ${draft.items.length} 项内容，确认创建新的${aiModeNames[draft.mode]}。` }}</label><button class="btn primary" :disabled="detached || !session || !editable || dirty || requirementsDirty || !confirmed || (isAdjustment && (!differences.length || queued !== 0))" @click="apply">{{ isAdjustment ? '确认应用修改' : '确认生成' }}</button></template>
+          <AiDraftEditor :key="`${session?.id}:${session?.version}`" :draft="draft" :adjustment="session?.adjustment" :disabled="!editable || incomplete" @change="changed"/>
+          <button class="btn" :disabled="!session || !editable || !dirty || requirementsDirty || detached || incomplete" @click="saveDraft">保存草稿修改</button>
+          <template v-if="!session?.applied"><label class="ai-consent"><input v-model="confirmed" type="checkbox" :disabled="!readyToApply || detached || !session || !editable || dirty || requirementsDirty || (isAdjustment && (!differences.length || queued !== 0))"/>{{ isAdjustment ? '我已逐项核对前后差异，确认将建议应用到原对象，保留执行历史。' : `我已核对 ${draft.items.length} 项内容，确认创建新的${aiModeNames[draft.mode]}。` }}</label><button class="btn primary" :disabled="!readyToApply || detached || !session || !editable || dirty || requirementsDirty || !confirmed || (isAdjustment && (!differences.length || queued !== 0))" @click="apply">{{ isAdjustment ? '确认应用修改' : '确认生成' }}</button></template>
         </template><p v-else class="ai-empty">草稿会显示在这里。AI 需要先了解你的要求；也可以导入符合格式的外部 AI 草稿。</p>
         <p v-if="session?.applied" class="ai-applied" role="status">{{ session.adjustment ? `已应用 ${session.applied.count} 处修改，原对象和执行历史保留` : `已生成 ${session.applied.count} 项内容` }}。<router-link v-if="resultPath" :to="resultPath">进入查看</router-link>。重复确认不会再次创建。</p>
-        <details v-if="!session?.applied" class="ai-import"><summary>导入外部 AI 草稿</summary><p class="helper-text">{{ isAdjustment ? '调整草稿须保留原事项和阶段的 localId；不得删除或改写受保护事项。请使用上方已载入的草稿结构，导入后核对差异。' : '使用计划舱 schemaVersion 1 JSON 格式，模式须与当前选择一致。导入后仍须预览确认。' }}</p><label>草稿 JSON<textarea v-model="importJson" rows="6" maxlength="128000" :disabled="!editable"/></label><label v-if="!session&&!detached" class="ai-consent"><input v-model="consent" type="checkbox"/>同意上方对话处理说明（仅导入不会调用 AI）。</label><button class="btn" :disabled="detached || !editable || !importJson.trim() || !mode || (!session && !consent)" @click="importDraft">导入并校验草稿</button></details></div>
+        <AiCollaborationPanel v-if="capability.collaborationEnabled && !session?.applied" :session="session" :draft="draft" :disabled="!editable || (dirty && !detached) || requirementsDirty || incomplete" :detached="detached" :source-value="collaboration.source" :instructions-value="collaboration.instructions" @instructions="collaboration.instructions=$event" @source="collaboration.source=$event" @accepted="accept"/><details v-if="!session?.applied && !incomplete" class="ai-import"><summary>导入外部 AI 草稿</summary><p class="helper-text">{{ isAdjustment ? '调整草稿须保留原事项和阶段的 localId；不得删除或改写受保护事项。请使用上方已载入的草稿结构，导入后核对差异。' : '使用计划舱 schemaVersion 1 JSON 格式，模式须与当前选择一致。导入后仍须预览确认。' }}</p><label>草稿 JSON<textarea v-model="importJson" rows="6" maxlength="128000" :disabled="!editable"/></label><label v-if="!session&&!detached" class="ai-consent"><input v-model="consent" type="checkbox"/>同意上方对话处理说明（仅导入不会调用 AI）。</label><button class="btn" :disabled="detached || !editable || !importJson.trim() || !mode || (!session && !consent)" @click="importDraft">导入并校验草稿</button></details></div>
       </section>
     </div>
   </div>
@@ -207,7 +217,10 @@ onUnmounted(() => { disposed = true; clearTimeout(timer); stopQueueWatch();windo
 @media(max-width:900px){.ai-panel-tabs{display:flex;position:sticky;top:68px;z-index:3;border:1px solid var(--line);background:#fff;margin:16px 0}.ai-panel-tabs button{flex:1;min-height:48px;border:0;background:#fff;font-weight:700;color:var(--muted);border-bottom:3px solid transparent}.ai-panel-tabs button[aria-pressed=true]{color:#002FA7;border-bottom-color:#002FA7}.ai-layout[data-panel=chat]>.ai-preview,.ai-layout[data-panel=draft]>.ai-chat{display:none}.ai-turns{max-height:clamp(180px,38dvh,360px)}.ai-preview-body{max-height:none;overflow:visible}.ai-message-form{bottom:calc(66px + env(safe-area-inset-bottom));padding-bottom:12px}.ai-keyboard-open .ai-message-form{bottom:0}.ai-message-form textarea{max-height:160px;min-height:86px}.ai-compare{grid-template-columns:1fr}.ai-message-form .button-row{display:flex;gap:8px}.ai-message-form .button-row>.primary{flex:1}}
 .ai-pacing h2{font-size:1rem;margin:0}.ai-pacing .button-row{flex-wrap:wrap;gap:10px}.ai-pacing p{overflow-wrap:anywhere}
 .ai-requirements{border-top:1px solid var(--line);padding-top:12px}.ai-requirements summary{cursor:pointer;min-height:44px;line-height:1.8;font-weight:700;font-size:.85rem}.ai-requirements textarea{width:100%;box-sizing:border-box}.ai-request-id{display:block;overflow-wrap:anywhere;margin-top:8px;color:var(--muted)}.ai-message-form .button-row{flex-wrap:wrap}
-/* While editing notes, the following composer must not float over their Save action. */
-@media(max-width:900px){.ai-requirements[open]~.ai-message-form{position:static}}
+/* One scroll surface per desktop pane; on mobile only the page scrolls.
+   The composer is in normal flow, never over the note-save or draft actions. */
+.ai-chat-body,.ai-preview-body{max-height:min(1000px,calc(var(--ai-viewport,100dvh) - 180px));overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.ai-turns{max-height:none;overflow:visible;scrollbar-gutter:auto}.ai-message-form{position:static;z-index:auto}
+@media(max-width:900px){.ai-chat-body,.ai-preview-body{max-height:none;overflow:visible;overscroll-behavior:auto;scrollbar-gutter:auto}.ai-turns{max-height:none;overflow:visible}.ai-message-form{position:static;padding-bottom:max(16px,env(safe-area-inset-bottom))}.ai-layout{overflow-anchor:none}}
 .ai-page{max-width:1440px}.ai-page .page-head p{max-width:680px}.ai-page .btn{min-height:44px}.ai-service-note{padding:16px;border:1px solid var(--line);background:#fff;font-size:.85rem;line-height:1.7}.ai-toolbar{display:flex;gap:18px;align-items:end;margin:24px 0;flex-wrap:wrap}.ai-toolbar label{display:grid;gap:8px;max-width:420px;flex:1;min-width:220px;font-size:.8rem;font-weight:700}.ai-toolbar p{font-size:.8rem;line-height:1.8;margin:0;flex:1}.ai-toolbar p strong{color:#002fa7;font-size:1.5rem;font-variant-numeric:tabular-nums}.ai-toolbar>.text-btn{min-height:44px}.ai-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}.ai-layout .section{margin:0;min-width:0;background:#fff}.ai-layout .section-title{gap:12px;align-items:center;flex-wrap:wrap}.ai-layout h2{font-size:1.2rem;margin:0}.ai-layout h2 span{font-size:1.9rem;color:#002fa7;margin-right:12px;font-weight:400}.ai-layout .section-title>strong{font-size:.8rem;color:#002fa7}.ai-chat-body,.ai-preview-body{padding:24px;display:grid;gap:20px;min-width:0}.ai-layout label:not(.ai-consent){display:grid;gap:8px;font-size:.8rem;font-weight:700}.ai-empty{color:var(--muted);font-size:.85rem;line-height:1.8;margin:0}.ai-turns{padding:0;margin:0;list-style:none;display:grid;gap:24px}.ai-turns article{padding:16px 0;border-top:1px solid var(--line)}.ai-turns strong{font-size:.8rem;color:#002fa7}.ai-turns p{font-size:.9rem;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0}.ai-user-message{padding-left:16px!important;border-left:2px solid #002fa7}.ai-message-form{display:grid;gap:16px;border-top:1px solid var(--line);padding-top:20px}.ai-message-form .helper-text{margin:0}.ai-consent{display:flex;align-items:flex-start;gap:10px;font-size:.8rem;line-height:1.7}.ai-consent input{width:20px;height:20px;margin:3px 0 0;flex:0 0 20px}.ai-mode-choice{padding:16px;background:#f7f7f8}.ai-mode-choice p{margin:0 0 12px;font-size:.85rem;line-height:1.7}.ai-mode-choice .button-row{gap:8px;flex-wrap:wrap}.ai-import{border-top:1px solid var(--line);padding-top:16px}.ai-import summary{cursor:pointer;line-height:44px;font-size:.85rem;font-weight:700}.ai-import label,.ai-import button{margin-top:14px}.ai-applied{line-height:1.8;padding:16px;border:1px solid #002fa7;font-size:.85rem}.ai-layout textarea{resize:vertical;max-width:100%;min-width:0}@media(max-width:900px){.ai-layout{grid-template-columns:1fr;gap:20px}.ai-chat-body,.ai-preview-body{padding:16px}.ai-toolbar{gap:12px;margin:20px 0}.ai-toolbar label{max-width:none;flex-basis:100%;min-width:0}.ai-toolbar p{flex-basis:70%}.ai-page .page-head>.button-row{flex-wrap:wrap}.ai-page .page-head .btn{flex:1}.ai-layout .section-title{padding:16px}.ai-message-form>.btn,.ai-preview-body>.btn{width:100%}}
 </style>

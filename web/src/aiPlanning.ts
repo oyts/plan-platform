@@ -1,5 +1,5 @@
 export type AiMode = 'PLAN' | 'ROUTE' | 'TODO';
-export type AiIntent = 'AUTO' | 'DIALOGUE' | 'GENERATE' | 'REVISE';
+export type AiIntent = 'AUTO' | 'DIALOGUE' | 'GENERATE' | 'REVISE' | 'OUTLINE' | 'BATCH';
 export interface AiDiagnostic { requestId:string; reason:string|null; attempts:number; repairing:boolean; replyOnly:boolean; details?:{number:number;state:string;reason:string|null;inputChars:number|null;outputChars:number|null;inputTokens:number|null;outputTokens:number|null;durationMs:number|null}[] }
 export const aiModeNames: Record<AiMode, string> = { PLAN: '周期计划', ROUTE: '目标路线', TODO: '今日待办' };
 // Native auth restores after the router mounts so offline connection settings
@@ -19,7 +19,8 @@ export function aiNativeResumePath(hash: string): string | null {
 export interface AiItem { localId: string; title: string; note: string; dueDate: string | null; plannedMinutes: number; stageId: string | null; prerequisites: string[] }
 export interface AiDraft { schemaVersion: 1; mode: AiMode; revision: number; title: string; startDate: string | null; endDate: string | null; restDays: number[]; stages: { localId: string; title: string }[]; items: AiItem[] }
 export interface AiAdjustment { original: AiDraft; protectedItems: string[]; path: string }
-export interface AiSession { id: string; mode: AiMode | null; recommendedMode: AiMode | null; version: number; draft: AiDraft | null; applied: { mode: AiMode; path: string; count: number } | null; expiresAt: string; requirementsText?:string; turns: { id: string; state: string; message: string; reply: string | null; error: string | null; createdAt: string; diagnostic?:AiDiagnostic }[]; adjustment?: AiAdjustment | null }
+export interface AiLongPlan { coverage:string; batches:{number:number;itemIds:string[];complete:boolean;lastState:string|null}[]; submissions:number;maxSubmissions:number;reservedCalls:number;maxCalls:number;reservedInputTokens:number;maxInputTokens:number;reservedOutputTokens:number;maxOutputTokens:number;reservedComputeSeconds:number;maxComputeSeconds:number;expiresAt:string;complete:boolean }
+export interface AiSession { id: string; mode: AiMode | null; recommendedMode: AiMode | null; version: number; draft: AiDraft | null; applied: { mode: AiMode; path: string; count: number } | null; expiresAt: string; requirementsText?:string; longPlan?:AiLongPlan|null;outlineOnly?:boolean;turns: { id: string; state: string; message: string; reply: string | null; error: string | null; createdAt: string; diagnostic?:AiDiagnostic }[]; adjustment?: AiAdjustment | null }
 export interface AiSummary { id: string; mode: AiMode | null; version: number; createdAt: string; expiresAt: string; applied: boolean; adjustment?: boolean; processing?: boolean }
 export interface AiDifference { id: string; title: string; kind: 'ADD' | 'MODIFY'; fields: { label: string; before: string; after: string }[] }
 export function aiDifferences(original: AiDraft, proposed: AiDraft): AiDifference[] {
@@ -48,7 +49,7 @@ export function aiAppliedPath(path: unknown): string | null { return typeof path
 export function aiExternalPrompt(mode: AiMode): string {
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Shanghai' });
   const sample: AiDraft = { schemaVersion: 1, mode, revision: 0, title: '请替换为规划名称', startDate: mode === 'PLAN' ? today : null, endDate: mode === 'PLAN' ? today : null, restDays: [], stages: [], items: [{ localId: 'step1', title: '请替换为具体事项', note: '请替换为执行说明', dueDate: mode === 'ROUTE' ? null : today, plannedMinutes: 30, stageId: null, prerequisites: [] }] };
-  return `请先和我讨论目标及限制，确认信息后生成计划舱的${aiModeNames[mode]}草稿。只输出以下结构的完整 JSON，不要代码围栏或额外字段。下面是格式示例，不是我的真实计划：\n${JSON.stringify(sample, null, 2)}\n规则：标题最多120字，说明最多2000字；最多100项，首次建议不超过12项；localId仅英文数字下划线连字符且唯一。PLAN必须确认起止日期与每周休息日（ISO星期1至7），任务日期在范围内且不在休息日，stages为空。ROUTE无日期及休息日，可有阶段，前置依赖只引用现有步骤且不能成环。TODO每项必须确认日期，无阶段、周期范围或依赖。非ROUTE的stageId为null且prerequisites为空。每项预计时长为1至1440整数，TODO可为0。所有示例字段必须保留，空值用null或[]。不要声称已创建真实计划。`;
+  return `请先和我讨论目标及限制，确认信息后生成计划舱的${aiModeNames[mode]}草稿。只输出以下结构的完整 JSON，不要代码围栏或额外字段。下面是格式示例，不是我的真实计划：\n${JSON.stringify(sample, null, 2)}\n规则：标题最多120字，说明最多2000字；最多100项、30阶段，必须覆盖我确认的全部范围，不得只列前几项却宣称完整；超过容量先让我选择拆分范围。localId仅英文数字下划线连字符且唯一。PLAN必须确认起止日期与每周休息日（ISO星期1至7），任务日期在范围内且不在休息日，stages为空。ROUTE无日期及休息日，可有阶段，前置依赖只引用现有步骤且不能成环。TODO每项必须确认日期，无阶段、周期范围或依赖。非ROUTE的stageId为null且prerequisites为空。每项预计时长为1至1440整数，TODO可为0。所有示例字段必须保留，空值用null或[]。不要声称已创建真实计划。`;
 }
 export function aiExternalAdjustmentPrompt(adjustment: AiAdjustment, draft: AiDraft): string {
   return `请与我讨论这份${aiModeNames[draft.mode]}的调整需求，最后只返回完整 schemaVersion 1 JSON 草稿，不要代码围栏或执行任何操作。以下是我明确选择的对象，不代表其他计划。\n必须保留所有原事项和阶段的 localId，保留原事项相对顺序，不得删除或合并。受保护事项的所有字段保持原样；原计划起点不变，结束日期只能延长；新任务和调整排期不能在休息日。可追加新事项/阶段，不能改完成状态、历史或计时，不能声称已应用。\n受保护标识：${JSON.stringify(adjustment.protectedItems)}\n当前完整草稿：\n${JSON.stringify(draft, null, 2)}\n只修改我们明确讨论的部分，其他内容原样保留；待我在计划舱逐项核对并确认后再应用。`;

@@ -27,18 +27,21 @@ class AiJobRunner {
         }
     }
     void run(AiConversationService.Work work) {
+        if(!sessions.runnable(work)){sessions.fail(work,new AiFailure(AiFailure.Code.DISABLED,false));return;}
         if(!attempts.begin(work.id(),0))return;
         long deadline=System.nanoTime()+Duration.ofSeconds(config.timeoutSeconds()).toNanos();
         String context=work.context();int outputLimit=config.maxOutputTokens();
         for(int index=0;index<=1;index++){
             AiProvider.Result result=null;
             try {
+                if(!sessions.runnable(work))throw new AiFailure(AiFailure.Code.DISABLED,false);
                 attempts.inputLength(work.id(),index,context.length());
                 if(index==0 && (long)context.getBytes(java.nio.charset.StandardCharsets.UTF_8).length+AiPrompt.SYSTEM.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>64000)
                     throw new AiFailure(AiFailure.Code.INVALID_CONFIG,false);
                 long millis=java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(deadline-System.nanoTime());
                 if(millis<1)throw new AiFailure(AiFailure.Code.TIMEOUT,true);
                 result=guard.call(provider,new AiProvider.Request(context,outputLimit),Duration.ofMillis(millis));
+                if(result.outputTokens()>outputLimit || result.inputTokens()>64000)throw new AiFailure(AiFailure.Code.INVALID_OUTPUT,false,AiFailure.Reason.BUDGET_EXCEEDED,result);
                 attempts.finish(work.id(),index,"REPLIED",null,result);
                 String normalized=AiOutputText.unwrap(result.text());
                 sessions.succeed(work,new AiProvider.Result(normalized,result.inputTokens(),result.outputTokens()));
@@ -49,7 +52,7 @@ class AiJobRunner {
                 sessions.retainReadableReply(work,result);
                 attempts.finish(work.id(),index,safe.uncertain()?"UNKNOWN":safe.code()==AiFailure.Code.INVALID_OUTPUT?"REJECTED":"FAILED",safe,result);
                 if(index==0 && repairEnabled && !safe.uncertain() && safe.code()==AiFailure.Code.INVALID_OUTPUT
-                    && safe.reason()!=AiFailure.Reason.MODE_MISMATCH && result!=null){
+                    && safe.reason()!=AiFailure.Reason.MODE_MISMATCH && safe.reason()!=AiFailure.Reason.BUDGET_EXCEEDED && result!=null){
                     int remaining=(int)Math.max(0,Math.min(config.maxOutputTokens(),8192L-result.outputTokens()));
                     String repair=repairContext(work.context(),result,safe);
                     // Input byte bound is conservative, includes fixed system prompt, never truncates user data.

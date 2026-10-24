@@ -1,6 +1,6 @@
 import type { AiDraft, AiMode } from '@/aiPlanning';
 import { readPrivateDraft, writePrivateDraft, deletePrivateDraft } from '@/privateDrafts';
-export interface WorkspaceContent { schemaVersion: 1; mode: AiMode | null; message: string; importJson: string; draft: AiDraft | null; sourceSessionId: string | null; sourceVersion: number | null }
+export interface WorkspaceContent { schemaVersion: 1; mode: AiMode | null; message: string; importJson: string; draft: AiDraft | null; sourceSessionId: string | null; sourceVersion: number | null; collaboration?:{instructions:string;source:string} }
 export interface LocalWorkspace { id: string; context: string; name: string; content: WorkspaceContent; updatedAt: string; cloudId: string | null; cloudVersion: number }
 export interface SavedWorkspace { id: string; name: string; content: WorkspaceContent; version: number; updatedAt: string; processing: boolean; adjustment: boolean }
 export type WorkspaceSummary = Omit<SavedWorkspace, 'content'>;
@@ -10,6 +10,7 @@ export function parseWorkspace(value: unknown): WorkspaceContent {
   if(c.draft && (!['PLAN','ROUTE','TODO'].includes(c.draft.mode)||typeof c.draft.title!=='string'||!Array.isArray(c.draft.restDays)||c.draft.stages.length>30||!c.draft.stages.every(s=>s&&typeof s.localId==='string'&&typeof s.title==='string')||!c.draft.items.every(i=>i&&typeof i.localId==='string'&&typeof i.title==='string'&&typeof i.note==='string'&&Array.isArray(i.prerequisites)&&i.prerequisites.every(v=>typeof v==='string'))))throw new Error('草稿步骤格式不完整，原保存内容未被覆盖。');
   // Explicit fields only: never persist consent, confirm/apply flags, operation keys, tokens or turns.
   const result: WorkspaceContent = { schemaVersion: 1, mode: c.mode, message: c.message, importJson: c.importJson, draft: c.draft, sourceSessionId: c.sourceSessionId, sourceVersion: c.sourceVersion };
+  if(c.collaboration!==undefined){const p=c.collaboration;if(!p||typeof p.instructions!=='string'||p.instructions.length>2000||typeof p.source!=='string'||p.source.length>160000)throw new Error('协作编辑内容超过保存范围，原草稿未被覆盖。');result.collaboration={instructions:p.instructions,source:p.source};}
   if (new TextEncoder().encode(JSON.stringify(result)).length > 245760) throw new Error('单份草稿最多 240 KiB，请缩短 JSON 或说明。');
   return structuredClone(JSON.parse(JSON.stringify(result)));
 }

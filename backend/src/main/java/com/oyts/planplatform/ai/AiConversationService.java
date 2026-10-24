@@ -18,16 +18,17 @@ import com.oyts.planplatform.reflection.ReflectionDtos;
 public class AiConversationService {
     private final JdbcTemplate db; private final AiQuotaService quotas; private final AiProperties config;
     private final ObjectMapper mapper; private final Validator validator; private final AiDraftApplier applier; private final AiAdjustmentService adjustments; private final ReflectionService reflections;
-    AiConversationService(JdbcTemplate db,AiQuotaService quotas,AiProperties config,ObjectMapper mapper,Validator validator,AiDraftApplier applier,AiAdjustmentService adjustments,ReflectionService reflections) {
-        this.db=db;this.quotas=quotas;this.config=config;this.mapper=mapper;this.validator=validator;this.applier=applier;this.adjustments=adjustments;this.reflections=reflections;
+    private final AiLongPlans longPlans;
+    AiConversationService(JdbcTemplate db,AiQuotaService quotas,AiProperties config,ObjectMapper mapper,Validator validator,AiDraftApplier applier,AiAdjustmentService adjustments,ReflectionService reflections,AiLongPlans longPlans) {
+        this.db=db;this.quotas=quotas;this.config=config;this.mapper=mapper;this.validator=validator;this.applier=applier;this.adjustments=adjustments;this.reflections=reflections;this.longPlans=longPlans;
     }
     public record Summary(String id,String mode,long version,Instant createdAt,Instant expiresAt,boolean applied,boolean adjustment,boolean processing) {}
-    public enum Intent { AUTO, DIALOGUE, GENERATE, REVISE }
+    public enum Intent { AUTO, DIALOGUE, GENERATE, REVISE, OUTLINE, BATCH }
     public record AttemptInfo(int number,String state,String reason,Integer inputChars,Integer outputChars,Long inputTokens,Long outputTokens,Long durationMs) {}
     public record Diagnostic(String requestId,String reason,int attempts,boolean repairing,boolean replyOnly,List<AttemptInfo> details) {}
     public record Turn(String id,String state,String message,String reply,String error,Instant createdAt,Diagnostic diagnostic) {}
     public record Session(String id,String mode,String recommendedMode,long version,AiDrafts.Draft draft,
-                          JsonNode applied,Instant expiresAt,List<Turn> turns,AiAdjustmentService.View adjustment,JsonNode review,String requirementsText) {}
+                          JsonNode applied,Instant expiresAt,List<Turn> turns,AiAdjustmentService.View adjustment,JsonNode review,String requirementsText,AiLongPlans.View longPlan,boolean outlineOnly) {}
     public record Job(String id,String state,String error) {}
     record Work(String id,String owner,String sessionId,String reservation,String context,String mode,Intent intent) {}
     private record Row(String id,String mode,String recommendedMode,long version,String draft,String applied,Instant expiresAt,String adjustment,String review,String requirements) {}
@@ -75,7 +76,7 @@ public class AiConversationService {
         var turns=db.query("SELECT id,state,user_message,reply_text,error_code,created_at FROM ai_jobs WHERE session_id=? ORDER BY created_at,id",
             (r,n)->new Turn(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getTimestamp(6).toInstant(),diagnostic(r.getString(1),r.getString(2),r.getString(4))),id);
         var snapshot=adjustments.decode(row.adjustment);
-        return new Session(id,row.mode,row.recommendedMode,row.version,row.draft==null?null:adjustments.parse(snapshot,row.draft),row.applied==null?null:json(row.applied),row.expiresAt,turns,adjustments.view(snapshot),row.review==null?null:json(row.review),requirements(row));
+        return new Session(id,row.mode,row.recommendedMode,row.version,row.draft==null?null:adjustments.parse(snapshot,row.draft),row.applied==null?null:json(row.applied),row.expiresAt,turns,adjustments.view(snapshot),row.review==null?null:json(row.review),requirements(row),longPlans.view(id),Boolean.TRUE.equals(db.queryForObject("SELECT outline_only FROM ai_sessions WHERE id=?",Boolean.class,id)));
     }
     private Diagnostic diagnostic(String job,String state,String reply){
         var reasons=db.query("SELECT reason FROM ai_job_attempts WHERE job_id=? ORDER BY attempt_no DESC",(r,n)->r.getString(1),job);
@@ -107,6 +108,7 @@ public class AiConversationService {
     public Session saveDraft(String owner,String id,long version,String source) {
         lock();var row=owned(owner,id,true);editable(row,version);
         analysisOnly(row);
+        longPlans.assertOrdinaryEdit(id);
         var draft=adjustments.parse(adjustments.decode(row.adjustment),source);
         if(row.mode==null || !draft.mode().name().equals(row.mode)) throw new IllegalArgumentException("请先选择草稿对应的模式。");
         draft=revision(draft,row.version+1);
@@ -121,6 +123,8 @@ public class AiConversationService {
         if(row.applied!=null) return json(row.applied);
         editable(row,version);
         if(row.draft==null || row.mode==null) throw new IllegalArgumentException("请先生成并保存草稿。");
+        longPlans.assertOrdinaryEdit(id);
+        if(Boolean.TRUE.equals(db.queryForObject("SELECT outline_only FROM ai_sessions WHERE id=?",Boolean.class,id)) && (longPlans.view(id)==null||!longPlans.view(id).complete()))throw new ConflictException("这只是大纲，请核对覆盖范围并完成所有细化批次后再生成真实内容。");
         var snapshot=adjustments.decode(row.adjustment);
         var draft=adjustments.parse(snapshot,row.draft);
         if(!draft.mode().name().equals(row.mode)) throw new ConflictException("草稿模式已变化。");
@@ -128,6 +132,24 @@ public class AiConversationService {
         String encoded=write(result);db.update("UPDATE ai_sessions SET applied_json=?,version=version+1 WHERE id=?",encoded,id);
         return json(encoded);
     }
+    @Transactional public Session startLongPlan(String owner,String id,long version,String coverage,boolean confirmed){
+        lock();var row=owned(owner,id,true);editable(row,version);analysisOnly(row);
+        if(row.draft==null)throw new IllegalArgumentException("请先生成或导入完整大纲，再逐项核对日期、阶段和依赖。");
+        var snapshot=adjustments.decode(row.adjustment);adjustments.assertCurrent(owner,snapshot);
+        var draft=adjustments.parse(snapshot,row.draft);
+        longPlans.start(id,draft,snapshot==null?Set.of():snapshot.protectedItems(),coverage,confirmed,row.expiresAt);
+        db.update("UPDATE ai_sessions SET version=version+1 WHERE id=?",id);return read(owner,id);
+    }
+    @Transactional public Session saveBatch(String owner,String id,long version,String source){
+        lock();var row=owned(owner,id,true);editable(row,version);analysisOnly(row);
+        var snapshot=adjustments.decode(row.adjustment);adjustments.assertCurrent(owner,snapshot);
+        var merged=longPlans.merge(id,null,adjustments.parse(snapshot,row.draft),json(source),adjustments,snapshot);
+        longPlans.complete(id);db.update("UPDATE ai_sessions SET draft_json=?,version=version+1 WHERE id=?",write(revision(merged,row.version+1)),id);return read(owner,id);
+    }
+    /** External collaboration services join this same lock before read-only preflight or mutation. */
+    Session verifyEditable(String owner,String id,long version){lock();var row=owned(owner,id,true);editable(row,version);analysisOnly(row);longPlans.assertOrdinaryEdit(id);return read(owner,id);}
+    AiDrafts.Draft validateExternal(String owner,String id,String source){var row=owned(owner,id,false);var snapshot=adjustments.decode(row.adjustment);adjustments.assertCurrent(owner,snapshot);return adjustments.parse(snapshot,source);}
+    boolean unfinishedOutline(String owner,String id){if(id==null)return false;var rows=db.query("SELECT outline_only FROM ai_sessions WHERE id=? AND owner_id=?",(r,n)->r.getBoolean(1),id,owner);var flow=longPlans.view(id);return !rows.isEmpty()&&(rows.getFirst()||flow!=null)&& (flow==null||!flow.complete());}
     @Transactional
     public void delete(String owner,String id,long version) {
         lock();var row=owned(owner,id,true);
@@ -150,8 +172,10 @@ public class AiConversationService {
             (r,n)->new String[]{r.getString(1),r.getString(2),r.getString(3),r.getString(4)},owner,operation);
         if(!prior.isEmpty()) { var first=prior.getFirst();if(!fingerprint.equals(first[3])) throw new ConflictException("同一请求标识不能用于不同内容。");return new Job(first[0],first[1],first[2]); }
         editable(row,version);
+        if(intent!=Intent.DIALOGUE&&intent!=Intent.BATCH)longPlans.assertOrdinaryEdit(id);
+        if(intent==Intent.OUTLINE&&longPlans.view(id)!=null)throw new ConflictException("已有分批流程不能重新生成大纲，请保留已完成批次。");
         if(row.review!=null && intent!=Intent.AUTO && intent!=Intent.DIALOGUE)throw new IllegalArgumentException("复盘分析不能生成草稿。");
-        if((intent==Intent.GENERATE||intent==Intent.REVISE) && row.mode==null)throw new IllegalArgumentException("请先选择规划模式。");
+        if((intent==Intent.GENERATE||intent==Intent.REVISE||intent==Intent.OUTLINE||intent==Intent.BATCH) && row.mode==null)throw new IllegalArgumentException("请先选择规划模式。");
         if(intent==Intent.REVISE && row.draft==null)throw new IllegalArgumentException("请先准备草稿再修改。");
         // AUTO is the old-client protocol: do not introduce a note-editor requirement there.
         String notes=intent==Intent.AUTO?"":requirements(row),nextNotes=notes.isBlank()?message:notes+"\n"+message;
@@ -160,11 +184,13 @@ public class AiConversationService {
         if(db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE owner_id=? AND state IN ('QUEUED','RUNNING')",Integer.class,owner)>0) throw new TooManyRequestsException("你已有一个 AI 请求正在处理，请在最近对话中等待结果。");
         if(db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE session_id=?",Integer.class,id)>=30) throw new ConflictException("本次对话已达 30 轮，请保存草稿或新建对话。");
         if(db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE state IN ('QUEUED','RUNNING')",Integer.class)>=config.maxConcurrent()+config.queueCapacity()) throw new AiFailure(AiFailure.Code.BUSY,false);
-        String context=context(row,message,intent,notes);
+        String context=intent==Intent.BATCH?longPlans.context(id,adjustments.parse(adjustments.decode(row.adjustment),row.draft),notes,message):context(row,message,intent,notes);
+        if(context.length()>config.maxInputChars())throw new IllegalArgumentException("本批内容和需求超过AI上下文上限，请缩短笔记或手动细化；尚未调用或扣次数。");
         var reservation=quotas.reserve(owner,operation,fingerprint);
         if(!reservation.acquired()) throw new ConflictException("该请求已经处理，不能重复调用模型。");
         String job=UUID.randomUUID().toString();
         db.update("INSERT INTO ai_jobs(id,session_id,owner_id,operation_key,fingerprint,reservation_id,state,user_message,context_json,created_at,updated_at,request_intent) VALUES (?,?,?,?,?,?,'QUEUED',?,?,?,?,?)",job,id,owner,operation,fingerprint,reservation.id(),message,context,now(),now(),intent.name());
+        if(intent==Intent.BATCH)longPlans.reserve(id,job);
         db.update("UPDATE ai_sessions SET requirements_text=?,version=version+1 WHERE id=?",intent==Intent.AUTO?row.requirements:row.review==null?nextNotes:notes,id);return new Job(job,"QUEUED",null);
     }
     private String context(Row row,String message,Intent intent,String notes) {
@@ -192,6 +218,7 @@ public class AiConversationService {
         var work=work(ids.getFirst());
         db.update("UPDATE ai_jobs SET state='RUNNING',updated_at=? WHERE id=?",now(),work.id);return work;
     }
+    boolean runnable(Work work){return work.intent!=Intent.BATCH||longPlans.runnable(work.sessionId);}
     private Work work(String id) { return db.queryForObject("SELECT j.id,j.owner_id,j.session_id,j.reservation_id,j.context_json,s.selected_mode,j.request_intent FROM ai_jobs j JOIN ai_sessions s ON s.id=j.session_id WHERE j.id=?",(r,n)->new Work(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6),Intent.valueOf(r.getString(7))),id); }
     @Transactional
     public void succeed(Work work,AiProvider.Result result) {
@@ -205,12 +232,14 @@ public class AiConversationService {
         else try { AiDrafts.Mode.valueOf(recommendation); } catch(Exception invalid) { throw new AiFailure(AiFailure.Code.INVALID_OUTPUT); }
         lock();var row=owned(work.owner,work.sessionId,true);
         AiDrafts.Draft draft;
-        try { draft=work.intent==Intent.DIALOGUE || output.path("draft").isNull()?null:adjustments.parse(adjustments.decode(row.adjustment),write(output.get("draft"))); }
+        try { draft=work.intent==Intent.BATCH?longPlans.merge(row.id,work.id,adjustments.parse(adjustments.decode(row.adjustment),row.draft),output.get("draft"),adjustments,adjustments.decode(row.adjustment)):work.intent==Intent.DIALOGUE || output.path("draft").isNull()?null:adjustments.parse(adjustments.decode(row.adjustment),write(output.get("draft"))); }
         catch(IllegalArgumentException | AiFailure invalid) { throw new AiFailure(AiFailure.Code.INVALID_OUTPUT,false,AiFailure.Reason.DRAFT_INVALID,null); }
         if(row.review!=null&&draft!=null)throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
         if(draft!=null && (work.mode==null || !draft.mode().name().equals(work.mode))) throw new AiFailure(AiFailure.Code.INVALID_OUTPUT,false,AiFailure.Reason.MODE_MISMATCH,null);
         if(!"RUNNING".equals(db.queryForObject("SELECT state FROM ai_jobs WHERE id=?",String.class,work.id))) return;
+        if(work.intent==Intent.BATCH)longPlans.complete(row.id);
         db.update("UPDATE ai_sessions SET recommended_mode=?,draft_json=?,version=version+1 WHERE id=?",recommendation,draft==null?row.draft:write(revision(draft,row.version+1)),row.id);
+        if(draft!=null && work.intent!=Intent.BATCH)db.update("UPDATE ai_sessions SET outline_only=? WHERE id=?",work.intent==Intent.OUTLINE,row.id);
         db.update("UPDATE ai_jobs SET state='SUCCEEDED',context_json=NULL,reply_text=?,input_tokens=?,output_tokens=?,updated_at=? WHERE id=?",output.path("message").asText(),result.inputTokens(),result.outputTokens(),now(),work.id);
         usageMetadata(work,"SUCCEEDED",null,result.inputTokens(),result.outputTokens());
         quotas.settle(work.owner,work.reservation,"SUCCEEDED");

@@ -1,5 +1,11 @@
 {
   "version": "0.1.21",
+  "coreAiLongPlanning": {
+    "status":"unreleased-shared-features-implemented-native-and-release-gates-pending",
+    "results":{"backendDistinctPassed":64,"contractPassed":10,"frontendPassed":27,"browserNewPassed":12,"pcScopedPassed":true,"androidPassedGroups":2,"androidWholeRunPassed":false,"mysqlOriginalTablesUnchanged":51,"mysqlRestoredTables":55,"paidAiCalls":0,"realEmails":0,"productionWrites":0},
+    "limits":"MySQL f03ebc54 before final HTTP body limit correction; final f0caa89f JAR still needs MySQL boot verification. Android cold reopen stopped on foreground guard; keyboard/rotation/OS file ingress pending. No new signed formal release.",
+    "details":"docs/ai-long-planning-progress.md"
+  },
   "coreAiReliability": {
     "status":"stage1-released-0.1.21",
     "reason":"Released0.1.21/V31: durable attempts and bounded repair; explicit discussion/generate/revise, requirements, readable rejected prose and safe owner/admin diagnostics. Default repair false for other deployments; enabled only in this approved new production environment. Development0.1.20 candidate evidence remains historical.",
@@ -335,8 +341,8 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "0.1.21 core stage1 release: intent/requirements, bounded repair, accounting and diagnostic UI; exact migration/restore, formal signature/retention and publication gates. No unrelated full regression, new paid AI or real email. Independent native and bounded provider evidence retained separately.",
-  "frontendUnit": ["src/aiPlanning.test.ts","src/aiTransport.test.ts","src/aiExperience.test.ts","src/aiWorkbench.test.ts","src/aiAdjustment.test.ts"],
+  "reason": "Unreleased core stage2 on0.1.21: bounded durable long-planning batches, selected-draft collaboration roundtrip and functional scroll/input layout. New and directly affected AI/workspace/apply tests only. Production/signing/native-upgrade gates remain pending; no paid AI or real mail.",
+  "frontendUnit": ["src/aiCollaboration.test.ts","src/aiPlanning.test.ts","src/aiWorkbench.test.ts","src/aiAdjustment.test.ts","src/download.test.ts"],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",
     "reason":"Private whole-structure PLAN/ROUTE and saved new-AI-draft templates; common copy writer, strict nested whitelist, V28, schema4 backup, manual pending replay. Typed task-time reads/writes affect structural copies directly. No unrelated full regression.",
@@ -371,16 +377,14 @@
     "mysqlFollowup":"V25 to V27 plus prior-start backfill, 47-table restore and actual 0.1.17 read compatibility passed in reflectionWorkspace; production unchanged",
     "details":"docs/native-reminders-progress.md"
   },
-  "browser": ["e2e/ai-planning.spec.ts"],
+  "browser": ["e2e/ai-long-planning.spec.ts","e2e/ai-planning.spec.ts","e2e/ai-adjustment.spec.ts","e2e/ai-workbench.spec.ts"],
   "backend": [
     "AiRepairIntegrationTest",
     "AiIntentIntegrationTest",
     "DeepSeekProviderTest",
-    "AiConversationIntegrationTest",
-    "ReflectionAiIntegrationTest",
-    "AiFoundationTest",
-    "AiUsageIntegrationTest",
-    "AiQuotaIntegrationTest",
+    "AiLongPlanningIntegrationTest",
+    "AiCollaborationIntegrationTest",
+    "AiWorkbenchIntegrationTest",
     "AiAdjustmentIntegrationTest",
     "ApiContractTest",
     "ApiErrorContractTest"

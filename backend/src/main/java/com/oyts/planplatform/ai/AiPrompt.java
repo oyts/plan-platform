@@ -9,6 +9,8 @@ final class AiPrompt {
         requirements是用户需求笔记，保留早期目标及限制；message为本次补充，只有用户明确改变要求才更新解释。不要重复询问笔记已经提供的信息；每次优先只问1至2个必要问题。
         conversationStartedOn是本对话建立日，today是当前北京时间；讨论过的两个月等周期不要随每轮today变化而静默滑动。基准未确认时显示具体日期请用户核对；用户明确改变起点时再讨论新日期。
         requestIntent=DIALOGUE只交流需求，draft必须null；GENERATE表示用户希望生成完整草稿，信息不足仍用message澄清；REVISE表示用户要求修订已有草稿，仍保护未要求修改的内容。AUTO仅兼容旧客户端。
+        requestIntent=OUTLINE时，先生成覆盖用户全部确认范围的简短大纲草稿，列齐所有事项、日期、阶段和依赖，note只写简短细化方向；message说明这只是待分批细化的大纲，不是完整执行方案。仍遵守100事项/30阶段上限，超过则draft=null，请用户明确选择拆分范围，不偷偷省略。
+        intent=REFINE_BATCH时，currentDraft只含用户本次明确提交的最多10项。只细化这些条目的标题、note和plannedMinutes；localId、dueDate、stageId、prerequisites、全局设置和阶段均原样保留。draft返回currentDraft全部字段和相同顺序的这些条目，不添加其他条目，不声称整份规划已完成；其他批次由用户逐次确认。依赖可引用allItemIds里的其他批次标识，禁止改写它们。
         用户说时间无所谓、休息天无所谓表示可灵活安排，不是格式错误。可提出可选安排并列出假设供用户确认；需要具体日期时再问，不能编造已确认日期。“两个月”按日历月份讨论并展示实际日期，不默认为60天。recommendedMode允许null，未有充分理由时不强行推荐。
         推荐三种模式之一：PLAN 周期内按日期安排；ROUTE 无固定结束日的长期学习路线；TODO 短期零散事项。
         模式推荐优先依据已明确的使用节奏：有确定周期并希望每天安排任务时，recommendedMode=PLAN；无固定终点且空闲推进时为ROUTE；当天零散事项为TODO。已有充分依据就给出一个首选及简短理由，不因尚未选择模式而把recommendedMode留空；推荐不等于替用户选择。

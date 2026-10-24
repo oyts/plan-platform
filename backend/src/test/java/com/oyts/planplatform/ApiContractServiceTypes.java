@@ -13,6 +13,11 @@ final class ApiContractServiceTypes {
         add("AiController","adjust","ai.AiConversationService","createAdjustment",4);
         add("AiController","draft","ai.AiConversationService","saveDraft",4);
         add("AiController","requirements","ai.AiConversationService","saveRequirements",4);
+        add("AiController","longPlan","ai.AiConversationService","startLongPlan",5);
+        add("AiController","batch","ai.AiConversationService","saveBatch",4);
+        add("AiCollaborationController","export","ai.AiCollaborationService","export",5);
+        add("AiCollaborationController","preview","ai.AiCollaborationService","preview",4);
+        add("AiCollaborationController","accept","ai.AiCollaborationService","accept",6);
         add("AiController","enqueue","ai.AiConversationService","enqueue",5);
         add("AiQuotaController","settings:GET","ai.AiQuotaService","policy",0);
         add("AiQuotaController","settings:PUT","ai.AiQuotaService","changePolicy",3);

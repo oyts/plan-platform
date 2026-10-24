@@ -4,7 +4,7 @@ public class AiFailure extends RuntimeException {
     public enum Code { DISABLED, NOT_IMPLEMENTED, INVALID_CONFIG, BUSY, TIMEOUT, UPSTREAM_UNAVAILABLE, INVALID_OUTPUT }
     private final Code code;
     private final boolean uncertain;
-    public enum Reason { OUTPUT_INVALID, OUTPUT_TRUNCATED, USAGE_MISSING, ENVELOPE_INVALID, DRAFT_INVALID, MODE_MISMATCH, UPSTREAM, TIMEOUT }
+    public enum Reason { OUTPUT_INVALID, OUTPUT_TRUNCATED, USAGE_MISSING, ENVELOPE_INVALID, DRAFT_INVALID, MODE_MISMATCH, BUDGET_EXCEEDED, UPSTREAM, TIMEOUT }
     private final Reason reason;
     private final AiProvider.Result candidate;
     public AiFailure(Code code) { this(code, code == Code.TIMEOUT || code == Code.UPSTREAM_UNAVAILABLE); }

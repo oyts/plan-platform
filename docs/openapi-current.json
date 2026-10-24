@@ -1,10 +1,10 @@
 {
   "openapi" : "3.0.3",
   "info" : {
-    "version" : "0.1.21-source",
-    "title" : "计划舱当前源码路由与声明DTO契约",
+    "description" : "当前源码契约，实际发布状态见对应版本记录。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。旧JSON按明确的宽容接收约定和标准字段指南描述，不新增严格验证器。default响应及基础设施错误不承诺穷尽结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。",
     "x-contract-coverage" : "all-mvc-api-routes-declared-types-and-reviewed-service-delegations; unresolved dynamic fields explicitly marked",
-    "description" : "当前源码契约，实际发布状态见对应版本记录。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。旧JSON按明确的宽容接收约定和标准字段指南描述，不新增严格验证器。default响应及基础设施错误不承诺穷尽结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。"
+    "title" : "计划舱当前源码路由与声明DTO契约",
+    "version" : "0.1.21-source"
   },
   "servers" : [ {
     "url" : "/api"
@@ -1652,9 +1652,43 @@
                     },
                     "requirementsEnabled" : {
                       "type" : "boolean"
+                    },
+                    "longPlanningEnabled" : {
+                      "type" : "boolean"
+                    },
+                    "collaborationEnabled" : {
+                      "type" : "boolean"
+                    },
+                    "limits" : {
+                      "type" : "object",
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "items" : {
+                          "type" : "integer"
+                        },
+                        "stages" : {
+                          "type" : "integer"
+                        },
+                        "draftChars" : {
+                          "type" : "integer"
+                        },
+                        "workspaceBytes" : {
+                          "type" : "integer"
+                        },
+                        "batchItems" : {
+                          "type" : "integer"
+                        },
+                        "batches" : {
+                          "type" : "integer"
+                        },
+                        "contextChars" : {
+                          "type" : "integer"
+                        }
+                      },
+                      "required" : [ "items", "stages", "draftChars", "workspaceBytes", "batchItems", "batches", "contextChars" ]
                     }
                   },
-                  "required" : [ "schemaVersion", "available", "provider", "model", "status", "message", "transport", "timezone", "maxInputChars", "adjustmentEnabled", "intentEnabled", "requirementsEnabled" ]
+                  "required" : [ "schemaVersion", "available", "provider", "model", "status", "message", "transport", "timezone", "maxInputChars", "adjustmentEnabled", "intentEnabled", "requirementsEnabled", "longPlanningEnabled", "collaborationEnabled", "limits" ]
                 }
               }
             }
@@ -6014,6 +6048,138 @@
         }
       }
     },
+    "/ai/sessions/{id}/collaboration/accept" : {
+      "post" : {
+        "operationId" : "AiCollaborationController_accept_POST",
+        "x-java-handler" : "com.oyts.planplatform.ai.AiCollaborationController#accept",
+        "requestBody" : {
+          "required" : true,
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "allOf" : [ {
+                  "$ref" : "#/components/schemas/ai.AiCollaborationController.Import"
+                } ],
+                "nullable" : false
+              }
+            }
+          }
+        },
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        } ],
+        "x-response-source" : "reviewed-service-delegation",
+        "responses" : {
+          "200" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/ai.AiConversationService.Session"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/sessions/{id}/collaboration/export" : {
+      "post" : {
+        "operationId" : "AiCollaborationController_export_POST",
+        "x-java-handler" : "com.oyts.planplatform.ai.AiCollaborationController#export",
+        "requestBody" : {
+          "required" : true,
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "allOf" : [ {
+                  "$ref" : "#/components/schemas/ai.AiCollaborationController.Export"
+                } ],
+                "nullable" : false
+              }
+            }
+          }
+        },
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        } ],
+        "x-response-source" : "reviewed-service-delegation",
+        "responses" : {
+          "200" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/ai.AiCollaborationService.Material"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/sessions/{id}/collaboration/preview" : {
+      "post" : {
+        "operationId" : "AiCollaborationController_preview_POST",
+        "x-java-handler" : "com.oyts.planplatform.ai.AiCollaborationController#preview",
+        "requestBody" : {
+          "required" : true,
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "allOf" : [ {
+                  "$ref" : "#/components/schemas/ai.AiCollaborationController.Import"
+                } ],
+                "nullable" : false
+              }
+            }
+          }
+        },
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        } ],
+        "x-response-source" : "reviewed-service-delegation",
+        "responses" : {
+          "200" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/ai.AiCollaborationService.Preview"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ai/sessions/{id}/jobs" : {
       "post" : {
         "operationId" : "AiController_enqueue_POST",
@@ -6049,6 +6215,50 @@
                 "schema" : {
                   "allOf" : [ {
                     "$ref" : "#/components/schemas/ai.AiConversationService.Job"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/sessions/{id}/long-plan" : {
+      "post" : {
+        "operationId" : "AiController_longPlan_POST",
+        "x-java-handler" : "com.oyts.planplatform.ai.AiController#longPlan",
+        "requestBody" : {
+          "required" : true,
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "allOf" : [ {
+                  "$ref" : "#/components/schemas/ai.AiController.LongPlan"
+                } ],
+                "nullable" : false
+              }
+            }
+          }
+        },
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        } ],
+        "x-response-source" : "reviewed-service-delegation",
+        "responses" : {
+          "200" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/ai.AiConversationService.Session"
                   } ],
                   "nullable" : true
                 }
@@ -14850,6 +15060,50 @@
         }
       }
     },
+    "/ai/sessions/{id}/batch" : {
+      "put" : {
+        "operationId" : "AiController_batch_PUT",
+        "x-java-handler" : "com.oyts.planplatform.ai.AiController#batch",
+        "requestBody" : {
+          "required" : true,
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "allOf" : [ {
+                  "$ref" : "#/components/schemas/ai.AiController.Draft"
+                } ],
+                "nullable" : false
+              }
+            }
+          }
+        },
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        } ],
+        "x-response-source" : "reviewed-service-delegation",
+        "responses" : {
+          "200" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/ai.AiConversationService.Session"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ai/sessions/{id}/draft" : {
       "put" : {
         "operationId" : "AiController_draft_PUT",
@@ -15210,14 +15464,14 @@
   "components" : {
     "securitySchemes" : {
       "bearerAuth" : {
-        "type" : "http",
         "bearerFormat" : "JWT",
+        "type" : "http",
         "scheme" : "bearer"
       },
       "reminderKey" : {
-        "type" : "apiKey",
+        "name" : "X-Reminder-Key",
         "in" : "header",
-        "name" : "X-Reminder-Key"
+        "type" : "apiKey"
       }
     },
     "schemas" : {
@@ -15241,6 +15495,125 @@
           "path" : {
             "type" : "string",
             "nullable" : true
+          }
+        }
+      },
+      "ai.AiCollaborationController.Export" : {
+        "type" : "object",
+        "properties" : {
+          "version" : {
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "instructions" : {
+            "type" : "string",
+            "x-not-blank" : true,
+            "minLength" : 0,
+            "maxLength" : 2000
+          },
+          "consent" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "version", "instructions", "consent" ]
+      },
+      "ai.AiCollaborationController.Import" : {
+        "type" : "object",
+        "properties" : {
+          "version" : {
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "source" : {
+            "type" : "string",
+            "x-not-blank" : true,
+            "minLength" : 0,
+            "maxLength" : 160000
+          },
+          "fingerprint" : {
+            "type" : "string",
+            "minLength" : 0,
+            "maxLength" : 64,
+            "nullable" : true
+          },
+          "confirmed" : {
+            "type" : "boolean",
+            "nullable" : true
+          }
+        },
+        "required" : [ "version", "source" ]
+      },
+      "ai.AiCollaborationService.Material" : {
+        "type" : "object",
+        "properties" : {
+          "format" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "schemaVersion" : {
+            "type" : "integer"
+          },
+          "reference" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "mode" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "instructions" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "protectedItemIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "nullable" : true
+            },
+            "nullable" : true
+          },
+          "draft" : {
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/ai.AiDrafts.Draft"
+            } ],
+            "nullable" : true
+          },
+          "prompt" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        }
+      },
+      "ai.AiCollaborationService.Preview" : {
+        "type" : "object",
+        "properties" : {
+          "binding" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "message" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "original" : {
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/ai.AiDrafts.Draft"
+            } ],
+            "nullable" : true
+          },
+          "proposed" : {
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/ai.AiDrafts.Draft"
+            } ],
+            "nullable" : true
+          },
+          "fingerprint" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "canSave" : {
+            "type" : "boolean"
           }
         }
       },
@@ -15320,6 +15693,25 @@
         },
         "required" : [ "draftJson", "version" ]
       },
+      "ai.AiController.LongPlan" : {
+        "type" : "object",
+        "properties" : {
+          "coverage" : {
+            "type" : "string",
+            "x-not-blank" : true,
+            "minLength" : 0,
+            "maxLength" : 1000
+          },
+          "confirmed" : {
+            "type" : "boolean"
+          },
+          "version" : {
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "coverage", "confirmed", "version" ]
+      },
       "ai.AiController.Message" : {
         "type" : "object",
         "properties" : {
@@ -15341,7 +15733,7 @@
           },
           "intent" : {
             "type" : "string",
-            "enum" : [ "AUTO", "DIALOGUE", "GENERATE", "REVISE" ],
+            "enum" : [ "AUTO", "DIALOGUE", "GENERATE", "REVISE", "OUTLINE", "BATCH" ],
             "nullable" : true
           }
         },
@@ -15723,6 +16115,15 @@
           "requirementsText" : {
             "type" : "string",
             "nullable" : true
+          },
+          "longPlan" : {
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/ai.AiLongPlans.View"
+            } ],
+            "nullable" : true
+          },
+          "outlineOnly" : {
+            "type" : "boolean"
           }
         }
       },
@@ -15957,6 +16358,86 @@
           },
           "retryAfterSeconds" : {
             "type" : "integer"
+          }
+        }
+      },
+      "ai.AiLongPlans.Batch" : {
+        "type" : "object",
+        "properties" : {
+          "number" : {
+            "type" : "integer"
+          },
+          "itemIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "nullable" : true
+            },
+            "nullable" : true
+          },
+          "complete" : {
+            "type" : "boolean"
+          },
+          "lastState" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        }
+      },
+      "ai.AiLongPlans.View" : {
+        "type" : "object",
+        "properties" : {
+          "coverage" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "batches" : {
+            "type" : "array",
+            "items" : {
+              "allOf" : [ {
+                "$ref" : "#/components/schemas/ai.AiLongPlans.Batch"
+              } ],
+              "nullable" : true
+            },
+            "nullable" : true
+          },
+          "submissions" : {
+            "type" : "integer"
+          },
+          "maxSubmissions" : {
+            "type" : "integer"
+          },
+          "reservedCalls" : {
+            "type" : "integer"
+          },
+          "maxCalls" : {
+            "type" : "integer"
+          },
+          "reservedInputTokens" : {
+            "type" : "integer"
+          },
+          "maxInputTokens" : {
+            "type" : "integer"
+          },
+          "reservedOutputTokens" : {
+            "type" : "integer"
+          },
+          "maxOutputTokens" : {
+            "type" : "integer"
+          },
+          "reservedComputeSeconds" : {
+            "type" : "integer"
+          },
+          "maxComputeSeconds" : {
+            "type" : "integer"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "nullable" : true
+          },
+          "complete" : {
+            "type" : "boolean"
           }
         }
       },
@@ -23627,5 +24108,5 @@
       }
     }
   },
-  "x-operation-count" : 191
+  "x-operation-count" : 196
 }
