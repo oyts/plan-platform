@@ -17,6 +17,7 @@ FLAGS = ['AI_ENABLED', 'REFRESH_COOKIE_SECURE', 'EMAIL_VERIFICATION_ENABLED',
          'MEMBER_GOVERNANCE_ENABLED', 'OPERATIONS_ENABLED', 'OPERATIONS_MAIL_ALERTS_ENABLED']
 OVERLAYS = ['production-web.yml', 'production-operations.yml', 'production-mail.yml',
             'production-ai.yml', 'production-timezone.yml', 'android-private/compose.yml', 'client-public/compose.yml']
+ROLLBACK_CAPABILITIES = ['--target-supports-generation', 'yes']
 
 
 def require(ok, message):
@@ -138,7 +139,7 @@ def main():
         (release / 'activation-completed').write_text(str(time.time()))
         print('Web/API ' + NEW_VERSION + ' healthy. Approved flags/overlays retained; native feeds unchanged.')
     except BaseException:
-        run(['python3', str(release / 'scripts/check-governance-rollback.py'), '--target-supports-generation', 'yes'])
+        run(['python3', str(release / 'scripts/check-governance-rollback.py'), *ROLLBACK_CAPABILITIES])
         run(compose(previous))
         healthy(OLD_VERSION)
         if (root / 'current').resolve() == release:

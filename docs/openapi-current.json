@@ -1,7 +1,7 @@
 {
   "openapi" : "3.0.3",
   "info" : {
-    "version" : "0.1.22-source",
+    "version" : "0.1.23-source",
     "description" : "当前源码契约，实际发布状态见对应版本记录。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。旧JSON按明确的宽容接收约定和标准字段指南描述，不新增严格验证器。default响应及基础设施错误不承诺穷尽结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。",
     "x-contract-coverage" : "all-mvc-api-routes-declared-types-and-reviewed-service-delegations; unresolved dynamic fields explicitly marked",
     "title" : "计划舱当前源码路由与声明DTO契约"
