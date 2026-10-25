@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 class AdminController {
     private final AdminService service; AdminController(AdminService service) { this.service = service; }
-    @GetMapping List<AuthDtos.InvitationResponse> list() { return service.invitations(); }
-    @PostMapping @ResponseStatus(HttpStatus.CREATED) AuthDtos.InvitationResponse create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody AuthDtos.InvitationRequest request) { return service.create(jwt.getSubject(), request); }
+    @GetMapping org.springframework.http.ResponseEntity<List<AuthDtos.InvitationResponse>> list() { return org.springframework.http.ResponseEntity.ok().header("Cache-Control","private, no-store").body(service.invitations()); }
+    @PostMapping @ResponseStatus(HttpStatus.CREATED) org.springframework.http.ResponseEntity<AuthDtos.InvitationResponse> create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody AuthDtos.InvitationRequest request) { return org.springframework.http.ResponseEntity.status(201).header("Cache-Control","private, no-store").body(service.create(jwt.getSubject(), request)); }
     @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) void revoke(@PathVariable String id) { service.revoke(id); }
 }

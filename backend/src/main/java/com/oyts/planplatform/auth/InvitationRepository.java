@@ -10,5 +10,7 @@ public interface InvitationRepository extends JpaRepository<Invitation, String> 
     Optional<Invitation> findByTokenHashAndEmailIgnoreCase(String tokenHash, String email);
     Optional<Invitation> findById(String id);
     List<Invitation> findByOrderByCreatedAtDesc();
+    List<Invitation> findTop200ByOrderByCreatedAtDesc();
+    Optional<Invitation> findFirstByEmailIgnoreCaseOrderByCreatedAtDesc(String email);
     List<Invitation> findByEmailIgnoreCaseAndAcceptedAtIsNullAndRevokedAtIsNullAndExpiresAtAfter(String email, Instant now);
 }

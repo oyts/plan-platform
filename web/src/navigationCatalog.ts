@@ -31,8 +31,7 @@ export function navigationGroups(mode:WorkspaceMode,admin:boolean,native:boolean
       {path:'/settings',label:'设置',description:'账号与安全'},
     ]},
     ...(admin?[{title:'管理员',items:[
-      {path:'/members',label:'成员',description:'邀请与账号管理'},
-      {path:'/operations',label:'运行与治理',description:'备份状态、保留预览与成员审计'},
+      {path:'/admin',label:'管理中心',description:'成员、AI资源、运行与反馈处理'},
     ]}]:[]),
   ].filter(group=>group.items.length);
 }

@@ -1,0 +1,2 @@
+<script setup lang="ts">import AiRuntimePanel from '@/components/AiRuntimePanel.vue';import AiQuotaPanel from '@/components/AiQuotaPanel.vue';import AiUsagePanel from '@/components/AiUsagePanel.vue';</script>
+<template><div class="page"><header class="page-head"><div><h1>AI资源与用量</h1><p>运行策略、每日次数和用量分开管理；不会读取成员的对话正文或改变模型密钥。</p></div></header><AiRuntimePanel/><AiQuotaPanel/><AiUsagePanel/></div></template>

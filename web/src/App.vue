@@ -20,6 +20,7 @@ import { checkClientUpdate, requiredClientUpdate, updateRouteAllowed } from '@/c
 import { isAndroid } from '@/desktop';
 const auth = useAuthStore(); const router = useRouter();
 const productPage = computed(() => router.currentRoute.value.meta.landing || (router.currentRoute.value.path === '/' && !auth.user));
+const adminPage = computed(()=>router.currentRoute.value.meta.admin===true);
 watch(() => auth.user?.id, id => { if (id) bindWorkspaceContext(); else { resetWorkspaceContext(); resetLearning(); } }, { immediate: true });
 const queueNotice = ref('');
 const reconnecting = ref(false); const pageRevision = ref(0);
@@ -47,7 +48,7 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
 <template>
   <div class="app-shell">
     <a class="skip-content" href="#main-content" @click.prevent="focusMain">跳到主要内容</a>
-    <header v-if="auth.user && !productPage" class="site-header">
+    <header v-if="auth.user && !productPage && !adminPage" class="site-header">
       <router-link class="brand" :to="workspaceHome(workspace.mode)"><strong>计划舱</strong><span>{{ workspace.mode === 'plan' ? '按时间安排任务' : workspace.mode === 'route' ? '按路径推进目标' : '随手记，逐项完成' }}</span></router-link>
       <WorkspaceSwitcher/>
       <DesktopNavigation/>
@@ -56,12 +57,12 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
     <div v-if="queueNotice" class="queue-toast" role="status"><strong>已加入离线队列</strong><span>{{ queueNotice }}</span><router-link to="/sync">查看队列</router-link></div>
     <ConnectionBar v-if="auth.user && !productPage" :key="auth.user.id" :busy="reconnecting" @reconnect="reconnect" />
     <ClientUpdateNotice v-if="!productPage" />
-    <InAppReminder v-if="auth.user && !productPage" :key="`${auth.user.id}:${serverScope()}`"/>
-    <ReflectionGuide v-if="auth.user && !productPage" :key="`reflection:${auth.user.id}:${serverScope()}`"/>
-    <OperationsNotice v-if="auth.user?.role==='ADMIN'&&auth.operationsAvailable&&!productPage" :key="`${auth.user.id}:${serverScope()}`"/>
-    <LearningPrompt v-if="auth.user && !productPage"/>
+    <InAppReminder v-if="auth.user && !productPage && !adminPage" :key="`${auth.user.id}:${serverScope()}`"/>
+    <ReflectionGuide v-if="auth.user && !productPage && !adminPage" :key="`reflection:${auth.user.id}:${serverScope()}`"/>
+    <OperationsNotice v-if="auth.user?.role==='ADMIN'&&auth.operationsAvailable&&adminPage" :key="`${auth.user.id}:${serverScope()}`"/>
+    <LearningPrompt v-if="auth.user && !productPage && !adminPage"/>
     <main id="main-content" tabindex="-1" :inert="requiredClientUpdate() && !updateRouteAllowed(router.currentRoute.value.path)"><router-view :key="`${['/ai','/verify-email','/change-email'].includes(router.currentRoute.value.path) ? router.currentRoute.value.path : router.currentRoute.value.fullPath}:${pageRevision}`" /></main>
-    <MobileNavigation v-if="auth.user && !productPage" @logout="logout"/>
+    <MobileNavigation v-if="auth.user && !productPage && !adminPage" @logout="logout"/>
   </div>
 </template>
 <style>

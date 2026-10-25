@@ -28,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AccountRecoveryIntegrationTest {
     @Autowired MockMvc mvc;@Autowired UserAccountRepository users;@Autowired PasswordEncoder encoder;@Autowired ObjectMapper mapper;
     @Autowired AuthService auth;@Autowired PasswordResetTokenRepository resetTokens;@Autowired AdminService admins;@Autowired InvitationRepository invitations;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate db;
     @MockBean JavaMailSender sender;
     UserAccount user(){return users.saveAndFlush(new UserAccount("recover-"+UUID.randomUUID()+"@example.test",encoder.encode("Original12345"),"合成恢复账号"));}
     String json(Object value)throws Exception{return mapper.writeValueAsString(value);}
@@ -86,6 +87,7 @@ class AccountRecoveryIntegrationTest {
         var first=admins.create(admin.getId(),new AuthDtos.InvitationRequest(email,24));
         assertThrows(IllegalArgumentException.class,()->admins.create(admin.getId(),new AuthDtos.InvitationRequest(email,721)));
         assertNull(invitations.findById(first.id()).orElseThrow().getRevokedAt());
+        db.update("UPDATE invitations SET created_at=? WHERE id=?",java.sql.Timestamp.from(Instant.now().minusSeconds(61)),first.id());
         var next=admins.create(admin.getId(),new AuthDtos.InvitationRequest(email,24));
         assertNotNull(invitations.findById(first.id()).orElseThrow().getRevokedAt());assertNull(invitations.findById(next.id()).orElseThrow().getRevokedAt());
     }

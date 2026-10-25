@@ -14,11 +14,12 @@ import { loadFeedbackDraft, removeFeedbackDraft, saveFeedbackDraft } from '@/fee
 import { downloadFile } from '@/download';
 import type { PageResponse } from '@/types';
 
+const props=withDefaults(defineProps<{adminMode?:boolean}>(),{adminMode:false});
 const auth=useAuthStore(), owner=currentQueueOwner(), scope=serverScope();
 const draft=reactive(newFeedback()), saved=ref(JSON.stringify(draft)), reply=ref('');
-const busy=ref(false), ready=ref(false), error=ref(''), notice=ref(''), admin=ref(false), status=ref('ALL'), page=ref(0);
+const busy=ref(false), ready=ref(false), error=ref(''), notice=ref(''), admin=ref(props.adminMode), status=ref('ALL'), page=ref(0);
 const storageError=ref('');
-const composeOpen=ref(true);
+const composeOpen=ref(!props.adminMode);
 const rows=ref<PageResponse<FeedbackSummary>|null>(null), selected=ref<FeedbackDetail|null>(null), handling=ref<FeedbackStatus>('IN_PROGRESS');
 const preview=ref(false), consent=ref(false); let active=true, readNumber=0;
 const dirty=computed(()=>JSON.stringify(draft)!==saved.value), edited=computed(()=>dirty.value||Boolean(reply.value.trim()));
@@ -96,13 +97,13 @@ async function sendReply(){
 function mayLeave(){return !currentQueueOwner()||!busy.value&&(!edited.value||confirm('反馈有尚未保存在本机的修改或未发送的补充，确定离开吗？'));}
 function beforeUnload(event:BeforeUnloadEvent){if(edited.value||busy.value){event.preventDefault();event.returnValue='';}}
 onBeforeRouteLeave(mayLeave);
-onMounted(async()=>{window.addEventListener('beforeunload',beforeUnload);try{if(owner){const row=await loadFeedbackDraft(scope,owner);if(inContext()&&row){Object.assign(draft,row);clean();notice.value='已恢复当前设备的反馈草稿，尚未自动发送。';}}ready.value=true;}catch(e){storageError.value=apiMessage(e);/* Do not overwrite an unreadable draft. */}await loadList();});
+onMounted(async()=>{window.addEventListener('beforeunload',beforeUnload);try{if(owner&&!props.adminMode){const row=await loadFeedbackDraft(scope,owner);if(inContext()&&row){Object.assign(draft,row);clean();notice.value='已恢复当前设备的反馈草稿，尚未自动发送。';}}ready.value=true;}catch(e){storageError.value=apiMessage(e);/* Do not overwrite an unreadable draft. */}await loadList();});
 onUnmounted(()=>{active=false;readNumber++;window.removeEventListener('beforeunload',beforeUnload);});
 </script>
 
 <template><div class="page feedback-page">
-  <header class="page-head"><div><p class="feedback-eyebrow">一起改进计划舱</p><h1>反馈与诊断</h1><p>告诉我们遇到了什么。你的反馈仅本人和管理员可见，不会公开展示。</p></div><router-link class="btn" to="/learn">查看使用教学</router-link></header>
-  <nav class="button-row feedback-tabs" aria-label="反馈功能"><button class="btn" :aria-pressed="composeOpen&&!admin" :disabled="busy" @click="chooseAdmin(false,true)">填写反馈</button><button class="btn" :aria-pressed="!composeOpen&&!admin" :disabled="busy" @click="chooseAdmin(false)">我的反馈</button><button v-if="auth.user?.role==='ADMIN'" class="btn" :aria-pressed="admin" :disabled="busy" @click="chooseAdmin(true)">管理员处理</button></nav>
+  <header class="page-head"><div><p class="feedback-eyebrow">一起改进计划舱</p><h1>{{props.adminMode?'反馈处理':'反馈与诊断'}}</h1><p>{{props.adminMode?'仅处理用户主动提交的反馈，不进入成员的私人计划或AI对话。':'告诉我们遇到了什么。你的反馈仅本人和管理员可见，不会公开展示。'}}</p></div><router-link v-if="!props.adminMode" class="btn" to="/learn">查看使用教学</router-link></header>
+  <nav v-if="!props.adminMode" class="button-row feedback-tabs" aria-label="反馈功能"><button class="btn" :aria-pressed="composeOpen&&!admin" :disabled="busy" @click="chooseAdmin(false,true)">填写反馈</button><button class="btn" :aria-pressed="!composeOpen&&!admin" :disabled="busy" @click="chooseAdmin(false)">我的反馈</button><router-link v-if="auth.user?.role==='ADMIN'" class="btn" to="/admin/feedback">前往管理中心处理反馈</router-link></nav>
   <p v-if="error" class="error-text" role="alert">{{error}}</p><p v-if="notice" class="success-text" role="status">{{notice}}</p>
   <p v-if="storageError" class="error-text" role="alert">{{storageError}} 本机草稿暂不可读取，为避免覆盖，已暂停新建反馈；请勿清理存储。</p>
   <p v-if="requiresConnection()" class="feedback-offline" role="status">当前离线：可编辑并手动保存本机反馈草稿。提交、历史与处理回复需要联网，不会加入任务同步队列。</p>

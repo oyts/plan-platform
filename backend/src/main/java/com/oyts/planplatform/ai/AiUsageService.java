@@ -9,8 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 /** Aggregate metadata only. Never selects message, context, draft, reply or secrets. */
 @Service
 class AiUsageService {
-    private final JdbcTemplate db;private final AiProperties config;private final AiExecutionGuard guard;
-    AiUsageService(JdbcTemplate db,AiProperties config,AiExecutionGuard guard){this.db=db;this.config=config;this.guard=guard;}
+    private final JdbcTemplate db;private final AiProperties config;private final AiExecutionGuard guard;private final AiRuntimePolicy runtime;
+    AiUsageService(JdbcTemplate db,AiProperties config,AiExecutionGuard guard,AiRuntimePolicy runtime){this.db=db;this.config=config;this.guard=guard;this.runtime=runtime;}
     record Totals(long requests,long succeeded,long failed,long unknown,long queued,long running,long untracked,long inputTokens,long outputTokens,long tokenKnownRequests){}
     record Day(String date,Totals totals){}
     record Runtime(boolean enabled,int maxConcurrent,int queueCapacity,long queued,long running,AiExecutionGuard.Snapshot circuit){}
@@ -38,7 +38,7 @@ class AiUsageService {
             (r,n)->new Entry(r.getString(1),r.getString(2),r.getString(3),r.getDate(4).toLocalDate().toString(),r.getString(5),r.getString(6),safeCode(r.getString(7)),r.getTimestamp(8).toInstant(),r.getTimestamp(9)==null?null:r.getTimestamp(9).toInstant(),(Long)r.getObject(10),(Long)r.getObject(11),(Long)r.getObject(12)),from,to,size,(long)page*size);
         long queued=db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE state='QUEUED'",Long.class),running=db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE state='RUNNING'",Long.class);
         var reasons=db.query("SELECT a.reason,COUNT(*) FROM ai_job_attempts a JOIN ai_jobs j ON j.id=a.job_id JOIN ai_quota_requests q ON q.id=j.reservation_id WHERE q.quota_day>=? AND q.quota_day<=? AND a.reason IS NOT NULL GROUP BY a.reason ORDER BY a.reason",(r,n)->new ReasonCount(safeReason(r.getString(1)),r.getLong(2)),from,to);
-        return new Report(from.toString(),to.toString(),"Asia/Shanghai",sum,days,new Runtime(config.enabled()&&!config.apiKeyFile().isBlank(),config.maxConcurrent(),config.queueCapacity(),queued,running,guard.snapshot()),new AiQuotaService.Page<>(rows,page,size,sum.requests()),reasons);
+        var limits=runtime.current().limits();return new Report(from.toString(),to.toString(),"Asia/Shanghai",sum,days,new Runtime(config.enabled()&&!config.apiKeyFile().isBlank(),limits.maxConcurrent(),limits.queueCapacity(),queued,running,guard.snapshot()),new AiQuotaService.Page<>(rows,page,size,sum.requests()),reasons);
     }
     private String safeCode(String code){if(code==null)return null;try{return AiFailure.Code.valueOf(code).name();}catch(Exception unknown){return "UNKNOWN_ERROR";}}
     private String safeReason(String reason){try{return AiFailure.Reason.valueOf(reason).name();}catch(Exception unknown){return "UNKNOWN_ERROR";}}

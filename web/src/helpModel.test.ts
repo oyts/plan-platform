@@ -13,7 +13,8 @@ describe('help and navigation boundaries',()=>{
       expect(ordinary.some(item=>item.path==='/help')).toBe(true);
       expect(ordinary.some(item=>['/operations','/members','/desktop'].includes(item.path))).toBe(false);
       const admin=navigationGroups(mode,true,true).flatMap(group=>group.items);
-      for(const path of ['/members','/operations','/desktop'])expect(admin.some(item=>item.path===path)).toBe(true);
+      for(const path of ['/admin','/desktop'])expect(admin.some(item=>item.path===path)).toBe(true);
+      expect(admin.some(item=>['/members','/operations'].includes(item.path))).toBe(false);
     }
     expect(primaryNavigation('todo').map(item=>item.path)).toEqual(['/todos']);
     expect(navigationGroups('route',false,false)[0].items.map(item=>item.path)).toEqual(['/route-records']);

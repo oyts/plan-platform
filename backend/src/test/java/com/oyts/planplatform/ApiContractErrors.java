@@ -18,7 +18,7 @@ final class ApiContractErrors {
         ObjectNode fields=json.createObjectNode().put("type","object");fields.set("additionalProperties",shapes.str());
         validation.set("schema",shapes.object("timestamp",shapes.instant(),"status",shapes.integer(),"message",shapes.str(),"fields",fields));
         validation.put("source","common.ApiExceptionHandler#validation");
-        ObjectNode member=root.putObject("memberAccess");member.set("statuses",json.valueToTree(List.of(401,503)));
+        ObjectNode member=root.putObject("memberAccess");member.set("statuses",json.valueToTree(List.of(401,403,503)));
         member.put("source","auth.MemberAccessFilter");member.set("schema",shapes.object("message",shapes.str()));
         ObjectNode replay=root.putObject("idempotencyConflict");replay.put("status",409);
         replay.put("source","sync.IdempotencyFilter");replay.set("schema",shapes.object("status",shapes.integer(),"message",shapes.str()));

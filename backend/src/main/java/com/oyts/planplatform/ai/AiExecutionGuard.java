@@ -38,6 +38,12 @@ public final class AiExecutionGuard implements AutoCloseable {
     private void failed() {
         if (failures.incrementAndGet() >= 3) blockedUntil.set(System.nanoTime() + TimeUnit.SECONDS.toNanos(30));
     }
+    /** Shrink only prevents new execution; already running calls are never interrupted. */
+    public synchronized void configure(int concurrent){
+        if(concurrent<1||concurrent>AiRuntimePolicy.HARD_CONCURRENT)throw new IllegalArgumentException("并发超出硬边界。");
+        if(concurrent>executor.getMaximumPoolSize()){executor.setMaximumPoolSize(concurrent);executor.setCorePoolSize(concurrent);}
+        else{executor.setCorePoolSize(concurrent);executor.setMaximumPoolSize(concurrent);}
+    }
     public record Snapshot(int active,int queued,boolean circuitOpen,long retryAfterSeconds) {}
     public Snapshot snapshot() {
         long remaining=blockedUntil.get()-System.nanoTime();

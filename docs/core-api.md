@@ -1,6 +1,6 @@
 # 核心接口与失败语义
 
-基础路径为 `/api`。普通业务需要Bearer Access Token，管理员端点还需要ADMIN；公开健康、部分账号入口和专用设备授权的提醒轮询另按各自规则。公开ID不授予权限，子记录也必须验证归属。本页于2026年10月24日对照0.1.22源码核对，实际发布状态见[本版记录](release-0122.md)。[当前源码契约](openapi-current.json)覆盖196个显式MVC操作、声明DTO及已审查的动态正常响应，由`ApiContractTest`检测漂移。私有备份预检／恢复包含格式1—4。Spring正则路径转为合法OpenAPI参数，原规则留在`x-spring-route`。旧迁移三个请求有明确的宽容接收约定及六版本标准字段指南；共同错误按实际来源分类，`default`响应和基础设施错误不作逐状态穷尽保证。不是替代所有业务校验的验证器。较早的[部分OpenAPI](openapi.yaml)仅保留历史参考。
+基础路径为 `/api`。普通业务需要Bearer Access Token，管理员端点还需要ADMIN；公开健康、部分账号入口和专用设备授权的提醒轮询另按各自规则。公开ID不授予权限，子记录也必须验证归属。本页于2026年10月25日对照阶段3候选源码核对，实际发布状态见[本版记录](release-0122.md)。[当前源码契约](openapi-current.json)覆盖202个（含阶段3未发布接口）显式MVC操作、声明DTO及已审查的动态正常响应，由`ApiContractTest`检测漂移。私有备份预检／恢复包含格式1—4。Spring正则路径转为合法OpenAPI参数，原规则留在`x-spring-route`。旧迁移三个请求有明确的宽容接收约定及六版本标准字段指南；共同错误按实际来源分类，`default`响应和基础设施错误不作逐状态穷尽保证。不是替代所有业务校验的验证器。较早的[部分OpenAPI](openapi.yaml)仅保留历史参考。
 
 ## 长规划与外部协作（0.1.22）
 
@@ -106,7 +106,7 @@
 | --- | --- | --- |
 | `ApiExceptionHandler` 业务异常 | 400／401／403／404／409／429／503 | `{timestamp,status,message}` |
 | Bean Validation 字段错误 | 400 | 另含 `fields: {字段名: 提示}`；不回显被拒绝的值，同字段保留首条错误 |
-| `MemberAccessFilter` 会话撤销／账号状态查询不可用 | 401／503 | 仅 `{message}`，没有 timestamp 或 status 字段 |
+| `MemberAccessFilter` 会话撤销／当前管理角色不足／账号状态查询不可用 | 401／403／503 | 仅 `{message}`，没有 timestamp 或 status 字段 |
 | `IdempotencyFilter` 内容不一致／仍处理中 | 409 | `{status,message}`，没有 timestamp；不等于所有业务409 |
 | 畸形幂等键／AI或复盘请求超限 | 400／413 | 使用 `sendError`；由容器处理，不保证JSON或上述字段 |
 | Spring Security、HTTP解析、Nginx等 | 随实际原因 | 可能空正文、容器JSON或HTML；不承诺固定包络或穷尽状态 |
@@ -136,3 +136,22 @@
 | 503／无响应 | 保存可保存的本机草稿；AI 未知结果不自动重复付费，普通写入按原操作键核对 |
 
 `X-Request-ID` 用于随机关联，不携带令牌、私有路径或正文。可排队普通业务的传输幂等为 24 小时；恢复、编排和 AI 应用的持久业务防重另有数据库约束，两者不能混为“所有请求永久 exactly-once”。
+
+## 核心阶段3：管理中心候选（尚未正式发布）
+
+所有下列接口要求当前数据库角色仍为ADMIN；旧JWT中的ADMIN声明不能绕过降权。私有正常响应使用`Cache-Control: private, no-store`，不进入离线队列。管理入口只展示账号和服务元数据，不能借此读取他人私人计划、AI原文或备份。
+
+| 方法与路径 | 正常响应及约束 |
+| --- | --- |
+| GET `/admin/access`、`/admin/overview` | 当前角色核验、当前账号／邀请／AI等待执行／待处理反馈数量；不是历史趋势或活跃人数 |
+| GET `/admin/ai/runtime` | `{limits,version,updatedAt}`；初始version0与updatedAt=null表示沿用部署值，不是已保存覆盖 |
+| PUT `/admin/ai/runtime` | `{limits,version}`；严格整数、组合校验、409保留输入；提交产生新版本与before/after审计 |
+| GET `/admin/ai/runtime/audit?page=0&size=10` | `{items,page,size,total}`；每页1—50，数字配置、操作者显示名、时间和恢复来源编号，不含Key和对话 |
+| POST `/admin/ai/runtime/restore/{id}` | `{version,confirmed:true}`；恢复该审计的修改前数值，同样是新的变更，不回放请求、不清零次数 |
+| POST `/admin/invitations` | 兼容旧`{email,expiresInHours}`；新增可选`operationKey`（8—100个字母数字或`._:-`）。同管理员同键同正文重放返回原邀请但不返回明文链接、不再次投递；不同正文409；同邮箱60秒冷却429，跨管理员共享 |
+
+`limits`六项为maxConcurrent(1—2)、queueCapacity(0—8)、maxInputChars(100—32000字符)、maxOutputTokens(128—8192)、totalOutputTokens(不小于首轮、不大于首轮两倍且≤8192)、timeoutSeconds(1—120)。消息仍最多8000字符，调用保留64K输入字节保护。降低容量只约束新准入并排空，已接受任务保留输入／输出／超时快照；实际执行器可热缩放，但不保证多实例集群全局限流。
+
+邀请响应增加deliveryStatus(`SENT`为发件服务接受，`FALLBACK`为创建成功但未送出，历史记录`UNKNOWN`)、replayed、retryAt。SMTP不可用时首次成功返回一次性备用链接；不能把创建成功误报为创建失败。链接和Token不进入持久操作表或审计。UI结果不确定时在当前页面保留原操作键；重开后应先查看邀请记录，丢失的备用链接不能从服务器恢复，需冷却后主动重新邀请。只保留最近200条邀请列表，不能据此宣称完整邀请历史。
+
+V33开始使用运行覆盖、邀请操作记录或任务参数快照后，旧0.1.22后端会忽略新协议，不能作为可写回退。`check-governance-rollback.py --target-supports-generation yes --target-supports-long-planning yes`会拒绝这种回退；只有实际支持V33协议的目标才可传`--target-supports-admin-runtime yes`，不能为了放行盲目设yes。原库、旧镜像和备份保留，不自动降级或清空新协议记录。

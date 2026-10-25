@@ -11,6 +11,12 @@ async function fixture(page:Page,{loggedIn=true,submission=429}:{loggedIn?:boole
   if(path==='/api/auth/password-reset/request')return route.fulfill({status:204});
   if(path==='/api/auth/password-reset/confirm'){resets++;expect(Object.keys(route.request().postDataJSON()).sort()).toEqual(['email','newPassword','token']);return route.fulfill({status:204});}
   if(path==='/api/admin/mail')return route.fulfill({json:{configured:false,passwordResetEnabled:false,emailVerificationEnabled:false}});
+  if(path==='/api/admin/access')return route.fulfill({json:{allowed:true}});
+  if(path==='/api/admin/ai/runtime')return route.fulfill({json:{version:0,limits:{maxConcurrent:1,queueCapacity:2,maxInputChars:8000,maxOutputTokens:2048,totalOutputTokens:4096,timeoutSeconds:45},updatedAt:null}});
+  if(path==='/api/admin/ai/runtime/audit')return route.fulfill({json:{items:[],page:0,size:10,total:0}});
+  if(path==='/api/admin/operations/status')return route.fulfill({json:{enabled:false,mailAlertsEnabled:false,dataAvailable:false,observedAt:null,policy:{keepNewest:7,retentionDays:30,backupMaxHours:26,diskMinPercent:15,version:0},checks:[],backups:[],cleanupPreview:[],oss:{backupName:null,verifiedAt:null,verified:false},restore:{backupName:null,verifiedAt:null,verified:false},diskFreeBytes:-1,diskTotalBytes:-1}});
+  if(path==='/api/admin/governance/config')return route.fulfill({json:{enabled:false}});
+  if(path==='/api/admin/governance/members'||path==='/api/admin/governance/audit'||path==='/api/admin/operations/policy-audit')return route.fulfill({json:{content:[],page:0,size:10,totalElements:0,totalPages:0}});
   if(path==='/api/admin/ai/usage')return route.fulfill({json:{from:'2026-10-11',to:'2026-10-17',timezone:'Asia/Shanghai',totals:{requests:2,succeeded:1,failed:0,unknown:1,queued:0,running:0,untracked:0,inputTokens:120,outputTokens:45,tokenKnownRequests:1},days:[],runtime:{enabled:true,maxConcurrent:1,queueCapacity:2,queued:0,running:0,circuit:{active:0,queued:0,circuitOpen:false,retryAfterSeconds:0}},recent:{items:[{requestId:id,member:'合成成员',email:'synthetic-member@example.test',quotaDate:'2026-10-17',state:'UNKNOWN',quotaState:'UNKNOWN',errorCode:'TIMEOUT',createdAt:'2026-10-17T00:00:00Z',completedAt:null,durationMs:null,inputTokens:null,outputTokens:null}],page:0,size:10,total:2}}});
   if(path==='/api/admin/ai/settings')return route.fulfill({json:{dailyLimit:20,version:0}});
   if(path==='/api/admin/ai/users'||path==='/api/admin/ai/audit')return route.fulfill({json:{items:[],page:0,size:10,total:0}});
@@ -35,11 +41,11 @@ test('recovery request gives generic feedback and prevents rapid repeat',async({
  await fixture(page,{loggedIn:false});await page.goto('/reset-password');await page.getByLabel('邮箱',{exact:true}).fill('unknown-synthetic@example.test');await page.getByRole('button',{name:'发送重置链接'}).click();await expect(page.getByRole('status')).toContainText('如果该邮箱已注册');await expect(page.getByRole('button',{name:/秒后可重发/})).toBeDisabled();
 });
 test('admin operations panel shows metadata, missing tokens and inactive mail honestly',async({page},info)=>{
- await fixture(page);await page.goto('/members');await expect(page.getByRole('heading',{name:'AI 用量与运行状态'})).toBeVisible();
- const mail=page.getByRole('region',{name:'账号邮件服务'});await expect(mail).toContainText('未配置');await expect(mail.getByRole('button',{name:'发送管理员测试邮件'})).toBeDisabled();
+ await fixture(page);await page.goto('/admin/ai');await expect(page.getByRole('heading',{name:'AI 用量与运行状态'})).toBeVisible();
  const usage=page.getByRole('region',{name:'AI 用量与运行状态'});await expect(usage).toContainText('结果待核实');await expect(usage).toContainText('未知 / 未知');await expect(usage).toContainText('这不是服务商账单');
- page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'重新邀请 invited-fixture@example.test',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('旧链接只在新邀请创建成功后失效');await page.getByRole('button',{name:'关闭',exact:true}).click();
  await usage.scrollIntoViewIfNeeded();expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);await page.screenshot({path:info.outputPath('operations-metadata.png'),fullPage:true});
+ await page.goto('/admin/operations');const mail=page.getByRole('region',{name:'账号邮件服务'});await expect(mail).toContainText('未配置');await expect(mail.getByRole('button',{name:'发送管理员测试邮件'})).toBeDisabled();
+ await page.goto('/members');page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'重新邀请 invited-fixture@example.test',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('旧链接只在新邀请创建成功后失效');await page.getByRole('button',{name:'关闭',exact:true}).click();
 });
 for(const status of [429,502])test(`AI submission ${status} retains input and only uncertain outcome blocks resend`,async({page},info)=>{
  const calls=await fixture(page,{submission:status});await page.goto('/ai?mode=TODO');

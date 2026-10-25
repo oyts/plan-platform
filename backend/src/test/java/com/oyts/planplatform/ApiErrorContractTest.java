@@ -49,7 +49,7 @@ class ApiErrorContractTest {
         assertKeys(body,"beanValidation");assertThat(body.path("fields").path("name").asText()).isEqualTo("不能为空");
         assertThat(body.toString()).doesNotContain("不可回显的合成值");
     }
-    @Test void memberFilterHasMessageOnlyForRevocationAndDatabaseOutage()throws Exception{
+    @Test void memberFilterHasMessageOnlyForRevocationRoleDenialAndDatabaseOutage()throws Exception{
         var db=mock(JdbcTemplate.class);authenticate();
         when(db.query(anyString(),org.mockito.ArgumentMatchers.<RowMapper<long[]>>any(),any(Object[].class))).thenReturn(List.of());
         var request=new MockHttpServletRequest("GET","/api/plans");var response=new MockHttpServletResponse();
@@ -60,6 +60,12 @@ class ApiErrorContractTest {
         response=new MockHttpServletResponse();new MemberAccessFilter(db,true).doFilter(request,response,(a,b)->{throw new AssertionError("Must stop");});
         assertThat(response.getStatus()).isEqualTo(503);assertKeys(json.readTree(response.getContentAsByteArray()),"memberAccess");
         assertThat(response.getContentAsString()).doesNotContain("合成数据库错误");
+        authenticate();reset(db);when(db.queryForObject(anyString(),eq(Integer.class),any(Object[].class))).thenReturn(0);
+        when(db.query(anyString(),org.mockito.ArgumentMatchers.<RowMapper<long[]>>any(),any(Object[].class))).thenReturn(List.of(new long[]{1,0}));
+        request=new MockHttpServletRequest("GET","/api/admin/access");response=new MockHttpServletResponse();
+        new MemberAccessFilter(db,true).doFilter(request,response,(a,b)->{throw new AssertionError("Must stop role denial");});
+        assertThat(response.getStatus()).isEqualTo(403);assertKeys(json.readTree(response.getContentAsByteArray()),"memberAccess");
+        assertThat(ApiContractErrors.catalog(json).path("memberAccess").path("statuses").toString()).contains("403");
     }
     @Test void idempotencyConflictAndMalformedKeyHaveDifferentBodies()throws Exception{
         authenticate();var service=mock(IdempotencyService.class);

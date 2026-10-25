@@ -15,13 +15,17 @@ class AiJobRunner {
     AiJobRunner(AiConversationService sessions,AiProvider provider,AiExecutionGuard guard,AiProperties config,AiAttempts attempts,
                 @Value("${app.ai.worker-enabled:true}") boolean enabled,@Value("${app.ai.repair-enabled:false}") boolean repairEnabled) {
         this.sessions=sessions;this.provider=provider;this.guard=guard;this.config=config;this.attempts=attempts;this.enabled=enabled;this.repairEnabled=repairEnabled;
-        workers=Executors.newFixedThreadPool(config.maxConcurrent(),r->{var t=new Thread(r,"plan-ai-job");t.setDaemon(true);return t;});
+        workers=Executors.newFixedThreadPool(AiRuntimePolicy.HARD_CONCURRENT,r->{var t=new Thread(r,"plan-ai-job");t.setDaemon(true);return t;});
     }
     @Scheduled(fixedDelay=1000,initialDelay=2000)
-    public void dispatch() {
+    public synchronized void dispatch() {
         if(!enabled || !config.enabled()) return;
-        while(active.get()<config.maxConcurrent()) {
+        guard.configure(Math.max(active.get(),sessions.runtime().limits().maxConcurrent()));
+        while(active.get()<sessions.runtime().limits().maxConcurrent()) {
             var work=sessions.claim();if(work==null)return;active.incrementAndGet();
+            // A policy may change between the first read and claim. Reserve executor
+            // capacity for already-claimed work; shrinking must not reject those calls.
+            guard.configure(Math.max(active.get(),work.limits().maxConcurrent()));
             try{workers.submit(()->{try{run(work);}finally{active.decrementAndGet();}});}
             catch(RejectedExecutionException closing){active.decrementAndGet();sessions.fail(work,new AiFailure(AiFailure.Code.BUSY,false));return;}
         }
@@ -29,8 +33,8 @@ class AiJobRunner {
     void run(AiConversationService.Work work) {
         if(!sessions.runnable(work)){sessions.fail(work,new AiFailure(AiFailure.Code.DISABLED,false));return;}
         if(!attempts.begin(work.id(),0))return;
-        long deadline=System.nanoTime()+Duration.ofSeconds(config.timeoutSeconds()).toNanos();
-        String context=work.context();int outputLimit=config.maxOutputTokens();
+        var limits=work.limits();long deadline=System.nanoTime()+Duration.ofSeconds(limits.timeoutSeconds()).toNanos();
+        String context=work.context();int outputLimit=limits.maxOutputTokens();
         for(int index=0;index<=1;index++){
             AiProvider.Result result=null;
             try {
@@ -40,7 +44,7 @@ class AiJobRunner {
                     throw new AiFailure(AiFailure.Code.INVALID_CONFIG,false);
                 long millis=java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(deadline-System.nanoTime());
                 if(millis<1)throw new AiFailure(AiFailure.Code.TIMEOUT,true);
-                result=guard.call(provider,new AiProvider.Request(context,outputLimit),Duration.ofMillis(millis));
+                result=guard.call(provider,new AiProvider.Request(context,outputLimit,limits.maxInputChars(),limits.timeoutSeconds()),Duration.ofMillis(millis));
                 if(result.outputTokens()>outputLimit || result.inputTokens()>64000)throw new AiFailure(AiFailure.Code.INVALID_OUTPUT,false,AiFailure.Reason.BUDGET_EXCEEDED,result);
                 attempts.finish(work.id(),index,"REPLIED",null,result);
                 String normalized=AiOutputText.unwrap(result.text());
@@ -53,11 +57,11 @@ class AiJobRunner {
                 attempts.finish(work.id(),index,safe.uncertain()?"UNKNOWN":safe.code()==AiFailure.Code.INVALID_OUTPUT?"REJECTED":"FAILED",safe,result);
                 if(index==0 && repairEnabled && !safe.uncertain() && safe.code()==AiFailure.Code.INVALID_OUTPUT
                     && safe.reason()!=AiFailure.Reason.MODE_MISMATCH && safe.reason()!=AiFailure.Reason.BUDGET_EXCEEDED && result!=null){
-                    int remaining=(int)Math.max(0,Math.min(config.maxOutputTokens(),8192L-result.outputTokens()));
+                    int remaining=(int)Math.max(0,Math.min(limits.maxOutputTokens(),(long)limits.totalOutputTokens()-result.outputTokens()));
                     String repair=repairContext(work.context(),result,safe);
                     // Input byte bound is conservative, includes fixed system prompt, never truncates user data.
                     long estimated=repair==null?Long.MAX_VALUE:(long)repair.getBytes(java.nio.charset.StandardCharsets.UTF_8).length+AiPrompt.SYSTEM.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
-                    if(remaining>=128 && repair!=null && repair.length()<=config.maxInputChars()
+                    if(remaining>=128 && repair!=null && repair.length()<=limits.maxInputChars()
                         && result.inputTokens()<=64000-estimated && deadline-System.nanoTime()>Duration.ofMillis(250).toNanos()
                         && attempts.begin(work.id(),1)){
                         context=repair;outputLimit=remaining;continue;

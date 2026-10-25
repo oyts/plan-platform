@@ -29,6 +29,13 @@ class DeepSeekProviderTest {
         for(int status:new int[]{302,401,429,503}) {code.set(status);response.set("private-upstream-content");var failure=assertThrows(AiFailure.class,()->provider().generate(new AiProvider.Request("fixture",128)));assertFalse(failure.uncertain());assertFalse(failure.toString().contains("private-upstream"));}
         assertEquals(4,hits.get());
     }
+    @Test void admittedRuntimeSnapshotControlsActualTransportRatherThanStartupLimits() throws Exception {
+        var result=provider().generate(new AiProvider.Request("合".repeat(8500),3072,9000,4));
+        assertEquals("{}",result.text());var body=mapper.readTree(sent.get());assertEquals(3072,body.path("max_tokens").asInt());
+        assertEquals(8500,body.path("messages").path(1).path("content").asText().length());assertEquals(1,hits.get());
+        assertThrows(AiFailure.class,()->provider().generate(new AiProvider.Request("x".repeat(101),128,100,4)));assertEquals(1,hits.get());
+        assertThrows(AiFailure.class,()->provider().generate(new AiProvider.Request("x".repeat(8500),3072)));assertEquals(1,hits.get());
+    }
     @Test void rejectsTruncationMissingUsageAndOversizedResponse() {
         response.set(valid.replace("stop","length"));assertEquals(AiFailure.Code.INVALID_OUTPUT,assertThrows(AiFailure.class,()->provider().generate(new AiProvider.Request("fixture",128))).code());
         response.set("{}");assertThrows(AiFailure.class,()->provider().generate(new AiProvider.Request("fixture",128)));

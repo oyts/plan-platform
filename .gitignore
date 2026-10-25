@@ -9,6 +9,7 @@
 *.key
 backend/target/
 backend/target-acceptance/
+backend/target-admin/
 backend/target-invited/
 backend/target-invitation-copy/
 backend/data/

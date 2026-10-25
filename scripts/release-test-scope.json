@@ -1,5 +1,16 @@
 {
   "version": "0.1.22",
+  "coreAdminCenter": {
+    "status":"stage3-development-and-scoped-native-accepted-final-jar-boot-gate-pending-unreleased",
+    "reason":"Independent admin navigation and role-aware gates; moved existing quota/mail/governance/feedback panels; invitation inline renewal with durable operation key and60s shared cooldown; V33 runtime numeric policy/audit and admitted-job snapshots affect AI admission, worker, transport and repair directly. No unrelated full regression.",
+    "backend":["AiRuntimeIntegrationTest","InvitationControlIntegrationTest","AccountRecoveryIntegrationTest","AiFoundationTest","AiIntentIntegrationTest","AiRepairIntegrationTest","AiLongPlanningIntegrationTest","AiConversationIntegrationTest","AiUsageIntegrationTest","AiQuotaIntegrationTest","GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","ApiContractTest","ApiErrorContractTest","DeepSeekProviderTest"],
+    "frontendUnit":["src/adminCenter.test.ts","src/helpModel.test.ts","src/aiQuota.test.ts","src/workspaceModel.test.ts"],
+    "browser":["e2e/admin-center.spec.ts","e2e/account-ai-operations.spec.ts (admin panel only)","e2e/feedback.spec.ts (admin migration only)"],
+    "results":{"businessBackendPassed":89,"contractPassed":10,"frontendPassed":19,"browserPassed":12,"pcScopedGroupsPassed":6,"androidDeviceGroupsPassed":4,"mysqlGroupsPassed":5,"mysqlOriginalTablesUnchanged":54,"mysqlRestoredTables":59,"rollbackGuardUnitPassed":6},
+    "paidAiCalls":0,"realTestEmails":0,"nativeTested":true,"productionChanged":false,
+    "pending":["Final runner-only JAR isolated boot/checksums","New-version signing, fresh production-snapshot rehearsal, formal upgrades and publication require approval"],
+    "details":"docs/admin-center-progress.md"
+  },
   "coreAiLongPlanning": {
     "status":"complete-stage2-released-0.1.22-native-publication-and-github-accepted",
     "results":{"backendDistinctPassed":74,"businessBackendPassed":64,"contractPassed":10,"frontendPassed":27,"browserNewPassed":12,"browserAffectedDistinctPassed":32,"pcScopedPassed":true,"androidOriginalCoreGroupsPassed":2,"androidFollowupGroupsPassed":4,"androidShareCancelGroupPassed":1,"mysqlOriginalTablesUnchanged":51,"mysqlRestoredTables":55,"mysqlFinalBodyLimitGroupsPassed":2,"productionSnapshotTablesRestoredTwice":52,"formalWindowsOriginalFilesUnchanged":573,"formalWindowsColdReopenPassed":true,"formalWindowsLoginRequiredOwner":true,"formalAndroidUpgradeGroupsPassed":4,"formalAndroidUpdateGroupsPassed":2,"httpsNewGroupsPassed":6,"windowsPublicGroupsPassed":5,"androidProtectedGroupsPassed":4,"paidAiCalls":0,"realTestEmails":0},
@@ -341,8 +352,8 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Core stage2 released0.1.22: bounded durable long-planning batches, selected-draft collaboration roundtrip and functional scroll/input layout. New and directly affected AI/workspace/apply tests only; production/signing/native upgrade gates separately accepted. No new paid AI or real test mail.",
-  "frontendUnit": ["src/aiCollaboration.test.ts","src/aiPlanning.test.ts","src/aiWorkbench.test.ts","src/aiAdjustment.test.ts","src/download.test.ts"],
+  "reason": "Core stage3 candidate on0.1.22: separate administration, durable invitation control, V33 runtime policy/admitted snapshots and actual AI execution. Only new and directly affected navigation/roles/AI/registration tests; no unrelated full regression or paid provider/mail.",
+  "frontendUnit": ["src/adminCenter.test.ts","src/helpModel.test.ts","src/aiQuota.test.ts","src/workspaceModel.test.ts"],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",
     "reason":"Private whole-structure PLAN/ROUTE and saved new-AI-draft templates; common copy writer, strict nested whitelist, V28, schema4 backup, manual pending replay. Typed task-time reads/writes affect structural copies directly. No unrelated full regression.",
@@ -377,15 +388,21 @@
     "mysqlFollowup":"V25 to V27 plus prior-start backfill, 47-table restore and actual 0.1.17 read compatibility passed in reflectionWorkspace; production unchanged",
     "details":"docs/native-reminders-progress.md"
   },
-  "browser": ["e2e/ai-long-planning.spec.ts","e2e/ai-planning.spec.ts","e2e/ai-adjustment.spec.ts","e2e/ai-workbench.spec.ts"],
+  "browser": ["e2e/admin-center.spec.ts","e2e/account-ai-operations.spec.ts","e2e/feedback.spec.ts"],
   "backend": [
+    "AiRuntimeIntegrationTest",
+    "InvitationControlIntegrationTest",
+    "AccountRecoveryIntegrationTest",
+    "AiFoundationTest",
+    "AiConversationIntegrationTest",
+    "AiQuotaIntegrationTest",
+    "AiUsageIntegrationTest",
+    "GovernanceOperationsIntegrationTest",
+    "GovernanceDisabledIntegrationTest",
     "AiRepairIntegrationTest",
     "AiIntentIntegrationTest",
     "DeepSeekProviderTest",
     "AiLongPlanningIntegrationTest",
-    "AiCollaborationIntegrationTest",
-    "AiWorkbenchIntegrationTest",
-    "AiAdjustmentIntegrationTest",
     "ApiContractTest",
     "ApiErrorContractTest"
   ],

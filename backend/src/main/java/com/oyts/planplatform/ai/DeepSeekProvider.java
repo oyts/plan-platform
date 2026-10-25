@@ -28,12 +28,13 @@ final class DeepSeekProvider implements AiProvider {
     }
     @Override public Result generate(Request request) {
         if (!config.enabled()) throw new AiFailure(AiFailure.Code.DISABLED);
-        if (request.message().length()>config.maxInputChars() || request.maxOutputTokens()>config.maxOutputTokens()) throw new AiFailure(AiFailure.Code.INVALID_CONFIG);
+        int contextLimit=request.contextLimit()==0?config.maxInputChars():request.contextLimit(),timeout=request.timeoutSeconds()==0?config.timeoutSeconds():request.timeoutSeconds();
+        if (request.message().length()>contextLimit || request.maxOutputTokens()>(request.contextLimit()==0?config.maxOutputTokens():8192)) throw new AiFailure(AiFailure.Code.INVALID_CONFIG);
         try {
             String body=mapper.writeValueAsString(Map.of("model",config.model(),"messages",List.of(
                 Map.of("role","system","content",AiPrompt.SYSTEM),Map.of("role","user","content",request.message())),
                 "response_format",Map.of("type","json_object"),"thinking",Map.of("type","disabled"),"max_tokens",request.maxOutputTokens(),"stream",false));
-            var http=HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(config.timeoutSeconds())).header("Authorization","Bearer "+key.get())
+            var http=HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(timeout)).header("Authorization","Bearer "+key.get())
                 .header("Content-Type","application/json").header("Accept","application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build();
             var response=client.send(http,info->new LimitedBody(256_000));
             if (response.statusCode()!=200) throw new AiFailure(AiFailure.Code.UPSTREAM_UNAVAILABLE,false);

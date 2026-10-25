@@ -77,7 +77,9 @@ class AiFoundationTest {
     }
     @Test void enablingConfigWithoutKeyNeverMakesPaidCallsAvailable() {
         var config=new AiProperties(true,"deepseek-flash","",8000,2048,2,4,60);
-        var controller=new AiController(config,null,null);
+        var sessions=org.mockito.Mockito.mock(AiConversationService.class);
+        org.mockito.Mockito.when(sessions.runtime()).thenReturn(new AiRuntimePolicy.Policy(new AiRuntimePolicy.Limits(2,4,8000,2048,4096,60),0,null));
+        var controller=new AiController(config,null,sessions);
         var capabilities=(Map<?,?>)controller.capabilities().getBody();
         assertEquals(false,capabilities.get("available")); assertEquals("NOT_CONFIGURED",capabilities.get("status"));
         assertEquals(503,controller.unavailable().getStatusCode().value());

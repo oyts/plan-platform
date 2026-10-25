@@ -28,8 +28,11 @@ public final class AuthDtos {
     public record PasswordResetRequest(@Email @NotBlank String email) {}
     public record PasswordResetConfirmRequest(@Email @NotBlank String email, @NotBlank @Size(max = 300) String token,
         @NotBlank @Size(min = 10, max = 72) @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$", message = "密码至少包含一个英文字母和一个数字") String newPassword) {}
-    public record InvitationRequest(@Email @NotBlank String email, Integer expiresInHours) {}
-    public record InvitationResponse(String id, String email, Instant expiresAt, Instant acceptedAt, Instant revokedAt, String createdBy, String registrationUrl) {}
+    public record InvitationRequest(@Email @NotBlank @Size(max=190) String email, Integer expiresInHours,
+        @Pattern(regexp="[A-Za-z0-9._:-]{8,100}") String operationKey) {
+        public InvitationRequest(String email,Integer expiresInHours){this(email,expiresInHours,null);}
+    }
+    public record InvitationResponse(String id, String email, Instant expiresAt, Instant acceptedAt, Instant revokedAt, String createdBy, String registrationUrl,String deliveryStatus,boolean replayed,Instant retryAt) {}
     public record EmailVerificationRequest() {}
     public record EmailVerificationStatus(boolean enabled,boolean configured,boolean verified,int retryAfterSeconds) {}
     public record EmailVerificationConfirmRequest(@NotBlank @Size(max = 300) String token) {}

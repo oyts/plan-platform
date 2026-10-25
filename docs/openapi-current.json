@@ -60,7 +60,7 @@
       "source" : "common.ApiExceptionHandler#validation"
     },
     "memberAccess" : {
-      "statuses" : [ 401, 503 ],
+      "statuses" : [ 401, 403, 503 ],
       "source" : "auth.MemberAccessFilter",
       "schema" : {
         "type" : "object",
@@ -842,6 +842,29 @@
         }
       }
     },
+    "/admin/access" : {
+      "get" : {
+        "operationId" : "AdminOverviewController_access_GET",
+        "x-java-handler" : "com.oyts.planplatform.auth.AdminOverviewController#access",
+        "x-pre-authorize" : "hasRole('ADMIN')",
+        "responses" : {
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/auth.AdminOverviewController.Access"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            },
+            "x-runtime-content-type" : true
+          }
+        }
+      }
+    },
     "/admin/ai/audit" : {
       "get" : {
         "operationId" : "AiQuotaController_audit_GET",
@@ -878,6 +901,103 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/admin/ai/runtime/audit" : {
+      "get" : {
+        "operationId" : "AiRuntimeController_history_GET",
+        "x-java-handler" : "com.oyts.planplatform.ai.AiRuntimeController#history",
+        "x-pre-authorize" : "hasRole('ADMIN')",
+        "parameters" : [ {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "x-spring-default" : "0"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "x-spring-default" : "10"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/ai.AiQuotaService.Page.543f9937"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            },
+            "x-runtime-content-type" : true
+          }
+        }
+      }
+    },
+    "/admin/ai/runtime" : {
+      "get" : {
+        "operationId" : "AiRuntimeController_current_GET",
+        "x-java-handler" : "com.oyts.planplatform.ai.AiRuntimeController#current",
+        "x-pre-authorize" : "hasRole('ADMIN')",
+        "responses" : {
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/ai.AiRuntimePolicy.Policy"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            },
+            "x-runtime-content-type" : true
+          }
+        }
+      },
+      "put" : {
+        "operationId" : "AiRuntimeController_change_PUT",
+        "x-java-handler" : "com.oyts.planplatform.ai.AiRuntimeController#change",
+        "x-pre-authorize" : "hasRole('ADMIN')",
+        "requestBody" : {
+          "required" : true,
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "allOf" : [ {
+                  "$ref" : "#/components/schemas/ai.AiRuntimeController.Change"
+                } ],
+                "nullable" : false
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/ai.AiRuntimePolicy.Policy"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            },
+            "x-runtime-content-type" : true
           }
         }
       }
@@ -1349,10 +1469,10 @@
         "x-java-handler" : "com.oyts.planplatform.auth.AdminController#list",
         "x-pre-authorize" : "hasRole('ADMIN')",
         "responses" : {
-          "200" : {
-            "description" : "声明的正常响应；失败语义另见core-api.md",
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
             "content" : {
-              "application/json" : {
+              "*/*" : {
                 "schema" : {
                   "type" : "array",
                   "items" : {
@@ -1364,7 +1484,8 @@
                   "nullable" : true
                 }
               }
-            }
+            },
+            "x-runtime-content-type" : true
           }
         }
       },
@@ -1389,7 +1510,7 @@
           "201" : {
             "description" : "声明的正常响应；失败语义另见core-api.md",
             "content" : {
-              "application/json" : {
+              "*/*" : {
                 "schema" : {
                   "allOf" : [ {
                     "$ref" : "#/components/schemas/auth.AuthDtos.InvitationResponse"
@@ -1397,7 +1518,8 @@
                   "nullable" : true
                 }
               }
-            }
+            },
+            "x-runtime-content-type" : true
           }
         }
       }
@@ -1595,6 +1717,29 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/admin/overview" : {
+      "get" : {
+        "operationId" : "AdminOverviewController_overview_GET",
+        "x-java-handler" : "com.oyts.planplatform.auth.AdminOverviewController#overview",
+        "x-pre-authorize" : "hasRole('ADMIN')",
+        "responses" : {
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/auth.AdminOverviewController.Overview"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            },
+            "x-runtime-content-type" : true
           }
         }
       }
@@ -5778,6 +5923,51 @@
                 "schema" : {
                   "allOf" : [ {
                     "$ref" : "#/components/schemas/daily.DailyDtos.Week"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            },
+            "x-runtime-content-type" : true
+          }
+        }
+      }
+    },
+    "/admin/ai/runtime/restore/{id}" : {
+      "post" : {
+        "operationId" : "AiRuntimeController_restore_POST",
+        "x-java-handler" : "com.oyts.planplatform.ai.AiRuntimeController#restore",
+        "x-pre-authorize" : "hasRole('ADMIN')",
+        "requestBody" : {
+          "required" : true,
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "allOf" : [ {
+                  "$ref" : "#/components/schemas/ai.AiRuntimeController.Restore"
+                } ],
+                "nullable" : false
+              }
+            }
+          }
+        },
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/ai.AiRuntimePolicy.Policy"
                   } ],
                   "nullable" : true
                 }
@@ -16538,6 +16728,30 @@
           }
         }
       },
+      "ai.AiQuotaService.Page.543f9937" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "allOf" : [ {
+                "$ref" : "#/components/schemas/ai.AiRuntimePolicy.Audit"
+              } ],
+              "nullable" : true
+            },
+            "nullable" : true
+          },
+          "page" : {
+            "type" : "integer"
+          },
+          "size" : {
+            "type" : "integer"
+          },
+          "total" : {
+            "type" : "integer"
+          }
+        }
+      },
       "ai.AiQuotaService.Page.8ffed770" : {
         "type" : "object",
         "properties" : {
@@ -16653,6 +16867,114 @@
           },
           "version" : {
             "type" : "integer"
+          }
+        }
+      },
+      "ai.AiRuntimeController.Change" : {
+        "type" : "object",
+        "properties" : {
+          "limits" : {
+            "$ref" : "#/components/schemas/ai.AiRuntimePolicy.Limits"
+          },
+          "version" : {
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "limits", "version" ]
+      },
+      "ai.AiRuntimeController.Restore" : {
+        "type" : "object",
+        "properties" : {
+          "confirmed" : {
+            "type" : "boolean"
+          },
+          "version" : {
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "confirmed", "version" ]
+      },
+      "ai.AiRuntimePolicy.Audit" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "actor" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "before" : {
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/ai.AiRuntimePolicy.Policy"
+            } ],
+            "nullable" : true
+          },
+          "after" : {
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/ai.AiRuntimePolicy.Policy"
+            } ],
+            "nullable" : true
+          },
+          "restoredFrom" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "nullable" : true
+          }
+        }
+      },
+      "ai.AiRuntimePolicy.Limits" : {
+        "type" : "object",
+        "properties" : {
+          "maxConcurrent" : {
+            "type" : "integer",
+            "nullable" : true
+          },
+          "queueCapacity" : {
+            "type" : "integer",
+            "nullable" : true
+          },
+          "maxInputChars" : {
+            "type" : "integer",
+            "nullable" : true
+          },
+          "maxOutputTokens" : {
+            "type" : "integer",
+            "nullable" : true
+          },
+          "totalOutputTokens" : {
+            "type" : "integer",
+            "nullable" : true
+          },
+          "timeoutSeconds" : {
+            "type" : "integer",
+            "nullable" : true
+          }
+        }
+      },
+      "ai.AiRuntimePolicy.Policy" : {
+        "type" : "object",
+        "properties" : {
+          "limits" : {
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/ai.AiRuntimePolicy.Limits"
+            } ],
+            "nullable" : true
+          },
+          "version" : {
+            "type" : "integer"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "nullable" : true
           }
         }
       },
@@ -17037,6 +17359,42 @@
           }
         }
       },
+      "auth.AdminOverviewController.Access" : {
+        "type" : "object",
+        "properties" : {
+          "allowed" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "auth.AdminOverviewController.Overview" : {
+        "type" : "object",
+        "properties" : {
+          "observedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "nullable" : true
+          },
+          "members" : {
+            "type" : "integer"
+          },
+          "enabledMembers" : {
+            "type" : "integer"
+          },
+          "activeInvitations" : {
+            "type" : "integer"
+          },
+          "queuedAi" : {
+            "type" : "integer"
+          },
+          "runningAi" : {
+            "type" : "integer"
+          },
+          "openFeedback" : {
+            "type" : "integer"
+          }
+        }
+      },
       "auth.AuthDtos.AuthConfigResponse" : {
         "type" : "object",
         "properties" : {
@@ -17124,10 +17482,16 @@
             "type" : "string",
             "format" : "email",
             "x-not-blank" : true,
-            "minLength" : 1
+            "minLength" : 0,
+            "maxLength" : 190
           },
           "expiresInHours" : {
             "type" : "integer",
+            "nullable" : true
+          },
+          "operationKey" : {
+            "type" : "string",
+            "pattern" : "[A-Za-z0-9._:-]{8,100}",
             "nullable" : true
           }
         },
@@ -17165,6 +17529,18 @@
           },
           "registrationUrl" : {
             "type" : "string",
+            "nullable" : true
+          },
+          "deliveryStatus" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "replayed" : {
+            "type" : "boolean"
+          },
+          "retryAt" : {
+            "type" : "string",
+            "format" : "date-time",
             "nullable" : true
           }
         }
@@ -24108,5 +24484,5 @@
       }
     }
   },
-  "x-operation-count" : 196
+  "x-operation-count" : 202
 }

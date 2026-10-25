@@ -18,9 +18,9 @@ import com.oyts.planplatform.reflection.ReflectionDtos;
 public class AiConversationService {
     private final JdbcTemplate db; private final AiQuotaService quotas; private final AiProperties config;
     private final ObjectMapper mapper; private final Validator validator; private final AiDraftApplier applier; private final AiAdjustmentService adjustments; private final ReflectionService reflections;
-    private final AiLongPlans longPlans;
-    AiConversationService(JdbcTemplate db,AiQuotaService quotas,AiProperties config,ObjectMapper mapper,Validator validator,AiDraftApplier applier,AiAdjustmentService adjustments,ReflectionService reflections,AiLongPlans longPlans) {
-        this.db=db;this.quotas=quotas;this.config=config;this.mapper=mapper;this.validator=validator;this.applier=applier;this.adjustments=adjustments;this.reflections=reflections;this.longPlans=longPlans;
+    private final AiLongPlans longPlans;private final AiRuntimePolicy runtime;
+    AiConversationService(JdbcTemplate db,AiQuotaService quotas,AiProperties config,ObjectMapper mapper,Validator validator,AiDraftApplier applier,AiAdjustmentService adjustments,ReflectionService reflections,AiLongPlans longPlans,AiRuntimePolicy runtime) {
+        this.db=db;this.quotas=quotas;this.config=config;this.mapper=mapper;this.validator=validator;this.applier=applier;this.adjustments=adjustments;this.reflections=reflections;this.longPlans=longPlans;this.runtime=runtime;
     }
     public record Summary(String id,String mode,long version,Instant createdAt,Instant expiresAt,boolean applied,boolean adjustment,boolean processing) {}
     public enum Intent { AUTO, DIALOGUE, GENERATE, REVISE, OUTLINE, BATCH }
@@ -30,7 +30,8 @@ public class AiConversationService {
     public record Session(String id,String mode,String recommendedMode,long version,AiDrafts.Draft draft,
                           JsonNode applied,Instant expiresAt,List<Turn> turns,AiAdjustmentService.View adjustment,JsonNode review,String requirementsText,AiLongPlans.View longPlan,boolean outlineOnly) {}
     public record Job(String id,String state,String error) {}
-    record Work(String id,String owner,String sessionId,String reservation,String context,String mode,Intent intent) {}
+    record Work(String id,String owner,String sessionId,String reservation,String context,String mode,Intent intent,AiRuntimePolicy.Limits limits) {}
+    AiRuntimePolicy.Policy runtime(){return runtime.current();}
     private record Row(String id,String mode,String recommendedMode,long version,String draft,String applied,Instant expiresAt,String adjustment,String review,String requirements) {}
     boolean available() { return config.enabled() && !config.apiKeyFile().isBlank(); }
     private void lock() { db.queryForObject("SELECT id FROM ai_quota_policy WHERE id=1 FOR UPDATE",Integer.class); }
@@ -165,9 +166,9 @@ public class AiConversationService {
     public Job enqueue(String owner,String id,long version,String operation,String message,Intent requestedIntent) {
         Intent intent=requestedIntent==null?Intent.AUTO:requestedIntent;
         if(!available()) throw new AiFailure(AiFailure.Code.DISABLED,false);
-        if(message==null || message.isBlank() || message.length()>Math.min(config.maxInputChars(),8000)) throw new IllegalArgumentException("请缩短消息后重试。");
+        if(message==null || message.isBlank() || message.length()>8000) throw new IllegalArgumentException("请缩短消息后重试。");
         if(operation==null || !operation.matches("[A-Za-z0-9._:-]{8,100}")) throw new IllegalArgumentException("请求标识无效。");
-        lock();var row=owned(owner,id,true);String fingerprint=hash(id+"\n"+version+"\n"+message+(intent==Intent.AUTO?"":"\n"+intent.name()));
+        lock();var policy=runtime.current();var limits=policy.limits();var row=owned(owner,id,true);String fingerprint=hash(id+"\n"+version+"\n"+message+(intent==Intent.AUTO?"":"\n"+intent.name()));
         var prior=db.query("SELECT id,state,error_code,fingerprint FROM ai_jobs WHERE owner_id=? AND operation_key=?",
             (r,n)->new String[]{r.getString(1),r.getString(2),r.getString(3),r.getString(4)},owner,operation);
         if(!prior.isEmpty()) { var first=prior.getFirst();if(!fingerprint.equals(first[3])) throw new ConflictException("同一请求标识不能用于不同内容。");return new Job(first[0],first[1],first[2]); }
@@ -183,17 +184,18 @@ public class AiConversationService {
         adjustments.assertCurrent(owner,adjustments.decode(row.adjustment));
         if(db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE owner_id=? AND state IN ('QUEUED','RUNNING')",Integer.class,owner)>0) throw new TooManyRequestsException("你已有一个 AI 请求正在处理，请在最近对话中等待结果。");
         if(db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE session_id=?",Integer.class,id)>=30) throw new ConflictException("本次对话已达 30 轮，请保存草稿或新建对话。");
-        if(db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE state IN ('QUEUED','RUNNING')",Integer.class)>=config.maxConcurrent()+config.queueCapacity()) throw new AiFailure(AiFailure.Code.BUSY,false);
-        String context=intent==Intent.BATCH?longPlans.context(id,adjustments.parse(adjustments.decode(row.adjustment),row.draft),notes,message):context(row,message,intent,notes);
-        if(context.length()>config.maxInputChars())throw new IllegalArgumentException("本批内容和需求超过AI上下文上限，请缩短笔记或手动细化；尚未调用或扣次数。");
+        if(db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE state IN ('QUEUED','RUNNING')",Integer.class)>=limits.maxConcurrent()+limits.queueCapacity()) throw new AiFailure(AiFailure.Code.BUSY,false);
+        String context=intent==Intent.BATCH?longPlans.context(id,adjustments.parse(adjustments.decode(row.adjustment),row.draft),notes,message):context(row,message,intent,notes,limits.maxInputChars());
+        if(context.length()>limits.maxInputChars())throw new IllegalArgumentException("本批内容和需求超过AI上下文上限，请缩短笔记或手动细化；尚未调用或扣次数。");
         var reservation=quotas.reserve(owner,operation,fingerprint);
         if(!reservation.acquired()) throw new ConflictException("该请求已经处理，不能重复调用模型。");
         String job=UUID.randomUUID().toString();
         db.update("INSERT INTO ai_jobs(id,session_id,owner_id,operation_key,fingerprint,reservation_id,state,user_message,context_json,created_at,updated_at,request_intent) VALUES (?,?,?,?,?,?,'QUEUED',?,?,?,?,?)",job,id,owner,operation,fingerprint,reservation.id(),message,context,now(),now(),intent.name());
+        db.update("UPDATE ai_jobs SET runtime_input_chars=?,runtime_output_tokens=?,runtime_total_output_tokens=?,runtime_timeout_seconds=?,runtime_version=? WHERE id=?",limits.maxInputChars(),limits.maxOutputTokens(),limits.totalOutputTokens(),limits.timeoutSeconds(),policy.version(),job);
         if(intent==Intent.BATCH)longPlans.reserve(id,job);
         db.update("UPDATE ai_sessions SET requirements_text=?,version=version+1 WHERE id=?",intent==Intent.AUTO?row.requirements:row.review==null?nextNotes:notes,id);return new Job(job,"QUEUED",null);
     }
-    private String context(Row row,String message,Intent intent,String notes) {
+    private String context(Row row,String message,Intent intent,String notes,int maxInputChars) {
         var history=db.query("SELECT user_message,reply_text FROM ai_jobs WHERE session_id=? AND state='SUCCEEDED' ORDER BY created_at DESC,id DESC LIMIT 6",(r,n)->Map.of("user",r.getString(1),"assistant",r.getString(2)),row.id);
         var turns=new ArrayList<>(history);Collections.reverse(turns);
         Map<String,Object> context=new LinkedHashMap<>();context.put("today",LocalDate.now(AiQuotaService.ZONE).toString());context.put("selectedMode",row.mode);context.put("currentDraft",row.draft==null?null:json(row.draft));context.put("history",turns);context.put("message",message);
@@ -206,20 +208,22 @@ public class AiConversationService {
         }
         if(row.review!=null){context.put("intent","REVIEW_ANALYSIS");context.put("review",json(row.review));}
         String result=write(context);
-        while(result.length()>config.maxInputChars() && !turns.isEmpty()) { turns.removeFirst();result=write(context); }
-        if(result.length()>config.maxInputChars()) throw new IllegalArgumentException("消息和草稿超过当前 AI 上下文限制，请手动编辑或缩短内容后重试。");
+        while(result.length()>maxInputChars && !turns.isEmpty()) { turns.removeFirst();result=write(context); }
+        if(result.length()>maxInputChars) throw new IllegalArgumentException("消息和草稿超过当前 AI 上下文限制，请手动编辑或缩短内容后重试。");
         return result;
     }
     @Transactional
     public Work claim() {
         lock();
-        if(!available() || db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE state='RUNNING'",Integer.class)>=config.maxConcurrent()) return null;
+        if(!available() || db.queryForObject("SELECT COUNT(*) FROM ai_jobs WHERE state='RUNNING'",Integer.class)>=runtime.current().limits().maxConcurrent()) return null;
         var ids=db.query("SELECT id FROM ai_jobs WHERE state='QUEUED' ORDER BY created_at,id LIMIT 1",(r,n)->r.getString(1));if(ids.isEmpty()) return null;
-        var work=work(ids.getFirst());
+        var id=ids.getFirst();var policy=runtime.current();var limits=policy.limits();
+        db.update("UPDATE ai_jobs SET runtime_input_chars=?,runtime_output_tokens=?,runtime_total_output_tokens=?,runtime_timeout_seconds=?,runtime_version=? WHERE id=? AND runtime_version IS NULL",limits.maxInputChars(),limits.maxOutputTokens(),limits.totalOutputTokens(),limits.timeoutSeconds(),policy.version(),id);
+        var work=work(id);
         db.update("UPDATE ai_jobs SET state='RUNNING',updated_at=? WHERE id=?",now(),work.id);return work;
     }
     boolean runnable(Work work){return work.intent!=Intent.BATCH||longPlans.runnable(work.sessionId);}
-    private Work work(String id) { return db.queryForObject("SELECT j.id,j.owner_id,j.session_id,j.reservation_id,j.context_json,s.selected_mode,j.request_intent FROM ai_jobs j JOIN ai_sessions s ON s.id=j.session_id WHERE j.id=?",(r,n)->new Work(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6),Intent.valueOf(r.getString(7))),id); }
+    private Work work(String id) {var fallback=runtime.current().limits();return db.queryForObject("SELECT j.id,j.owner_id,j.session_id,j.reservation_id,j.context_json,s.selected_mode,j.request_intent,j.runtime_input_chars,j.runtime_output_tokens,j.runtime_total_output_tokens,j.runtime_timeout_seconds FROM ai_jobs j JOIN ai_sessions s ON s.id=j.session_id WHERE j.id=?",(r,n)->new Work(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6),Intent.valueOf(r.getString(7)),r.getObject(8)==null?fallback:new AiRuntimePolicy.Limits(fallback.maxConcurrent(),fallback.queueCapacity(),r.getInt(8),r.getInt(9),r.getInt(10),r.getInt(11))),id); }
     @Transactional
     public void succeed(Work work,AiProvider.Result result) {
         // Untrusted JSON cannot escape into entities; validation never makes network calls.
@@ -277,7 +281,7 @@ public class AiConversationService {
     @Transactional
     public void maintain() {
         lock();
-        var stale=db.query("SELECT id FROM ai_jobs WHERE state='RUNNING' AND updated_at<?",(r,n)->r.getString(1),Timestamp.from(Instant.now().minusSeconds(config.timeoutSeconds()+30L)));
+        var stale=db.query("SELECT id,updated_at,runtime_timeout_seconds FROM ai_jobs WHERE state='RUNNING'",(r,n)->new Object[]{r.getString(1),r.getTimestamp(2).toInstant(),r.getObject(3)}).stream().filter(r->((Instant)r[1]).isBefore(Instant.now().minusSeconds((r[2]==null?120:((Number)r[2]).longValue())+30))).map(r->(String)r[0]).toList();
         for(String id:stale) fail(work(id),new AiFailure(AiFailure.Code.TIMEOUT,true));
         if(!available()) for(String id:db.query("SELECT id FROM ai_jobs WHERE state='QUEUED'",(r,n)->r.getString(1))) fail(work(id),new AiFailure(AiFailure.Code.DISABLED,false));
         db.update("DELETE FROM ai_sessions WHERE expires_at<? AND id NOT IN (SELECT session_id FROM ai_jobs WHERE state IN ('QUEUED','RUNNING'))",now());

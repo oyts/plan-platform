@@ -28,12 +28,13 @@ class AiController {
     @GetMapping("/capabilities") ResponseEntity<?> capabilities() {
         // Never infer availability from the presence of a key or expose its path/content.
         boolean available=config.enabled() && !config.apiKeyFile().isBlank();
+        var runtime=sessions.runtime().limits();
         return AiQuotaController.privateReply(Map.ofEntries(Map.entry("schemaVersion",1),Map.entry("available",available),Map.entry("provider","deepseek"),
             Map.entry("intentEnabled",true),Map.entry("requirementsEnabled",true),
-            Map.entry("longPlanningEnabled",true),Map.entry("collaborationEnabled",true),Map.entry("limits",Map.of("items",100,"stages",30,"draftChars",128000,"workspaceBytes",245760,"batchItems",10,"batches",10,"contextChars",config.maxInputChars())),
+            Map.entry("longPlanningEnabled",true),Map.entry("collaborationEnabled",true),Map.entry("limits",Map.of("items",100,"stages",30,"draftChars",128000,"workspaceBytes",245760,"batchItems",10,"batches",10,"contextChars",runtime.maxInputChars())),
             Map.entry("model",config.model()),Map.entry("status",available?"READY":config.enabled()?"NOT_CONFIGURED":"DISABLED"),
             Map.entry("message",available?"AI 按需调用；确认草稿后才生成真实内容。":"AI 暂未开放，可继续手动创建或导入草稿。"),Map.entry("transport","ASYNC_POLLING"),Map.entry("timezone","Asia/Shanghai"),
-            Map.entry("maxInputChars",Math.min(config.maxInputChars(),8000)),Map.entry("adjustmentEnabled",true)));
+            Map.entry("maxInputChars",Math.min(runtime.maxInputChars(),8000)),Map.entry("adjustmentEnabled",true)));
     }
     @GetMapping("/quota") ResponseEntity<?> quota(@AuthenticationPrincipal Jwt user) { return AiQuotaController.privateReply(quotas.usage(user.getSubject())); }
     @PostMapping("/jobs") ResponseEntity<?> unavailable() {

@@ -1,6 +1,6 @@
 import { test, expect, type Page, type APIRequestContext } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-const API='http://127.0.0.1:43131/api', password='FeedbackTest123!';
+const API=process.env.PLAN_FEEDBACK_API||'http://127.0.0.1:43131/api', password='FeedbackTest123!';
 async function account(request:APIRequestContext){const email=`feedback-${randomUUID()}@example.test`;const result=await request.post(`${API}/auth/register`,{data:{email,password,displayName:'反馈验收'}});expect(result.status()).toBe(201);return{email,token:(await result.json()).accessToken as string};}
 async function login(page:Page,email:string){await page.goto('/login');await page.getByLabel('邮箱',{exact:true}).fill(email);await page.getByLabel('密码',{exact:true}).fill(password);await page.getByRole('button',{name:'登录',exact:true}).click();await expect(page.locator('.site-header')).toBeVisible();await page.goto('/feedback');await expect(page.getByRole('heading',{name:'反馈与诊断',exact:true})).toBeVisible();}
 async function fill(page:Page,title='合成教学反馈'){await page.getByLabel('问题摘要',{exact:true}).fill(title);await page.getByLabel('操作步骤',{exact:true}).fill('打开教学，选择合成日期范围。');await page.getByLabel('期望的结果',{exact:true}).fill('能看到天数说明。');await page.getByLabel('实际的结果',{exact:true}).fill('说明不清楚。');}
@@ -52,7 +52,8 @@ test('admin mobile handling preserves text after stale version and renders plain
       messages.push({id:randomUUID(),authorKind:'ADMIN',body:body.body,createdAt:'2026-10-18T01:00:00Z'});version++;status=body.status;await route.fulfill({json:detail()});
     }else await route.fulfill({json:route.request().url().includes(randomId)?detail():{content:[detail().ticket],page:0,size:10,totalElements:1,totalPages:1}});
   });
-  await login(page,user.email);await page.getByRole('button',{name:'管理员处理',exact:true}).click();await page.getByRole('button',{name:/待处理 · 功能异常 合成管理员反馈/}).click();
+  await page.route('**/api/admin/access',route=>route.fulfill({json:{allowed:true}}));
+  await login(page,user.email);await page.getByRole('link',{name:'前往管理中心处理反馈',exact:true}).click();await page.getByRole('button',{name:/待处理 · 功能异常 合成管理员反馈/}).click();
   await expect(page.getByText('<script>never execute</script>',{exact:true})).toBeVisible();
   await page.getByLabel('处理说明',{exact:true}).fill('合成处理说明');version=1;await page.getByRole('button',{name:'保存处理记录',exact:true}).click();await expect(page.getByRole('alert')).toContainText('当前文字仍保留');await expect(page.getByLabel('处理说明',{exact:true})).toHaveValue('合成处理说明');
   await page.getByRole('button',{name:'读取最新记录（保留输入）',exact:true}).click();await expect(page.getByLabel('处理说明',{exact:true})).toHaveValue('合成处理说明');
