@@ -1,14 +1,15 @@
 {
   "version": "0.1.22",
   "coreAdminCenter": {
-    "status":"stage3-development-and-scoped-native-accepted-final-jar-boot-gate-pending-unreleased",
+    "status":"stage3-development-and-targeted-acceptance-complete-unreleased",
     "reason":"Independent admin navigation and role-aware gates; moved existing quota/mail/governance/feedback panels; invitation inline renewal with durable operation key and60s shared cooldown; V33 runtime numeric policy/audit and admitted-job snapshots affect AI admission, worker, transport and repair directly. No unrelated full regression.",
     "backend":["AiRuntimeIntegrationTest","InvitationControlIntegrationTest","AccountRecoveryIntegrationTest","AiFoundationTest","AiIntentIntegrationTest","AiRepairIntegrationTest","AiLongPlanningIntegrationTest","AiConversationIntegrationTest","AiUsageIntegrationTest","AiQuotaIntegrationTest","GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","ApiContractTest","ApiErrorContractTest","DeepSeekProviderTest"],
     "frontendUnit":["src/adminCenter.test.ts","src/helpModel.test.ts","src/aiQuota.test.ts","src/workspaceModel.test.ts"],
     "browser":["e2e/admin-center.spec.ts","e2e/account-ai-operations.spec.ts (admin panel only)","e2e/feedback.spec.ts (admin migration only)"],
     "results":{"businessBackendPassed":89,"contractPassed":10,"frontendPassed":19,"browserPassed":12,"pcScopedGroupsPassed":6,"androidDeviceGroupsPassed":4,"mysqlGroupsPassed":5,"mysqlOriginalTablesUnchanged":54,"mysqlRestoredTables":59,"rollbackGuardUnitPassed":6},
     "paidAiCalls":0,"realTestEmails":0,"nativeTested":true,"productionChanged":false,
-    "pending":["Final runner-only JAR isolated boot/checksums","New-version signing, fresh production-snapshot rehearsal, formal upgrades and publication require approval"],
+    "finalJarBootVerified":true,
+    "pending":["New-version signing, fresh production-snapshot rehearsal, formal upgrades and publication require approval"],
     "details":"docs/admin-center-progress.md"
   },
   "coreAiLongPlanning": {
