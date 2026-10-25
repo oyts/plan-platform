@@ -1,6 +1,6 @@
 {
   "version":"0.1.23","androidVersionCode":28,
-  "status":"three-platform-released-accepted-github-archive-pending",
+  "status":"complete-stage3-three-platform-released-and-github-archived",
   "automationEnabled":false,"stopAtFiveHourRemainingPercent":10,
   "productionAuthorized":true,"formalWindowsOverwriteAuthorized":true,"formalAndroidOverwriteAuthorized":true,
   "candidate":"production-artifacts/client-release/0.1.23/20261025T135102Z-de93ee4f",
@@ -19,6 +19,7 @@
   "windowsPublicStage":"production-artifacts/windows-public-release/0.1.23/20261025T140906606Z-4YWrf6","windowsStaticRun":"windows-0123-OGAN94",
   "androidProtectedStage":"production-artifacts/invited-android/0.1.23/candidate-Ly3YvI","androidStaticRun":"android-28-113e3366",
   "paidAiCalls":0,"realTestEmails":0,
-  "remaining":["GitHub immutable tag and Windows-only release archive"],
+  "github":{"status":"published","tag":"v0.1.23","tagCommit":"342f9aff07a30ee71bb632434a15eb605fcd7a42","url":"https://github.com/oyts/plan-platform/releases/tag/v0.1.23","windowsOnlyAssets":true,"androidPublicAsset":false},
+  "remaining":[],
   "warning":"Do not reinstall, repeat migration or clear data. Stage3 publication accepted; do not begin stage4 without user request. No automations."
 }

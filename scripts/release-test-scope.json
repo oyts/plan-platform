@@ -1,7 +1,7 @@
 {
   "version": "0.1.23",
   "coreAdminCenter": {
-    "status":"stage3-three-platform-released-0123-github-archive-pending",
+    "status":"stage3-complete-three-platform-released-0123-and-github-archived",
     "reason":"Independent admin navigation and role-aware gates; moved existing quota/mail/governance/feedback panels; invitation inline renewal with durable operation key and60s shared cooldown; V33 runtime numeric policy/audit and admitted-job snapshots affect AI admission, worker, transport and repair directly. No unrelated full regression.",
     "backend":["AiRuntimeIntegrationTest","InvitationControlIntegrationTest","AccountRecoveryIntegrationTest","AiFoundationTest","AiIntentIntegrationTest","AiRepairIntegrationTest","AiLongPlanningIntegrationTest","AiConversationIntegrationTest","AiUsageIntegrationTest","AiQuotaIntegrationTest","GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","ApiContractTest","ApiErrorContractTest","DeepSeekProviderTest"],
     "frontendUnit":["src/adminCenter.test.ts","src/helpModel.test.ts","src/aiQuota.test.ts","src/workspaceModel.test.ts"],
@@ -10,7 +10,7 @@
     "paidAiCalls":0,"realTestEmails":0,"nativeTested":true,"productionChanged":true,
     "finalJarBootVerified":true,
     "release0123":{"backendDistinctPassed":99,"activationGuardPassed":6,"snapshotGuardPassed":5,"snapshotTablesRestoredTwice":55,"originalBusinessTablesUnchanged":54,"formalWindowsOriginalFilesUnchanged":585,"formalWindowsLoginAndColdReopenAccepted":true,"formalWindowsQueue":[0,0],"formalAndroidGroupsPassed":5,"formalAndroidUpdateGroupsPassed":2,"formalAndroidQueue":[0,0],"httpsGroupsPassed":6,"windowsPublicGroupsPassed":5,"androidProtectedGroupsPassed":4,"postUpgradeOssRoundtripVerified":true,"nonemptyFormalQueueUpgradeProven":false,"automaticDownloadChecked":false,"details":"docs/release-0123.md"},
-    "pending":["GitHub immutable tag and Windows-only release archive"],
+    "pending":[],
     "details":"docs/admin-center-progress.md"
   },
   "coreAiLongPlanning": {
