@@ -1,6 +1,6 @@
 {
   "version":"0.1.23","androidVersionCode":28,
-  "status":"signed-candidates-installed-production-snapshot-in-progress",
+  "status":"three-platform-released-accepted-github-archive-pending",
   "automationEnabled":false,"stopAtFiveHourRemainingPercent":10,
   "productionAuthorized":true,"formalWindowsOverwriteAuthorized":true,"formalAndroidOverwriteAuthorized":true,
   "candidate":"production-artifacts/client-release/0.1.23/20261025T135102Z-de93ee4f",
@@ -9,9 +9,16 @@
   "windowsSha256":"695f33dd9a6be31b455252d43e7bc1ee729efdf751f722de66c226817a5f8f92",
   "androidSha256":"3972f735c5a223f6b7ac0a0738cc617b51471b91caf93046699656a16aaca0fa",
   "productionCandidateDirectory":"/home/oyts/plan-platform/releases/0.1.23-1f38e13b",
-  "windowsInstalled":true,"windowsOriginalFilesUnchangedBeforeLaunch":585,"windowsUiAccepted":false,
-  "androidInstalled":true,"androidQueueBefore":[0,0],"androidUiAccepted":false,
+  "productionDirectory":"/home/oyts/plan-platform/releases/0.1.23-1f38e13b",
+  "drill":"/home/oyts/plan-platform/release-drills/roadmap-20261025135659-4556a492",
+  "migration":"V32 -> V33","snapshotTablesRestoredTwice":55,"originalBusinessTablesUnchanged":54,"postUpgradeBackupOssVerified":true,
+  "windowsInstalled":true,"windowsOriginalFilesUnchangedBeforeLaunch":585,"windowsUiAccepted":true,"windowsLoginRetained":true,"windowsColdReopenAccepted":true,"windowsQueue":[0,0],
+  "androidInstalled":true,"androidQueueBefore":[0,0],"androidQueueAfter":[0,0],"androidUiAccepted":true,"androidUpgradeGroupsPassed":5,"androidColdReopenAccepted":true,
+  "nonemptyFormalQueueUpgradeProven":false,"windowsNativeUpdateCheckAccepted":true,"androidNativeUpdateCheckAccepted":true,"automaticDownloadChecked":false,
+  "httpsGroupsPassed":6,"windowsPublicGroupsPassed":5,"androidProtectedGroupsPassed":4,
+  "windowsPublicStage":"production-artifacts/windows-public-release/0.1.23/20261025T140906606Z-4YWrf6","windowsStaticRun":"windows-0123-OGAN94",
+  "androidProtectedStage":"production-artifacts/invited-android/0.1.23/candidate-Ly3YvI","androidStaticRun":"android-28-113e3366",
   "paidAiCalls":0,"realTestEmails":0,
-  "remaining":["Fresh snapshot rehearsal result","Exact activation preflight and production health","Formal PC/Android readonly retention and cold reopen","Windows public and protected Android publication","GitHub archive and documentation closeout"],
-  "warning":"Do not reinstall or clear data. Formal installed0.1.23 is not yet a released update. Native UI and feeds await acceptance; current production was0.1.22 at preflight."
+  "remaining":["GitHub immutable tag and Windows-only release archive"],
+  "warning":"Do not reinstall, repeat migration or clear data. Stage3 publication accepted; do not begin stage4 without user request. No automations."
 }
