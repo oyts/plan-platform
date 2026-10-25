@@ -51,6 +51,10 @@ curl --max-time 10 -fsS https://plan.zijun701.cn/api/health | grep -q '"service"
 curl --max-time 10 -fsS https://plan.zijun701.cn/api/auth/config | grep -q '"registrationEnabled":false'
 # Preserve the actual running config and previous manifest/pointer before activation.
 docker cp plan-platform-web-1:/etc/nginx/conf.d/default.conf "$release/running-nginx.before.conf"
+# Never silently remove an active sanitized collector when publishing Windows.
+if grep -q 'log_format plan_private_metrics' "$release/running-nginx.before.conf"; then
+  grep -q 'log_format plan_private_metrics' "$release/nginx.conf" || { echo 'Runtime metrics is active: rebuild static candidate with --with-runtime-metrics'; exit 1; }
+fi
 docker cp plan-platform-web-1:/usr/share/nginx/html/downloads/manifest.json "$release/image-downloads.before.json"
 curl --max-time 10 -fsS https://plan.zijun701.cn/downloads/manifest.json > "$release/public-downloads.before.json"
 if [ -L "$managed/current" ]; then readlink "$managed/current" > "$release/previous-current"; fi

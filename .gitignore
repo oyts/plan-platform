@@ -10,6 +10,7 @@
 backend/target/
 backend/target-acceptance/
 backend/target-admin/
+backend/target-metrics/
 backend/target-invited/
 backend/target-invitation-copy/
 backend/data/

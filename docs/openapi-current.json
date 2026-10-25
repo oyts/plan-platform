@@ -2,9 +2,9 @@
   "openapi" : "3.0.3",
   "info" : {
     "version" : "0.1.23-source",
-    "description" : "当前源码契约，实际发布状态见对应版本记录。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。旧JSON按明确的宽容接收约定和标准字段指南描述，不新增严格验证器。default响应及基础设施错误不承诺穷尽结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。",
+    "title" : "计划舱当前源码路由与声明DTO契约",
     "x-contract-coverage" : "all-mvc-api-routes-declared-types-and-reviewed-service-delegations; unresolved dynamic fields explicitly marked",
-    "title" : "计划舱当前源码路由与声明DTO契约"
+    "description" : "当前源码契约，实际发布状态见对应版本记录。路由、参数与声明DTO由Spring MVC及Java类型提取；已审查的包装响应从实际服务泛型提取。旧JSON按明确的宽容接收约定和标准字段指南描述，不新增严格验证器。default响应及基础设施错误不承诺穷尽结构或状态。业务限制、所有权、功能开关及事务语义见core-api.md。没有真实用户样本。"
   },
   "servers" : [ {
     "url" : "/api"
@@ -1543,6 +1543,113 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/admin/metrics/growth" : {
+      "get" : {
+        "operationId" : "MetricsController_growth_GET",
+        "x-java-handler" : "com.oyts.planplatform.metrics.MetricsController#growth",
+        "x-pre-authorize" : "hasRole('ADMIN')",
+        "parameters" : [ {
+          "name" : "from",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date",
+            "nullable" : true
+          }
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date",
+            "nullable" : true
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/metrics.GrowthMetrics.Report"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            },
+            "x-runtime-content-type" : true
+          }
+        }
+      }
+    },
+    "/admin/metrics/runtime" : {
+      "get" : {
+        "operationId" : "MetricsController_runtime_GET",
+        "x-java-handler" : "com.oyts.planplatform.metrics.MetricsController#runtime",
+        "x-pre-authorize" : "hasRole('ADMIN')",
+        "responses" : {
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/metrics.RuntimeTelemetry.Report"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            },
+            "x-runtime-content-type" : true
+          }
+        }
+      }
+    },
+    "/admin/metrics/website" : {
+      "get" : {
+        "operationId" : "MetricsController_website_GET",
+        "x-java-handler" : "com.oyts.planplatform.metrics.MetricsController#website",
+        "x-pre-authorize" : "hasRole('ADMIN')",
+        "parameters" : [ {
+          "name" : "from",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date",
+            "nullable" : true
+          }
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "date",
+            "nullable" : true
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/metrics.WebMetricsService.Report"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            },
+            "x-runtime-content-type" : true
           }
         }
       }
@@ -4693,6 +4800,29 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/public/analytics/config" : {
+      "get" : {
+        "operationId" : "MetricsController_config_GET",
+        "x-java-handler" : "com.oyts.planplatform.metrics.MetricsController#config",
+        "security" : [ ],
+        "responses" : {
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/metrics.WebMetricsService.Config"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            },
+            "x-runtime-content-type" : true
           }
         }
       }
@@ -14549,6 +14679,88 @@
         }
       }
     },
+    "/public/analytics/event" : {
+      "post" : {
+        "operationId" : "MetricsController_event_POST",
+        "x-java-handler" : "com.oyts.planplatform.metrics.MetricsController#event",
+        "security" : [ ],
+        "requestBody" : {
+          "required" : true,
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "additionalProperties" : false,
+                "properties" : {
+                  "page" : {
+                    "type" : "string",
+                    "enum" : [ "WELCOME" ]
+                  },
+                  "ticket" : {
+                    "type" : "string",
+                    "pattern" : "[0-9]{10}\\.[a-f0-9-]{36}\\.[a-f0-9]{64}"
+                  },
+                  "visitorId" : {
+                    "type" : "string",
+                    "pattern" : "[a-f0-9-]{36}",
+                    "nullable" : true
+                  }
+                },
+                "required" : [ "page", "ticket", "visitorId" ],
+                "nullable" : false
+              }
+            }
+          }
+        },
+        "responses" : {
+          "204" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态"
+          }
+        }
+      }
+    },
+    "/public/analytics/ticket" : {
+      "post" : {
+        "operationId" : "MetricsController_ticket_POST",
+        "x-java-handler" : "com.oyts.planplatform.metrics.MetricsController#ticket",
+        "security" : [ ],
+        "requestBody" : {
+          "required" : true,
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "additionalProperties" : false,
+                "properties" : {
+                  "page" : {
+                    "type" : "string",
+                    "enum" : [ "WELCOME" ]
+                  }
+                },
+                "required" : [ "page" ],
+                "nullable" : false
+              }
+            }
+          }
+        },
+        "responses" : {
+          "default" : {
+            "description" : "状态由控制器运行分支决定，声明类型不保证具体HTTP状态",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "allOf" : [ {
+                    "$ref" : "#/components/schemas/metrics.WebMetricsService.Ticket"
+                  } ],
+                  "nullable" : true
+                }
+              }
+            },
+            "x-runtime-content-type" : true
+          }
+        }
+      }
+    },
     "/reflection/analysis-preview" : {
       "post" : {
         "operationId" : "ReflectionController_preview_POST",
@@ -15654,14 +15866,14 @@
   "components" : {
     "securitySchemes" : {
       "bearerAuth" : {
-        "scheme" : "bearer",
         "bearerFormat" : "JWT",
+        "scheme" : "bearer",
         "type" : "http"
       },
       "reminderKey" : {
-        "name" : "X-Reminder-Key",
+        "type" : "apiKey",
         "in" : "header",
-        "type" : "apiKey"
+        "name" : "X-Reminder-Key"
       }
     },
     "schemas" : {
@@ -16978,6 +17190,33 @@
           }
         }
       },
+      "ai.AiUsageService.AttemptSummary" : {
+        "type" : "object",
+        "properties" : {
+          "attempts" : {
+            "type" : "integer"
+          },
+          "repairs" : {
+            "type" : "integer"
+          },
+          "tokenKnownAttempts" : {
+            "type" : "integer"
+          },
+          "inputTokens" : {
+            "type" : "integer"
+          },
+          "outputTokens" : {
+            "type" : "integer"
+          },
+          "averageQueueWaitMs" : {
+            "type" : "integer",
+            "nullable" : true
+          },
+          "waitKnownJobs" : {
+            "type" : "integer"
+          }
+        }
+      },
       "ai.AiUsageService.Day" : {
         "type" : "object",
         "properties" : {
@@ -17111,6 +17350,12 @@
               } ],
               "nullable" : true
             },
+            "nullable" : true
+          },
+          "attempts" : {
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/ai.AiUsageService.AttemptSummary"
+            } ],
             "nullable" : true
           }
         }
@@ -18910,6 +19155,280 @@
           },
           "version" : {
             "type" : "integer"
+          }
+        }
+      },
+      "metrics.GrowthMetrics.Day" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "registered" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "metrics.GrowthMetrics.Report" : {
+        "type" : "object",
+        "properties" : {
+          "from" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "to" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "timezone" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "observedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "nullable" : true
+          },
+          "totalRegistered" : {
+            "type" : "integer"
+          },
+          "disabled" : {
+            "type" : "integer"
+          },
+          "registeredInRange" : {
+            "type" : "integer"
+          },
+          "days" : {
+            "type" : "array",
+            "items" : {
+              "allOf" : [ {
+                "$ref" : "#/components/schemas/metrics.GrowthMetrics.Day"
+              } ],
+              "nullable" : true
+            },
+            "nullable" : true
+          },
+          "meaning" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        }
+      },
+      "metrics.RuntimeTelemetry.Minute" : {
+        "type" : "object",
+        "properties" : {
+          "minute" : {
+            "type" : "integer"
+          },
+          "requests" : {
+            "type" : "integer"
+          },
+          "errors" : {
+            "type" : "integer"
+          },
+          "authFailures" : {
+            "type" : "integer"
+          },
+          "limited" : {
+            "type" : "integer"
+          },
+          "scans" : {
+            "type" : "integer"
+          },
+          "bots" : {
+            "type" : "integer"
+          },
+          "durationMs" : {
+            "type" : "integer"
+          },
+          "slow" : {
+            "type" : "integer"
+          },
+          "htmlRequests" : {
+            "type" : "integer"
+          },
+          "apiRequests" : {
+            "type" : "integer"
+          },
+          "apiErrors" : {
+            "type" : "integer"
+          },
+          "apiDurationMs" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "metrics.RuntimeTelemetry.Report" : {
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "available" : {
+            "type" : "boolean"
+          },
+          "mailAlertsEnabled" : {
+            "type" : "boolean"
+          },
+          "observedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "nullable" : true
+          },
+          "logComplete" : {
+            "type" : "boolean"
+          },
+          "note" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "minutes" : {
+            "type" : "array",
+            "items" : {
+              "allOf" : [ {
+                "$ref" : "#/components/schemas/metrics.RuntimeTelemetry.Minute"
+              } ],
+              "nullable" : true
+            },
+            "nullable" : true
+          },
+          "samples" : {
+            "type" : "array",
+            "items" : {
+              "allOf" : [ {
+                "$ref" : "#/components/schemas/metrics.RuntimeTelemetry.Sample"
+              } ],
+              "nullable" : true
+            },
+            "nullable" : true
+          },
+          "thresholds" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        }
+      },
+      "metrics.RuntimeTelemetry.Sample" : {
+        "type" : "object",
+        "properties" : {
+          "minute" : {
+            "type" : "integer"
+          },
+          "cpuPercent" : {
+            "type" : "number",
+            "nullable" : true
+          },
+          "memoryUsedBytes" : {
+            "type" : "integer"
+          },
+          "memoryTotalBytes" : {
+            "type" : "integer"
+          },
+          "healthy" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "metrics.WebMetricsService.Config" : {
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "page" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "dedupRetentionHours" : {
+            "type" : "integer"
+          },
+          "aggregateRetentionDays" : {
+            "type" : "integer"
+          },
+          "note" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        }
+      },
+      "metrics.WebMetricsService.Day" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "pv" : {
+            "type" : "integer"
+          },
+          "dailyVisitors" : {
+            "type" : "integer"
+          },
+          "withoutVisitorEstimate" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "metrics.WebMetricsService.Report" : {
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "timezone" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "from" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "to" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "observedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "nullable" : true
+          },
+          "days" : {
+            "type" : "array",
+            "items" : {
+              "allOf" : [ {
+                "$ref" : "#/components/schemas/metrics.WebMetricsService.Day"
+              } ],
+              "nullable" : true
+            },
+            "nullable" : true
+          },
+          "pv" : {
+            "type" : "integer"
+          },
+          "dailyVisitorSum" : {
+            "type" : "integer"
+          },
+          "withoutVisitorEstimate" : {
+            "type" : "integer"
+          },
+          "visitorMeaning" : {
+            "type" : "string",
+            "nullable" : true
+          }
+        }
+      },
+      "metrics.WebMetricsService.Ticket" : {
+        "type" : "object",
+        "properties" : {
+          "ticket" : {
+            "type" : "string",
+            "nullable" : true
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "nullable" : true
           }
         }
       },
@@ -24484,5 +25003,5 @@
       }
     }
   },
-  "x-operation-count" : 202
+  "x-operation-count" : 208
 }

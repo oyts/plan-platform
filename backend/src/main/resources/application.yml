@@ -78,4 +78,10 @@ app:
     email-verification-minutes: ${EMAIL_VERIFICATION_MINUTES:60}
     bootstrap-admin-email: ${BOOTSTRAP_ADMIN_EMAIL:}
   public-url: ${APP_PUBLIC_URL:http://localhost:43128}
+  metrics:
+    enabled: ${METRICS_ENABLED:false}
+  telemetry:
+    enabled: ${TELEMETRY_ENABLED:false}
+    status-file: ${TELEMETRY_STATUS_FILE:}
+    mail-alerts-enabled: ${TELEMETRY_MAIL_ALERTS_ENABLED:false}
   mail-from: ${MAIL_FROM:}

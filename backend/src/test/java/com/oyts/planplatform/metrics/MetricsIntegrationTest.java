@@ -1,0 +1,44 @@
+package com.oyts.planplatform.metrics;
+import com.fasterxml.jackson.databind.*;
+import com.oyts.planplatform.auth.*;
+import java.time.*;
+import java.util.*;
+import java.util.concurrent.*;
+import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.util.ReflectionTestUtils;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+@SpringBootTest(properties={"app.metrics.enabled=true","app.public-url=http://localhost:43128","app.ai.worker-enabled=false","app.operations.scheduler-enabled=false"}) @AutoConfigureMockMvc
+class MetricsIntegrationTest {
+ @Autowired WebMetricsService metrics;@Autowired GrowthMetrics growth;@Autowired JdbcTemplate db;@Autowired ObjectMapper json;@Autowired MockMvc mvc;@Autowired UserAccountRepository users;
+ String admin,member;final String origin="http://localhost:43128";
+ @BeforeEach void setup(){db.update("delete from web_metric_events");db.update("delete from web_metric_visitors");db.update("delete from web_metric_days");ReflectionTestUtils.setField(metrics,"minute",-1L);admin=user(true);member=user(false);}
+ String user(boolean admin){var u=new UserAccount("metrics-"+UUID.randomUUID()+"@example.test","synthetic-unused","指标合成账号");if(admin)u.makeAdmin();return users.saveAndFlush(u).getId();}
+ MockHttpServletRequest req(){var r=new MockHttpServletRequest();r.setMethod("POST");r.addHeader("Origin",origin);return r;}
+ JsonNode event(String ticket,String visitor){return json.valueToTree(new LinkedHashMap<String,Object>(){{put("page","WELCOME");put("ticket",ticket);put("visitorId",visitor);}});}
+ String ticket(){return metrics.ticket(req(),json.valueToTree(Map.of("page","WELCOME"))).ticket();}
+ WebMetricsService.Report report(){var today=LocalDate.now(WebMetricsService.ZONE);return metrics.report(today,today);}
+ @Test void repeatedTicketIsIdempotentAndDailyVisitorsAreNotPageViews(){String visitor=UUID.randomUUID().toString(),t=ticket();metrics.event(req(),event(t,visitor));metrics.event(req(),event(t,visitor));metrics.event(req(),event(ticket(),visitor));metrics.event(req(),event(ticket(),null));assertEquals(3,report().pv());assertEquals(1,report().dailyVisitorSum());assertEquals(1,report().withoutVisitorEstimate());assertEquals(3,db.queryForObject("select count(*) from web_metric_events",Integer.class));assertFalse(db.queryForList("select visitor_hash from web_metric_visitors",String.class).contains(visitor));}
+ @Test void concurrentTicketReplayCommitsOneEvent()throws Exception{var t=ticket();try(var pool=Executors.newFixedThreadPool(2)){var jobs=List.of(pool.submit(()->metrics.event(req(),event(t,null))),pool.submit(()->metrics.event(req(),event(t,null))));for(var job:jobs)job.get(10,TimeUnit.SECONDS);}assertEquals(1,report().pv());}
+ @Test void wrongOriginCredentialsUnknownFieldsAndPrivateUrlsAreRejected()throws Exception{
+  for(var body:List.of("{\"page\":\"/plans/private?token=secret\"}","{\"page\":\"WELCOME\",\"email\":\"private@example.test\"}"))mvc.perform(post("/api/public/analytics/ticket").header("Origin",origin).contentType("application/json").content(body)).andExpect(status().isBadRequest());
+  mvc.perform(post("/api/public/analytics/ticket").header("Origin","https://unrelated.example").contentType("application/json").content("{\"page\":\"WELCOME\"}")).andExpect(status().isForbidden());
+  mvc.perform(post("/api/public/analytics/ticket").header("Origin",origin).header("Cookie","plan_refresh=synthetic").contentType("application/json").content("{\"page\":\"WELCOME\"}")).andExpect(status().isForbidden());assertEquals(0,report().pv());
+ }
+ @Test void unsignedOrRestartedTicketsCannotCreateCounts(){String t=ticket();var other=new WebMetricsService(db,true,origin);assertThrows(com.oyts.planplatform.common.ForbiddenException.class,()->other.event(req(),event(t,null)));assertThrows(IllegalArgumentException.class,()->metrics.event(req(),event("invalid",null)));assertEquals(0,report().pv());}
+ @Test void globalLimitsAndDayCapsAreEnforcedWithoutBusinessWrites(){for(int i=0;i<240;i++)ticket();assertThrows(com.oyts.planplatform.common.TooManyRequestsException.class,()->ticket());ReflectionTestUtils.setField(metrics,"minute",-1L);metrics.event(req(),event(ticket(),null));db.update("update web_metric_days set pv=20000");assertThrows(com.oyts.planplatform.common.TooManyRequestsException.class,()->metrics.event(req(),event(ticket(),null)));assertEquals(20000,report().pv());}
+ @Test void adminAggregatesArePrivateAndOrdinaryMembersAreDenied()throws Exception{String day=LocalDate.now(WebMetricsService.ZONE).toString();for(String path:List.of("website","growth")){String url="/api/admin/metrics/"+path+"?from="+day+"&to="+day;mvc.perform(get(url)).andExpect(status().isUnauthorized());mvc.perform(get(url).with(jwt().jwt(j->j.subject(member)).authorities(new SimpleGrantedAuthority("ROLE_USER")))).andExpect(status().isForbidden());String body=mvc.perform(get(url).with(jwt().jwt(j->j.subject(admin)).authorities(new SimpleGrantedAuthority("ROLE_ADMIN")))).andExpect(status().isOk()).andExpect(header().string("Cache-Control",org.hamcrest.Matchers.containsString("no-store"))).andReturn().getResponse().getContentAsString();assertFalse(body.contains("@example.test"));assertFalse(body.contains("password"));}}
+ @Test void bodyCapAlsoAppliesBeforeJsonDeserialization()throws Exception{mvc.perform(post("/api/public/analytics/ticket").header("Origin",origin).contentType("application/json").content("x".repeat(1025))).andExpect(status().isPayloadTooLarge());}
+ @Test void growthUsesShanghaiMidnightNotServerTimezone(){var today=LocalDate.now(WebMetricsService.ZONE);var before=growth.report(today.minusDays(1),today);String a=user(false),b=user(false);var boundary=LocalDateTime.ofInstant(today.atStartOfDay(WebMetricsService.ZONE).toInstant(),ZoneOffset.UTC);db.update("update users set created_at=? where id=?",boundary.minusSeconds(1),a);db.update("update users set created_at=? where id=?",boundary,b);var after=growth.report(today.minusDays(1),today);assertEquals(before.days().get(0).registered()+1,after.days().get(0).registered());assertEquals(before.days().get(1).registered()+1,after.days().get(1).registered());}
+ @Test void retentionRemovesOnlyExpiredDedicatedDataAndDailyReportDoesNotInventHistory(){metrics.event(req(),event(ticket(),UUID.randomUUID().toString()));long accounts=db.queryForObject("select count(*) from users",Long.class);db.update("update web_metric_events set created_at=?",LocalDateTime.now(ZoneOffset.UTC).minusHours(49));db.update("update web_metric_visitors set created_at=?",LocalDateTime.now(ZoneOffset.UTC).minusHours(49));metrics.retain();assertEquals(0,db.queryForObject("select count(*) from web_metric_events",Integer.class));assertEquals(0,db.queryForObject("select count(*) from web_metric_visitors",Integer.class));assertEquals(accounts,db.queryForObject("select count(*) from users",Long.class));assertEquals(1,report().pv());assertTrue(metrics.report(LocalDate.now(WebMetricsService.ZONE).minusDays(1),LocalDate.now(WebMetricsService.ZONE).minusDays(1)).days().isEmpty());}
+ @Test void failureRollsBackEventAndDedupTogether(){var t=ticket();db.execute("alter table web_metric_days add constraint synthetic_metrics_reject check(pv=0)");try{assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->metrics.event(req(),event(t,null)));assertEquals(0,db.queryForObject("select count(*) from web_metric_events",Integer.class));}finally{db.execute("alter table web_metric_days drop constraint synthetic_metrics_reject");}metrics.event(req(),event(t,null));assertEquals(1,report().pv());}
+}

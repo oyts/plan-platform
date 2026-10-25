@@ -6,8 +6,11 @@ import { workspaceEntry } from '@/workspace';
 import { useRouter } from 'vue-router';
 import { parseProductDownloads, downloadSize, type ProductDownloads } from '@/productDownloads';
 import AppSheet from '@/components/AppSheet.vue';
+import PublicAnalyticsChoice from '@/components/PublicAnalyticsChoice.vue';
+import {Capacitor} from '@capacitor/core';
 import {supportsPersonalTemplates} from '@/helpModel';
 const templatesAvailable=ref(false);
+const locationProtocolIsNative=location.protocol==='tauri:'||location.hostname==='tauri.localhost'||Capacitor.isNativePlatform();
 const auth = useAuthStore(); const router = useRouter();
 const selected = ref(0); const open = ref(false); const qr = ref(''); const error = ref(''); const loading = ref(true);
 const downloads = ref<ProductDownloads>({ windows: null, android: null });
@@ -124,6 +127,7 @@ onMounted(async () => {
       <div class="product-client-grid"><article><span class="client-label">无需安装</span><h3>网页版</h3><p>电脑和手机浏览器均可访问。已有账号可直接登录，新成员请先联系管理员获取邀请。</p><button class="btn primary" @click="enter">进入网页版</button></article><article><span class="client-label">桌面客户端</span><h3>Windows 电脑</h3><p>独立客户端，支持缓存与离线编辑。新版本在应用内提示，由你决定何时下载和安装。</p><a v-if="downloads.windows" class="btn primary" :href="downloads.windows.url" download>下载 Windows 安装包</a><button v-else class="btn" disabled>{{ loading ? '检查发布状态…' : '正式安装包尚未发布' }}</button><small v-if="downloads.windows">{{ downloads.windows.version }} · {{ downloadSize(downloads.windows.bytes) }}</small></article><article><span class="client-label">{{ downloads.android ? '手机客户端' : '受邀测试' }}</span><h3>Android 手机</h3><p v-if="downloads.android">扫描二维码或直接下载安装包，登录同一个账号继续使用。</p><p v-else>暂不提供公开 APK 和二维码。首次安装请联系邀请人，已安装的受邀成员可登录后在应用内检查更新。</p><button class="btn" :disabled="loading" @click="mobileDownload">{{ downloads.android ? '扫码下载 Android' : '查看 Android 发布状态' }}</button><small v-if="downloads.android">{{ downloads.android.version }} · {{ downloadSize(downloads.android.bytes) }}</small><small v-else>目前可先使用手机浏览器访问网页版。</small></article></div>
     </section>
     <section class="product-section product-faq" aria-labelledby="faq-title"><header><span>07</span><div><h2 id="faq-title">开始前，你可能想知道。</h2></div></header><div class="faq-list"><details><summary>现在可以直接注册吗？</summary><p>目前采用管理员邀请制，没有公众注册入口。已有账号可直接登录；忘记密码时，可从登录页通过账号邮箱找回。</p></details><details><summary>我一定要使用 AI 吗？</summary><p>不需要。三种模式都支持手动创建和修改。AI 是可选的规划助手，你可以先看草稿、继续讨论，再决定是否生成或应用。</p></details><details><summary>我的所有计划都会发给 AI 吗？</summary><p>不会自动扫描全部计划。新建时发送本次对话与草稿；调整已有内容时，先由你选择对象并同意载入必要内容。请勿输入密码、身份证件等敏感信息。</p></details><details><summary>离线时，哪些事情还能做？</summary><p>先联网加载需要的内容后，可以离线浏览已缓存页面，并对支持的事项进行新增或编辑。联网后在同步中心处理本地操作与冲突；AI和计时等操作仍需联网；待办勾选可先离线入队，联网后由你核对同步。</p></details></div></section>
+    <PublicAnalyticsChoice v-if="!locationProtocolIsNative"/>
     <footer class="product-footer"><div><strong>计划舱</strong><span>按自己的节奏，认真做下一件事。</span></div><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备2026050813号-1</a><div class="footer-links"><a href="https://github.com/oyts/plan-platform" target="_blank" rel="noopener noreferrer">GitHub 源码</a><router-link to="/login">账号登录</router-link></div></footer>
     <AppSheet :open="open" title="Android 客户端下载" title-id="android-download-title" @close="open = false"><template v-if="downloads.android"><p>扫描二维码，在手机浏览器中下载 APK。</p><img v-if="qr" class="download-qr" :src="qr" alt="Android 安装包下载二维码" width="256" height="256"/><p><a class="btn primary" :href="downloads.android.url" download>直接下载 APK</a></p><p>{{ downloads.android.version }} · {{ downloadSize(downloads.android.bytes) }}</p><details><summary>查看 SHA-256 校验值</summary><code class="download-hash">{{ downloads.android.sha256 }}</code></details><p class="helper-text">安装时 Android 可能要求允许浏览器安装应用。只从本站获取安装包；二维码不包含账号或密码。</p></template><template v-else><p>Android 客户端目前仅供受邀测试，暂不提供公开下载及二维码。</p><p>已安装受邀测试版的成员，可登录后在“客户端更新”中检查新版本。第一次安装请联系邀请人；也可先使用网页版。</p></template></AppSheet>
   </div>

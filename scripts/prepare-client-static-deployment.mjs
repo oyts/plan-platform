@@ -4,11 +4,13 @@ import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {clientStaticConfig} from './client-static-config.mjs';
+import {runtimeMetricsConfig} from './runtime-metrics-config.mjs';
 import {verifyUpdaterSignature} from './formal-release-support.mjs';
 import {sha256} from './windows-public-release.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const production=realpathSync(join(root,'production-artifacts'));
 const stage=realpathSync(resolve(process.argv[2]||''));
+const extra=process.argv.slice(3);assert.ok(extra.length===0||extra.length===1&&extra[0]==='--with-runtime-metrics','Only explicit runtime-metrics opt-in is supported');
 const part=relative(production,stage);
 assert.ok(part&&!part.startsWith('..')&&!isAbsolute(part),'Expected a prepared local publication');
 const plan=JSON.parse(readFileSync(join(stage,'metadata/release-plan.json'),'utf8'));
@@ -34,7 +36,8 @@ for(const path of readdirSync(publicRoot,{recursive:true})) {
   files.push(['public/'+rel,readFileSync(actual)]);
 }
 assert.equal(files.length,5);
-files.push(['nginx.conf',Buffer.from(clientStaticConfig(readFileSync(join(root,'web/nginx.production.conf'),'utf8')))]);
+const plain=clientStaticConfig(readFileSync(join(root,'web/nginx.production.conf'),'utf8'));
+files.push(['nginx.conf',Buffer.from(extra.length?runtimeMetricsConfig(plain):plain)]);
 files.push(['compose.yml',Buffer.from('services:\n  web:\n    volumes:\n      - /home/oyts/plan-platform/client-public:/srv/plan-clients:ro\n      - /home/oyts/plan-platform/client-public/nginx.conf:/etc/nginx/conf.d/default.conf:ro\n')]);
 files.push(['publish.sh',Buffer.from(readFileSync(join(root,'scripts/publish-windows-static.sh'),'utf8').replace('__RELEASE_VERSION__',version))]);
 files.push(['retain-windows-releases.sh',readFileSync(join(root,'scripts/retain-windows-releases.sh'))]);

@@ -26,7 +26,7 @@ class ApiContractTest {
     private final Map<String,JsonNode> schemas=new TreeMap<>();
     private static final Set<String> PUBLIC=Set.of("GET /health","GET /auth/config","POST /auth/register",
         "POST /auth/login","POST /auth/refresh","POST /auth/logout","POST /auth/password-reset/request",
-        "POST /auth/password-reset/confirm","POST /auth/email-verification/confirm","POST /auth/email-change/verify");
+        "POST /auth/password-reset/confirm","POST /auth/email-verification/confirm","POST /auth/email-change/verify","GET /public/analytics/config","POST /public/analytics/ticket","POST /public/analytics/event");
 
     @Test void springRegexQuantifiersBecomeValidOpenApiPathVariables(){
         assertThat(ApiContractServiceTypes.normalizePath("/ai/saved-drafts/{id:[a-f0-9-]{36}}"))

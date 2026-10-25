@@ -1,5 +1,17 @@
 {
   "version": "0.1.23",
+  "coreMetrics": {
+    "status":"stage4-development-not-released",
+    "reason":"New opt-in public analytics, Shanghai account growth, metadata-only AI attempt summary, sanitized incremental runtime telemetry and existing operation mail integration. Source metadata remains0.1.23; no new binary has been published.",
+    "backend":["MetricsIntegrationTest","RuntimeTelemetryTest","AiUsageIntegrationTest","OperationsMailDeliveryTest","GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","ApiContractTest","ApiErrorContractTest"],
+    "frontendUnit":["src/publicAnalytics.test.ts"],
+    "browser":["e2e/metrics.spec.ts"],
+    "scripts":["scripts/test-runtime-telemetry.py","scripts/runtime-metrics-config.test.mjs"],
+    "developmentResults":{"backendDistinctPassed":48,"frontendUnitPassed":6,"collectorPassed":6,"configurationPassed":4,"browserAssertionsPassed":6,"browserTeardownNeedsHardening":true},
+    "nativeTested":false,"mysqlVerified":false,"productionChanged":false,"paidAiCalls":0,"realTestEmails":0,
+    "pending":["Cloud independent migration/restore and Linux syntax/performance authorization and exercise","Independent PC package and UI acceptance, owner approved launch but not yet prepared","Android device notification and approval after Web/PC","Formal signed release and production activation approval"],
+    "details":"docs/metrics-progress.md"
+  },
   "coreAdminCenter": {
     "status":"stage3-complete-three-platform-released-0123-and-github-archived",
     "reason":"Independent admin navigation and role-aware gates; moved existing quota/mail/governance/feedback panels; invitation inline renewal with durable operation key and60s shared cooldown; V33 runtime numeric policy/audit and admitted-job snapshots affect AI admission, worker, transport and repair directly. No unrelated full regression.",

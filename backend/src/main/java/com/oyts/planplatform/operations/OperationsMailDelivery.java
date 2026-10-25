@@ -16,13 +16,16 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Durable at-most-once attempt. SMTP acceptance is not inbox delivery. */
 @Service
-class OperationsMailDelivery {
+public class OperationsMailDelivery {
     private static final Set<String> CODES=Set.of("OPS_DATA_UNAVAILABLE","BACKUP_STALE","OSS_UNVERIFIED","RESTORE_UNVERIFIED","DISK_LOW","CATALOG_INCOMPLETE","BACKUP_FAILED","OSS_FAILED","RESTORE_FAILED");
     private final JdbcTemplate db;
     private final ObjectProvider<JavaMailSender> senders;
     private final TransactionTemplate transaction;
     private final boolean enabled,scheduler;
     private final String recipient,from;
+    public static final Set<String> METRIC_CODES=Set.of("RUNTIME_UNAVAILABLE","CPU_PRESSURE","MEMORY_PRESSURE","SERVICE_UNAVAILABLE","HTTP_5XX","AUTH_FAILURES","RATE_SPIKE","SCAN_SPIKE","TRAFFIC_SPIKE");
+    @Value("${app.telemetry.mail-alerts-enabled:false}") private boolean metricMail;
+    private boolean allowed(String code){return CODES.contains(code)||metricMail&&METRIC_CODES.contains(code);}
     record Status(boolean enabled,boolean configured,Map<String,Long> deliveries,String note){}
     OperationsMailDelivery(JdbcTemplate db,ObjectProvider<JavaMailSender> senders,PlatformTransactionManager manager,
         @Value("${app.operations.enabled:false}")boolean operations,
@@ -42,14 +45,18 @@ class OperationsMailDelivery {
     }
     // Called inside the evaluation transaction while holding the operations-policy lock.
     void opened(String incident,String code){
-        if(!enabled()||!CODES.contains(code))return;
+        opened(incident,code,null);
+    }
+    void opened(String incident,String code,String summary){
+        if(!enabled()||!allowed(code))return;
+        if(METRIC_CODES.contains(code)&&db.queryForObject("select count(*) from operations_mail_delivery where code=? and event_kind='OPENED' and created_at>?",Long.class,code,Timestamp.from(Instant.now().minusSeconds(1800)))>0)return;
         if(db.queryForObject("select count(*) from operations_mail_delivery where incident_id=? and event_kind='OPENED'",Long.class,incident)==0)
-            db.update("insert into operations_mail_delivery(id,incident_id,code,event_kind,state,created_at,updated_at) values (?,?,?,'OPENED','PENDING',?,?)",UUID.randomUUID().toString(),incident,code,now(),now());
+            db.update("insert into operations_mail_delivery(id,incident_id,code,event_kind,state,created_at,updated_at,metric_summary) values (?,?,?,'OPENED','PENDING',?,?,?)",UUID.randomUUID().toString(),incident,code,now(),now(),METRIC_CODES.contains(code)&&summary!=null&&summary.length()<=500?summary:null);
     }
     void resolved(String incident,String code){
         // An unsent short-lived incident must not produce a stale failure message.
         db.update("update operations_mail_delivery set state='SUPERSEDED',updated_at=? where incident_id=? and event_kind='OPENED' and state='PENDING'",now(),incident);
-        if(!enabled()||!CODES.contains(code))return;
+        if(!enabled()||!allowed(code))return;
         long attempted=db.queryForObject("select count(*) from operations_mail_delivery where incident_id=? and event_kind='OPENED' and state in ('SENDING','ACCEPTED','UNKNOWN')",Long.class,incident);
         if(attempted>0&&db.queryForObject("select count(*) from operations_mail_delivery where incident_id=? and event_kind='RESOLVED'",Long.class,incident)==0)
             db.update("insert into operations_mail_delivery(id,incident_id,code,event_kind,state,created_at,updated_at) values (?,?,?,'RESOLVED','PENDING',?,?)",UUID.randomUUID().toString(),incident,code,now(),now());
@@ -61,8 +68,9 @@ class OperationsMailDelivery {
         List<Map<String,Object>> batch=transaction.execute(state->{
             // Shared mutex with evaluate: a transition and its mail event are atomic.
             db.queryForList("select id from operations_policy where id=1 for update");
+            if(!metricMail)for(String code:METRIC_CODES)db.update("update operations_mail_delivery set state='SUPERSEDED',updated_at=? where code=? and state='PENDING'",now(),code);
             db.update("update operations_mail_delivery set state='UNKNOWN',updated_at=? where state='SENDING' and updated_at<?",now(),Timestamp.from(Instant.now().minusSeconds(600)));
-            var rows=db.queryForList("select id,incident_id,code,event_kind,created_at from operations_mail_delivery where state='PENDING' order by created_at,id limit 20");
+            var rows=db.queryForList("select id,incident_id,code,event_kind,created_at,metric_summary from operations_mail_delivery where state='PENDING' order by created_at,id limit 20");
             for(var row:rows)db.update("update operations_mail_delivery set state='SENDING',updated_at=? where id=? and state='PENDING'",now(),row.get("id"));
             return rows;
         });
@@ -70,9 +78,10 @@ class OperationsMailDelivery {
         String outcome="UNKNOWN";
         try{
             StringBuilder body=new StringBuilder("计划舱运行状态变化（同批事件合并发送）：\n");
-            for(var event:batch){String code=Objects.toString(event.get("code"));if(!CODES.contains(code))throw new IllegalStateException("Unknown operational code");
-                body.append("RESOLVED".equals(event.get("event_kind"))?"已恢复：":"需要关注：").append(code).append("\n事件编号：").append(event.get("incident_id")).append("\n");}
-            body.append("\n请在管理员的运行与成员治理页面核对。邮件不包含用户计划、账号链接、数据库口令、原始日志或备份正文。此通知不会执行清理。");
+            for(var event:batch){String code=Objects.toString(event.get("code"));if(!allowed(code))throw new IllegalStateException("Unknown operational code");
+                body.append("RESOLVED".equals(event.get("event_kind"))?"已恢复：":"需要关注：").append(code).append("\n事件编号：").append(event.get("incident_id")).append("\n时间：").append(event.get("created_at")).append("\n");
+                if(METRIC_CODES.contains(code)&&event.get("metric_summary")!=null)body.append(event.get("metric_summary")).append("\n");}
+            body.append("\n请在 https://plan.zijun701.cn/admin/operations 核对。访问峰值或扫描分类不是入侵结论。邮件不包含用户计划、账号链接、数据库口令、原始URL／IP／UA、原始日志或备份正文。此通知不会执行清理。");
             var mail=new SimpleMailMessage();mail.setFrom(from);mail.setTo(recipient);mail.setSubject("计划舱：运行状态通知");mail.setText(body.toString());
             senders.getObject().send(mail);outcome="ACCEPTED";
         }catch(RuntimeException failure){/* Do not log SMTP payload/credentials or retry an ambiguous send. */}

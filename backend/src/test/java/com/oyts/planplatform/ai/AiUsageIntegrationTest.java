@@ -56,4 +56,10 @@ class AiUsageIntegrationTest {
         var diagnostic=conversations.read(owner,session.id()).turns().getFirst().diagnostic();assertEquals(work.reservation(),diagnostic.requestId());assertEquals(100,diagnostic.details().getFirst().inputChars());assertTrue(diagnostic.details().getFirst().durationMs()>=0);
         mvc.perform(get("/api/admin/ai/usage").with(as(admin,"ADMIN"))).andExpect(status().isOk()).andExpect(jsonPath("$.reasons[0].reason").value("DRAFT_INVALID")).andExpect(jsonPath("$.reasons[0].attempts").value(1)).andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("MUST_NOT_LEAK"))));
     }
+    @Test void repairAttemptsKnownTokensAndWaitAreSeparateFromParentTotals()throws Exception{
+        conversations.enqueue(owner,session(),0,UUID.randomUUID().toString(),"synthetic");var work=conversations.claim();var start=Instant.now();db.update("update ai_jobs set created_at=? where id=?",java.sql.Timestamp.from(start.minusSeconds(10)),work.id());
+        db.update("insert into ai_job_attempts(job_id,attempt_no,state,input_tokens,output_tokens,started_at) values (?,0,'REJECTED',50,60,?)",work.id(),java.sql.Timestamp.from(start));
+        db.update("insert into ai_job_attempts(job_id,attempt_no,state,started_at) values (?,1,'UNKNOWN',?)",work.id(),java.sql.Timestamp.from(start.plusSeconds(1)));
+        mvc.perform(get("/api/admin/ai/usage").with(as(admin,"ADMIN"))).andExpect(status().isOk()).andExpect(jsonPath("$.attempts.attempts").value(2)).andExpect(jsonPath("$.attempts.repairs").value(1)).andExpect(jsonPath("$.attempts.tokenKnownAttempts").value(1)).andExpect(jsonPath("$.attempts.inputTokens").value(50)).andExpect(jsonPath("$.attempts.outputTokens").value(60)).andExpect(jsonPath("$.attempts.averageQueueWaitMs").value(10000)).andExpect(jsonPath("$.attempts.waitKnownJobs").value(1)).andExpect(jsonPath("$.totals.inputTokens").value(0));
+    }
 }

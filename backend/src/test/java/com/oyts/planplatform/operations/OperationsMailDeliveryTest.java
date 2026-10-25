@@ -56,6 +56,15 @@ class OperationsMailDeliveryTest {
     @Test void abandonedSendingIsMarkedUnknownInsteadOfBeingReplayed()throws Exception{
         operations.evaluate();db.update("update operations_mail_delivery set state='SENDING',updated_at=DATEADD('MINUTE',-11,CURRENT_TIMESTAMP)");delivery.dispatch();assertThat(delivery.status().deliveries().get("UNKNOWN")).isEqualTo(1);verifyNoInteractions(sender);
     }
+    @Test void telemetryMailRequiresOwnGateAndHasDurableCooldown(){
+        delivery.opened(UUID.randomUUID().toString(),"HTTP_5XX","窗口2分钟，请求100，5xx20。");assertThat(db.queryForObject("select count(*) from operations_mail_delivery",Long.class)).isZero();
+        org.springframework.test.util.ReflectionTestUtils.setField(delivery,"metricMail",true);
+        try{delivery.opened(UUID.randomUUID().toString(),"HTTP_5XX","窗口2分钟，请求100，5xx20。");delivery.opened(UUID.randomUUID().toString(),"HTTP_5XX","窗口2分钟，请求200，5xx40。");delivery.dispatch();var capture=ArgumentCaptor.forClass(SimpleMailMessage.class);verify(sender,times(1)).send(capture.capture());assertThat(capture.getValue().getText()).contains("窗口2分钟，请求100").doesNotContain("请求200");}finally{org.springframework.test.util.ReflectionTestUtils.setField(delivery,"metricMail",false);}
+    }
+    @Test void telemetryDisabledPendingDoesNotBlockOriginalBackupMail(){
+        org.springframework.test.util.ReflectionTestUtils.setField(delivery,"metricMail",true);delivery.opened(UUID.randomUUID().toString(),"CPU_PRESSURE","3次采样");org.springframework.test.util.ReflectionTestUtils.setField(delivery,"metricMail",false);
+        delivery.opened(UUID.randomUUID().toString(),"BACKUP_FAILED");delivery.dispatch();assertThat(delivery.status().deliveries().get("SUPERSEDED")).isEqualTo(1);assertThat(delivery.status().deliveries().get("ACCEPTED")).isEqualTo(1);var capture=ArgumentCaptor.forClass(SimpleMailMessage.class);verify(sender).send(capture.capture());assertThat(capture.getValue().getText()).contains("BACKUP_FAILED").doesNotContain("CPU_PRESSURE");
+    }
     @Test void disabledOrMissingRecipientNeverQueuesOrSends(){
         for(var gated:List.of(new OperationsMailDelivery(db,providers,transactions,true,false,false,"operations@example.test","sender@example.test"),new OperationsMailDelivery(db,providers,transactions,true,true,false,"","sender@example.test"))){
             gated.opened(UUID.randomUUID().toString(),"BACKUP_STALE");gated.dispatch();assertThat(gated.enabled()).isFalse();

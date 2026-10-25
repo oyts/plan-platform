@@ -1,0 +1,8 @@
+<script setup lang="ts">
+import {computed} from 'vue';
+const props=defineProps<{title:string;rows:{date:string;value:number}[];from:string;to:string;meaning:string}>();
+const max=computed(()=>Math.max(1,...props.rows.map(r=>r.value))),span=computed(()=>Math.max(1,Math.round((Date.parse(props.to)-Date.parse(props.from))/86400000)+1));
+const bars=computed(()=>props.rows.map(r=>({...r,x:(Date.parse(r.date)-Date.parse(props.from))/86400000*600/span.value,width:Math.max(1,560/span.value),height:r.value/max.value*110})));
+</script>
+<template><section class="trend"><h3>{{title}}</h3><p>{{meaning}}</p><p v-if="!rows.length">所选范围没有已采集记录，未补造历史。</p><template v-else><svg viewBox="0 0 620 140" role="img" :aria-label="title+'柱状趋势；下方有同数据表格'"><line x1="0" y1="120" x2="620" y2="120" stroke="#d8d8df"/><rect v-for="b in bars" :key="b.date" :x="b.x+4" :y="120-b.height" :width="b.width" :height="b.height" fill="#002FA7"><title>{{b.date}}：{{b.value}}</title></rect></svg><div class="range"><span>{{from}}</span><span>{{to}}</span></div><details><summary>查看{{title}}数据表</summary><table><thead><tr><th>北京时间日期</th><th>{{title}}</th></tr></thead><tbody><tr v-for="r in rows" :key="r.date"><td>{{r.date}}</td><td>{{r.value}}</td></tr></tbody></table></details></template></section></template>
+<style scoped>.trend{min-width:0;border-top:1px solid var(--line);padding:20px 0}.trend h3{font-size:1rem;margin:0 0 12px}.trend p{font-size:.8rem;line-height:1.8}.trend svg{display:block;width:100%;height:160px}.range{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted)}.trend summary{cursor:pointer;padding:16px 0}.trend table{width:100%;font-size:.8rem;border-collapse:collapse}.trend th,.trend td{padding:10px;border:1px solid var(--line);text-align:left}</style>

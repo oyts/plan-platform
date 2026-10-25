@@ -60,7 +60,7 @@ final class ApiContractShapes {
         }return root;
     }
     private void removeProperty(ObjectNode schema,String name){((ObjectNode)schema.get("properties")).remove(name);ArrayNode required=(ArrayNode)schema.get("required");for(int i=required.size()-1;i>=0;i--)if(required.get(i).asText().equals(name))required.remove(i);}
-    ObjectNode request(String key){return switch(key){case "POST /data/preview"->backupInput();case "POST /data/restore"->object("backup",backupInput(),"checksum",str().put("pattern","[a-f0-9]{64}"),"operationKey",uuid(),"confirmed",bool());default->new ApiLegacyContract(json).request(key);};}
+    ObjectNode request(String key){return switch(key){case "POST /public/analytics/ticket"->object("page",text("WELCOME"));case "POST /public/analytics/event"->object("page",text("WELCOME"),"ticket",str().put("pattern","[0-9]{10}\\.[a-f0-9-]{36}\\.[a-f0-9]{64}"),"visitorId",nullable(str().put("pattern","[a-f0-9-]{36}")));case "POST /data/preview"->backupInput();case "POST /data/restore"->object("backup",backupInput(),"checksum",str().put("pattern","[a-f0-9]{64}"),"operationKey",uuid(),"confirmed",bool());default->new ApiLegacyContract(json).request(key);};}
     private ObjectNode backupRecords(){
         try{
             Field catalog=Class.forName("com.oyts.planplatform.data.BackupSchema").getDeclaredField("TABLES");catalog.setAccessible(true);
@@ -156,6 +156,6 @@ final class ApiContractShapes {
         modes.add(object("mode",text("ROUTE"),"planning",object("name",str(),"description",str(),"execution_mode",str()),"items",array(object("title",str(),"description",str(),"planned_minutes",integer())).put("maxItems",100)));
         p.set("selectedPlanning",selected);review.put("description","只包含本人明确同意发送的复盘汇总、可选文字及可选单一规划。WEEK才含趋势字段，includeNotes时才含notes；编码上下文不超过12000字符。calculatedAt不会发给AI。");return review;
     }
-    static Integer status(String key){return switch(key){case "DELETE /ai/sessions/{id}","DELETE /structure-templates/{id}"->204;case "POST /ai/sessions/{id}/jobs"->202;case "POST /ai/jobs"->503;default->null;};}
+    static Integer status(String key){return switch(key){case "POST /public/analytics/event","DELETE /ai/sessions/{id}","DELETE /structure-templates/{id}"->204;case "POST /ai/sessions/{id}/jobs"->202;case "POST /ai/jobs"->503;default->null;};}
     static String media(String key){return switch(key){case "GET /client-updates/android/releases/{versionCode}/apk"->"application/vnd.android.package-archive";case "GET /data/export/{kind}"->"text/csv;charset=UTF-8";default->"application/json";};}
 }
