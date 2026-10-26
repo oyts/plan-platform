@@ -3,7 +3,7 @@
 Only the dedicated five-column plan-metrics.log is accepted. Existing raw access
 logs are never opened. Cursor/state are private and output is a read-only mount.
 """
-import argparse,datetime as dt,json,os,re,time,urllib.request
+import argparse,datetime as dt,json,os,re,time,urllib.request,tempfile
 from pathlib import Path
 ROUTES={'public','api','auth','scan','other'}
 FIELDS={'minute','requests','errors','authFailures','limited','scans','bots','durationMs','slow','htmlRequests','apiRequests','apiErrors','apiDurationMs'}
@@ -11,10 +11,12 @@ LINE=re.compile(rb'([0-9]{10}\.[0-9]{3}) (public|api|auth|scan|other) ([1-5][0-9
 def write(path,value):
     path=Path(path)
     if path.name not in {'runtime.json','runtime-cursor.json'} or path.is_symlink() or not path.parent.is_dir():raise ValueError('Expected managed metric output')
-    temporary=path.with_name(path.name+'.next')
-    fd=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o640)
-    with os.fdopen(fd,'w',encoding='utf-8') as stream:json.dump(value,stream,separators=(',',':'))
-    os.replace(temporary,path)
+    fd,temporary=tempfile.mkstemp(prefix=path.name+'.',suffix='.tmp',dir=path.parent)
+    try:
+        with os.fdopen(fd,'w',encoding='utf-8') as stream:json.dump(value,stream,separators=(',',':'));stream.flush();os.fsync(stream.fileno())
+        os.chmod(temporary,0o640);os.replace(temporary,path)
+    finally:
+        if os.path.exists(temporary):os.unlink(temporary)
 def read_state(path):
     path=Path(path)
     if path.is_symlink() or path.stat().st_size>131072:raise ValueError('Invalid cursor')

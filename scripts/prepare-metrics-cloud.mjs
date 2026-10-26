@@ -1,0 +1,7 @@
+// Package an isolated, synthetic-only exercise. No env/secrets or production snapshot.
+import {readFile,mkdir,mkdtemp,writeFile,copyFile} from 'node:fs/promises';import {resolve,join} from 'node:path';import {createHash,randomBytes} from 'node:crypto';import {runtimeMetricsConfig} from './runtime-metrics-config.mjs';import {clientStaticConfig} from './client-static-config.mjs';
+if(process.argv.length!==2)throw Error('No custom files accepted');const base=resolve('production-artifacts/metrics-candidates');await mkdir(base,{recursive:true});const run=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'')+'-'+randomBytes(4).toString('hex'),out=join(base,run);await mkdir(out);
+const jar=await readFile('backend/target-metrics/plan-platform-api.jar'),hash=createHash('sha256').update(jar).digest('hex');await writeFile(join(out,'api.jar'),jar,{flag:'wx'});await writeFile(join(out,'api.jar.sha256'),hash+'  api.jar\n',{flag:'wx'});
+for(const name of ['metrics-mysql-acceptance.py','metrics-linux-probe.py','runtime-telemetry.py','check-governance-rollback.py'])await copyFile('scripts/'+name,join(out,name));
+await writeFile(join(out,'nginx.conf'),runtimeMetricsConfig(clientStaticConfig(await readFile('web/nginx.production.conf','utf8'))),{flag:'wx'});
+console.log(JSON.stringify({directory:out,run,apiSha256:hash,remote:'/home/oyts/plan-platform/metrics-candidates/'+run,scope:'Only synthetic isolated exercise; no production activation, private credentials or user records packaged.'}));

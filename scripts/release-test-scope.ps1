@@ -7,6 +7,9 @@ function Get-ReleaseTestScope {
     foreach ($field in @('frontendUnit','browser','backend','android')) {
         if ($null -eq $plan.$field) { throw "Missing test scope: $field" }
     }
+    if ($plan.browserConfig -and ($plan.browserConfig -notmatch '^playwright\.[a-zA-Z0-9_-]+\.config\.ts$' -or -not (Test-Path -LiteralPath (Join-Path $root "web/$($plan.browserConfig)")))) { throw 'Invalid selected browser configuration.' }
+    if ($plan.browserBackendTarget -and $plan.browserBackendTarget -notmatch '^target-[a-zA-Z0-9-]+$') { throw 'Invalid browser fixture build target.' }
+    foreach ($filter in @($plan.windowsRustTests)) { if ($filter -notmatch '^[a-zA-Z0-9_:]+$') { throw 'Invalid selected Rust test filter.' } }
     foreach ($file in @($plan.frontendUnit) + @($plan.browser)) {
         if ($file -notmatch '^(src|e2e)/[a-zA-Z0-9_./-]+\.(test|spec)\.ts$' -or $file.Contains('..') -or -not (Test-Path -LiteralPath (Join-Path $root "web/$file"))) { throw 'Invalid affected frontend test path.' }
     }

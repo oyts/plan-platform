@@ -1,6 +1,12 @@
 name: Windows desktop
 on:
   workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Test scope (full only for major releases)'
+        type: choice
+        options: [affected, full]
+        default: affected
   push:
     paths: ['web/**', 'scripts/desktop*', '.github/workflows/desktop.yml']
   pull_request:
@@ -15,7 +21,21 @@ jobs:
       - run: rustup update stable
       - run: npm ci
         working-directory: web
-      - run: powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 -Action test
+      - name: Selected desktop checks
+        shell: pwsh
+        env:
+          TEST_SCOPE: ${{ github.event.inputs.scope || 'affected' }}
+        run: |
+          if ($env:TEST_SCOPE -eq 'full') { ./scripts/desktop.ps1 -Action test }
+          else {
+            . ./scripts/release-test-scope.ps1
+            $plan = Get-ReleaseTestScope
+            Invoke-ReleaseFrontendTests 'affected'
+            foreach ($filter in @($plan.windowsRustTests)) {
+              ./scripts/desktop.ps1 -Action test -NativeTestFilter $filter
+              if ($LASTEXITCODE -ne 0) { throw 'Selected desktop bridge checks failed.' }
+            }
+          }
       - run: powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 -Action build
       - uses: actions/upload-artifact@v4
         with: { name: plan-cabin-windows-x64, path: desktop-artifacts/*-setup.exe, if-no-files-found: error }

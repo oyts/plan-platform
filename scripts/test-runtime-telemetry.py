@@ -24,4 +24,7 @@ class Collector(unittest.TestCase):
   with tempfile.TemporaryDirectory() as t:
    root=Path(t);log=root/'plan-metrics.log';state=root/'runtime-cursor.json';now=int(time.time());log.write_text('');out,cursor=self.collect(log,state,now);cursor['samples'][0]['privateUrl']='not-allowed';m.write(state,cursor)
    with self.assertRaises(ValueError):self.collect(log,state,now)
+ def test_interrupted_old_next_does_not_block_atomic_collection(self):
+  with tempfile.TemporaryDirectory() as t:
+   root=Path(t);out=root/'runtime.json';legacy=root/'runtime.json.next';legacy.write_text('interrupted');m.write(out,{'schemaVersion':1});self.assertEqual(json.loads(out.read_text()),{'schemaVersion':1});self.assertEqual(legacy.read_text(),'interrupted');self.assertEqual(list(root.glob('*.tmp')),[])
 if __name__=='__main__':unittest.main()

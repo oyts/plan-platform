@@ -1,15 +1,18 @@
 {
   "version": "0.1.23",
   "coreMetrics": {
-    "status":"stage4-development-not-released",
-    "reason":"New opt-in public analytics, Shanghai account growth, metadata-only AI attempt summary, sanitized incremental runtime telemetry and existing operation mail integration. Source metadata remains0.1.23; no new binary has been published.",
-    "backend":["MetricsIntegrationTest","RuntimeTelemetryTest","AiUsageIntegrationTest","OperationsMailDeliveryTest","GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","ApiContractTest","ApiErrorContractTest"],
+    "status":"stage4-source-web-pc-mysql-passed-android-deferred-not-released",
+    "reason":"Opt-in unlinked analytics, Shanghai growth, AI metadata, sanitized bounded telemetry, sustained alerts and retention-aware rollback; no production publication. Source metadata remains0.1.23 development, not a new release.",
+    "backend":["MetricsIntegrationTest","MetricsControllerTest","RuntimeTelemetryTest","AiUsageIntegrationTest","OperationsMailDeliveryTest","GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","ApiContractTest","ApiErrorContractTest"],
     "frontendUnit":["src/publicAnalytics.test.ts"],
-    "browser":["e2e/metrics.spec.ts"],
-    "scripts":["scripts/test-runtime-telemetry.py","scripts/runtime-metrics-config.test.mjs"],
-    "developmentResults":{"backendDistinctPassed":48,"frontendUnitPassed":6,"collectorPassed":6,"configurationPassed":4,"browserAssertionsPassed":6,"browserTeardownNeedsHardening":true},
-    "nativeTested":false,"mysqlVerified":false,"productionChanged":false,"paidAiCalls":0,"realTestEmails":0,
-    "pending":["Cloud independent migration/restore and Linux syntax/performance authorization and exercise","Independent PC package and UI acceptance, owner approved launch but not yet prepared","Android device notification and approval after Web/PC","Formal signed release and production activation approval"],
+    "browser":["e2e/metrics.spec.ts","e2e/product-home-refresh.spec.ts"],
+    "scripts":["scripts/test-runtime-telemetry.py","scripts/runtime-metrics-config.test.mjs","scripts/test-planning-rollback.py"],
+    "developmentResults":{"backendDistinctPassed":54,"frontendUnitPassed":6,"collectorPassed":7,"configurationPassed":5,"rollbackUnitPassed":7,"browserPassed":14,"browserPortsReleased":true,"windowsScopedGroupsPassed":6,"mysqlOriginalProjections":58,"mysqlRestoredTables":62,"mysqlFinalByteBootTablesUnchanged":62,"linuxSyntaxAndCollectorPassed":true,"linuxSyntheticRotationPassed":true},
+    "windowsNativeTested":true,"androidDeviceTested":false,"mysqlVerified":true,"productionChanged":false,"paidAiCalls":0,"realTestEmails":0,
+    "finalJarSha256":"628318be55fe44c2b72d7e3db4c358491182fc98e1f5b4975c84dbc620d3b7ef",
+    "fullRestoreJarSha256":"ce2adb4c6337b5b60f4119a408f4a2337d6d4f7999c627505d4cdd31f490f763",
+    "limits":"Windows UI used originalcc3e5628 API; final backend-only boundaries have focused unit and final-byte MySQL boot evidence, not a repeated Windows UI run. MySQL full restoration and final-byte boot are separately preserved. Small synthetic performance baseline is not concurrent production capacity. Android debug build is not device acceptance or formal signing.",
+    "pending":["Android independent device acceptance explicitly postponed by owner","Formal new-version signing, current production snapshot/restore, production activation and formal upgrades/publication approval"],
     "details":"docs/metrics-progress.md"
   },
   "coreAdminCenter": {
@@ -366,8 +369,8 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Core stage3 formal0.1.23: separate administration, durable invitation control, V33 runtime policy/admitted snapshots and actual AI execution. Only new and directly affected navigation/roles/AI/registration tests plus signing/version/retention/backup/publication gates; no unrelated full regression or paid provider/mail.",
-  "frontendUnit": ["src/adminCenter.test.ts","src/helpModel.test.ts","src/aiQuota.test.ts","src/workspaceModel.test.ts"],
+  "reason": "Core stage4 unreleased development on0.1.23: opt-in website analytics, growth/AI metadata, bounded runtime collector and existing alert delivery/retention guards. Only new and directly affected behavior; production remains0.1.23. No paid AI or real emails.",
+  "frontendUnit": ["src/publicAnalytics.test.ts"],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",
     "reason":"Private whole-structure PLAN/ROUTE and saved new-AI-draft templates; common copy writer, strict nested whitelist, V28, schema4 backup, manual pending replay. Typed task-time reads/writes affect structural copies directly. No unrelated full regression.",
@@ -402,24 +405,11 @@
     "mysqlFollowup":"V25 to V27 plus prior-start backfill, 47-table restore and actual 0.1.17 read compatibility passed in reflectionWorkspace; production unchanged",
     "details":"docs/native-reminders-progress.md"
   },
-  "browser": ["e2e/admin-center.spec.ts","e2e/account-ai-operations.spec.ts","e2e/feedback.spec.ts"],
-  "backend": [
-    "AiRuntimeIntegrationTest",
-    "InvitationControlIntegrationTest",
-    "AccountRecoveryIntegrationTest",
-    "AiFoundationTest",
-    "AiConversationIntegrationTest",
-    "AiQuotaIntegrationTest",
-    "AiUsageIntegrationTest",
-    "GovernanceOperationsIntegrationTest",
-    "GovernanceDisabledIntegrationTest",
-    "AiRepairIntegrationTest",
-    "AiIntentIntegrationTest",
-    "DeepSeekProviderTest",
-    "AiLongPlanningIntegrationTest",
-    "ApiContractTest",
-    "ApiErrorContractTest"
-  ],
+  "browser": ["e2e/metrics.spec.ts","e2e/product-home-refresh.spec.ts"],
+  "browserConfig": "playwright.metrics.config.ts",
+  "browserBackendTarget": "target-metrics",
+  "windowsRustTests": [],
+  "backend": ["MetricsIntegrationTest","MetricsControllerTest","RuntimeTelemetryTest","AiUsageIntegrationTest","OperationsMailDeliveryTest","GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","ApiContractTest","ApiErrorContractTest"],
   "android": [],
   "dailyExperience": {
     "status": "released-0.1.14",

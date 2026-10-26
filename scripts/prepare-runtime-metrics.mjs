@@ -28,8 +28,8 @@ writeFileSync(join(out,'logrotate.conf'),`/home/oyts/plan-platform/telemetry/log
   rotate 2
   missingok
   notifempty
-  create 0640 oyts 101
-  su oyts 101
+  create 0640 oyts oyts
+  su oyts oyts
   sharedscripts
   postrotate
     docker kill --signal USR1 plan-platform-web-1 >/dev/null

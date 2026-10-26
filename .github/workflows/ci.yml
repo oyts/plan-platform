@@ -37,6 +37,8 @@ jobs:
         working-directory: web
       - run: node scripts/verify-release.mjs
       - run: python3 scripts/test-ai-mysql-acceptance.py
+      - run: python3 scripts/test-runtime-telemetry.py && python3 scripts/test-planning-rollback.py
+      - run: node --test scripts/runtime-metrics-config.test.mjs
       - run: sh -n scripts/ai-candidate.sh && sh -n scripts/configure-ai-secret.sh
       - run: node --test scripts/switch-public-entry.test.mjs
       - run: node --test scripts/formal-release.test.mjs scripts/windows-public-release.test.mjs scripts/client-static-config.test.mjs scripts/retain-windows-releases.test.mjs
@@ -55,8 +57,14 @@ jobs:
         with: { distribution: temurin, java-version: '21', cache: maven }
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: npm, cache-dependency-path: web/package-lock.json }
-      - run: mvn -B -DskipTests -Dplan.build.directory=target-acceptance package
-        working-directory: backend
+      - name: Build selected browser fixture
+        shell: pwsh
+        run: |
+          . ./scripts/release-test-scope.ps1
+          $plan = Get-ReleaseTestScope
+          $target = if ($env:TEST_SCOPE -eq 'affected' -and $plan.browserBackendTarget) { $plan.browserBackendTarget } else { 'target-acceptance' }
+          mvn -B -f backend/pom.xml -DskipTests "-Dplan.build.directory=$target" package dependency:build-classpath "-Dmdep.outputFile=$target/classpath.txt"
+          if ($LASTEXITCODE -ne 0) { throw 'Selected browser fixture build failed.' }
       - run: npm ci
         working-directory: web
       - run: npx playwright install --with-deps chromium
@@ -73,6 +81,7 @@ jobs:
           if ($env:TEST_SCOPE -eq 'full') { npm --prefix web run test:e2e }
           elseif (@($plan.browser).Count) {
             $selected = @('--prefix', 'web', 'run', 'test:e2e', '--') + @($plan.browser)
+            if ($plan.browserConfig) { $selected += @('--config', $plan.browserConfig) }
             & npm @selected
           }
           else { Write-Host 'No browser business changes selected.'; exit 0 }
