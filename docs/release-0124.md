@@ -29,7 +29,7 @@
 - [x] Windows官网下载／可选源、公网5组签名和精确哈希核验。
 - [ ] Android独立及正式升级验收、受限源发布（维护者明确延期）。
 
-GitHub本版只归档Windows安装包、更新签名和校验和；不上传APK、真实数据或签名密钥。不可变标签、归档链接及实际完成状态在`release-0124-resume.json`记录。
+[GitHub v0.1.24](https://github.com/oyts/plan-platform/releases/tag/v0.1.24)已归档Windows安装包、更新签名和校验和；不上传APK、真实数据或签名密钥。不可变标签指向`f200fa9a487ac421c7ac0055bc9215d0d46b62ba`，后续纯资料提交不移动标签。远端CI当时仍运行中，不以本地验收冒充远端工作流成功。
 
 ## 回退边界
 

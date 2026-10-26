@@ -1,6 +1,6 @@
 {
   "version":"0.1.24","androidVersionCode":29,
-  "status":"web-windows0124-published-github-archive-pending-android-deferred",
+  "status":"web-windows0124-published-github-archived-android-deferred",
   "automationEnabled":false,"stopAtFiveHourRemainingPercent":10,
   "productionAuthorized":true,"formalWindowsOverwriteAuthorized":true,"formalAndroidOverwriteAuthorized":false,
   "candidate":"production-artifacts/client-release/0.1.24/20261026T070247Z-c6492f3a",
@@ -23,9 +23,10 @@
   "windowsPublicStage":"production-artifacts/windows-public-release/0.1.24/20261026T114909918Z-ocTCal","windowsStaticRun":"windows-0124-iiNeF6",
   "androidDeviceTested":false,"androidInstalled":false,"androidFeedVersion":"0.1.23",
   "paidAiCalls":0,"realTestEmails":0,
-  "github":{"status":"pending","windowsOnly":true},
+  "github":{"status":"published","windowsOnly":true,"tag":"v0.1.24","tagCommit":"f200fa9a487ac421c7ac0055bc9215d0d46b62ba","url":"https://github.com/oyts/plan-platform/releases/tag/v0.1.24","androidPublicAsset":false},
+  "githubCi":{"status":"in_progress_at_handoff","localAccepted":true,"notClaimedPassed":true},
   "androidIndependentDebugSha256":"332691043a921e581a8149305fedb123c298e3e4704756e61a39e562f140560e",
   "androidIndependentBuild":"acceptance-results/metrics/native/build.json",
-  "remaining":["GitHub Windows-only archive","Owner-deferred Android independent and formal device acceptance, then protected publication"],
+  "remaining":["Owner-deferred Android independent and formal device acceptance, then protected publication"],
   "warning":"No Android device command before owner reauthorizes. Never rebuild already published immutable bytes. Keep all rollback material."
 }
