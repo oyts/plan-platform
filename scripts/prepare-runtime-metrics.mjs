@@ -4,6 +4,7 @@ import {clientStaticConfig} from './client-static-config.mjs';import {runtimeMet
 const root=process.cwd(),outRoot=resolve('production-artifacts/runtime-metrics');mkdirSync(outRoot,{recursive:true});const out=mkdtempSync(join(outRoot,'candidate-'));
 const config=runtimeMetricsConfig(clientStaticConfig(readFileSync('web/nginx.production.conf','utf8')));
 writeFileSync(join(out,'nginx.conf'),config,{flag:'wx'});
+writeFileSync(join(out,'nginx-base.conf'),clientStaticConfig(readFileSync('web/nginx.production.conf','utf8')),{flag:'wx'});
 writeFileSync(join(out,'compose.yml'),`services:
   backend:
     environment:
@@ -21,6 +22,7 @@ umask 027
 root=/home/oyts/plan-platform
 exec 9>"$root/telemetry/collect.lock"
 flock -n 9 || exit 0
+/usr/sbin/logrotate -s "$root/telemetry/logrotate.state" "$root/telemetry/logrotate.conf"
 python3 "$root/current/scripts/runtime-telemetry.py" --log "$root/telemetry/logs/plan-metrics.log" --state "$root/telemetry/runtime-cursor.json" --output "$root/operations/runtime.json"
 `,{flag:'wx'});
 writeFileSync(join(out,'logrotate.conf'),`/home/oyts/plan-platform/telemetry/logs/plan-metrics.log {

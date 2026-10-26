@@ -17,7 +17,7 @@ def selected_profile(profile):
                 'ai-workbench': ('0.1.17','0.1.16',24,25), 'reflection': ('0.1.18','0.1.17',25,27),
                 'templates': ('0.1.19','0.1.18',27,28), 'historical-closure': ('0.1.20','0.1.19',28,30),
                 'ai-reliability': ('0.1.21','0.1.20',30,31), 'ai-long': ('0.1.22','0.1.21',31,32),
-                'admin-center': ('0.1.23','0.1.22',32,33)}
+                'admin-center': ('0.1.23','0.1.22',32,33), 'metrics': ('0.1.24','0.1.23',33,34)}
     require(profile in profiles, 'Unknown migration profile.')
     return profiles[profile]
 
@@ -62,7 +62,7 @@ def snapshot_restore(backup, sql, environment):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--directory', required=True)
-    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench', 'reflection', 'templates', 'historical-closure', 'ai-reliability', 'ai-long', 'admin-center'], default='roadmap')
+    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench', 'reflection', 'templates', 'historical-closure', 'ai-reliability', 'ai-long', 'admin-center', 'metrics'], default='roadmap')
     parser.add_argument('--archive-sha256')
     parser.add_argument('--api-sha256')
     args = parser.parse_args()
@@ -74,15 +74,16 @@ def main():
     reliability = args.profile == 'ai-reliability'
     long_planning = args.profile == 'ai-long'
     admin_center = args.profile == 'admin-center'
+    metrics = args.profile == 'metrics'
     new_version, old_version, source_schema, target_schema = selected_profile(args.profile)
-    if workbench or reflection or templates or closure or reliability or long_planning or admin_center:
+    if workbench or reflection or templates or closure or reliability or long_planning or admin_center or metrics:
         require(all(re.fullmatch('[a-f0-9]{64}', value or '') for value in [args.archive_sha256, args.api_sha256]), 'Accepted archive and API hashes required.')
     release = Path(args.directory).resolve()
     require(re.fullmatch(r'/home/[a-zA-Z0-9_-]+/plan-platform/releases/' + re.escape(new_version) + r'-[a-f0-9]+', str(release)), 'Expected selected managed release.')
     root = release.parent.parent
     previous = (root / 'current').resolve()
     require(previous.parent == release.parent and previous != release, 'An existing previous release is required.')
-    if workbench or reflection or templates or closure or reliability or long_planning or admin_center:
+    if workbench or reflection or templates or closure or reliability or long_planning or admin_center or metrics:
         require(hashlib.sha256((release / 'release.tar.gz').read_bytes()).hexdigest() == args.archive_sha256, 'Accepted archive differs.')
         require(hashlib.sha256((release / 'backend/api.jar').read_bytes()).hexdigest() == args.api_sha256, 'Accepted API differs.')
     if mail:
@@ -129,7 +130,7 @@ def main():
                 and re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+-[a-f0-9]+', backup.parent.parent.name)
                 and re.fullmatch(r'plan_platform-mysql-[0-9]{8}-[0-9]{6}\.sql\.gz', backup.name)
                 and backup.is_file(), 'Unexpected backup path.')
-        if reflection or templates or closure or reliability or long_planning or admin_center:
+        if reflection or templates or closure or reliability or long_planning or admin_center or metrics:
             database, restore_proof = snapshot_restore(backup, sql, environment)
             report['snapshotRestore'] = restore_proof
         else:
@@ -144,7 +145,7 @@ def main():
         columns = {}
         # Compare every original field for tables extended by V26/V27, rather
         # than comparing a whole-table checksum whose column layout changes.
-        projected = ['ai_jobs'] if admin_center else ['ai_sessions'] if long_planning else ['ai_quota_requests','ai_sessions','ai_jobs'] if reliability else (['task_progress', 'weekly_reviews', 'restored_weekly_reviews', 'ai_sessions'] if reflection else ([] if mail or workbench or templates or closure else ['users', 'task_templates', 'mainlines']))
+        projected = ['operations_mail_delivery'] if metrics else ['ai_jobs'] if admin_center else ['ai_sessions'] if long_planning else ['ai_quota_requests','ai_sessions','ai_jobs'] if reliability else (['task_progress', 'weekly_reviews', 'restored_weekly_reviews', 'ai_sessions'] if reflection else ([] if mail or workbench or templates or closure else ['users', 'task_templates', 'mainlines']))
         for table in projected:
             columns[table] = sql("SELECT column_name FROM information_schema.columns WHERE table_schema='" + database + "' AND table_name='" + table + "' ORDER BY ordinal_position;").splitlines()
             require(columns[table] and all(re.fullmatch('[a-z0-9_]+', c) for c in columns[table]), 'Invalid column projection.')
@@ -173,6 +174,7 @@ def main():
                       REGISTRATION_ENABLED='false', INVITATION_ENABLED='false', PASSWORD_RESET_ENABLED='false',
                       EMAIL_VERIFICATION_ENABLED='false', BOOTSTRAP_ADMIN_EMAIL='', BOOTSTRAP_ADMIN_TOKEN_HASH='',
                       EMAIL_CHANGE_ENABLED='false',
+                      METRICS_ENABLED='false', TELEMETRY_ENABLED='false', TELEMETRY_MAIL_ALERTS_ENABLED='false',
                       BOOTSTRAP_ADMIN_EXPIRES_AT='', OPERATIONS_ENABLED='false', MEMBER_GOVERNANCE_ENABLED='false',
                       OPERATIONS_MAIL_ALERTS_ENABLED='false', OPERATIONS_MAIL_TO='',
                       SPRING_AUTOCONFIGURE_EXCLUDE='org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration')
@@ -199,7 +201,11 @@ def main():
         boot('plan-platform-api:' + new_version, '', new_version)
         require(version(database) == target_schema, 'Target migration missing.')
         require(before == fingerprints(), 'Existing private business fields changed during migration.')
-        if admin_center:
+        if metrics:
+            for table in ['web_metric_days','web_metric_visitors','web_metric_events']:
+                require(sql('SELECT COUNT(*) FROM '+database+'.'+table+';')=='0','Unexpected analytics backfill.')
+            require(sql('SELECT COUNT(*) FROM '+database+'.operations_mail_delivery WHERE metric_summary IS NOT NULL;')=='0','Existing mail summaries changed.')
+        elif admin_center:
             for table in ['ai_runtime_audit', 'admin_invitation_operations']:
                 require(sql('SELECT COUNT(*) FROM '+database+'.'+table+';')=='0','Unexpected admin protocol backfill.')
             require(sql('SELECT COUNT(*) FROM '+database+'.ai_runtime_policy WHERE settings_json IS NOT NULL;')=='0','Runtime policy must retain deployment defaults.')

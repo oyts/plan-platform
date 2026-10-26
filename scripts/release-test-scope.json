@@ -1,18 +1,19 @@
 {
-  "version": "0.1.23",
+  "version": "0.1.24",
   "coreMetrics": {
-    "status":"stage4-source-web-pc-mysql-passed-android-deferred-not-released",
-    "reason":"Opt-in unlinked analytics, Shanghai growth, AI metadata, sanitized bounded telemetry, sustained alerts and retention-aware rollback; no production publication. Source metadata remains0.1.23 development, not a new release.",
+    "status":"stage4-web-windows-0124-released-android-deferred",
+    "reason":"Opt-in unlinked analytics, Shanghai growth, AI metadata, sanitized bounded telemetry and retention-aware rollback. Web/API and Windows0.1.24 accepted; Android remains0.1.23 until owner-authorized device acceptance.",
     "backend":["MetricsIntegrationTest","MetricsControllerTest","RuntimeTelemetryTest","AiUsageIntegrationTest","OperationsMailDeliveryTest","GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","ApiContractTest","ApiErrorContractTest"],
     "frontendUnit":["src/publicAnalytics.test.ts"],
     "browser":["e2e/metrics.spec.ts","e2e/product-home-refresh.spec.ts"],
     "scripts":["scripts/test-runtime-telemetry.py","scripts/runtime-metrics-config.test.mjs","scripts/test-planning-rollback.py"],
     "developmentResults":{"backendDistinctPassed":54,"frontendUnitPassed":6,"collectorPassed":7,"configurationPassed":5,"rollbackUnitPassed":7,"browserPassed":14,"browserPortsReleased":true,"windowsScopedGroupsPassed":6,"mysqlOriginalProjections":58,"mysqlRestoredTables":62,"mysqlFinalByteBootTablesUnchanged":62,"linuxSyntaxAndCollectorPassed":true,"linuxSyntheticRotationPassed":true},
-    "windowsNativeTested":true,"androidDeviceTested":false,"mysqlVerified":true,"productionChanged":false,"paidAiCalls":0,"realTestEmails":0,
+    "release0124":{"backendDistinctPassed":54,"browserPassed":14,"collectorPassed":8,"deploymentGuardPassed":6,"snapshotGuardPassed":5,"productionPreSnapshotTablesRestoredTwice":59,"originalBusinessTablesUnchanged":58,"productionPostSnapshotTablesRestoredTwice":62,"formalWindowsGroupsPassed":6,"formalWindowsOriginalFilesUnchanged":605,"formalWindowsOwnerReloginRequired":true,"formalWindowsColdReopenAccepted":true,"formalWindowsQueue":[0,0],"windowsUpdateCheckAccepted":true,"autoDownloadChecked":false,"httpsGroupsPassed":5,"windowsPublicGroupsPassed":5,"postUpgradeOssVerified":true,"details":"docs/release-0124.md"},
+    "windowsNativeTested":true,"androidDeviceTested":false,"mysqlVerified":true,"productionChanged":true,"paidAiCalls":0,"realTestEmails":0,
     "finalJarSha256":"628318be55fe44c2b72d7e3db4c358491182fc98e1f5b4975c84dbc620d3b7ef",
     "fullRestoreJarSha256":"ce2adb4c6337b5b60f4119a408f4a2337d6d4f7999c627505d4cdd31f490f763",
     "limits":"Windows UI used originalcc3e5628 API; final backend-only boundaries have focused unit and final-byte MySQL boot evidence, not a repeated Windows UI run. MySQL full restoration and final-byte boot are separately preserved. Small synthetic performance baseline is not concurrent production capacity. Android debug build is not device acceptance or formal signing.",
-    "pending":["Android independent device acceptance explicitly postponed by owner","Formal new-version signing, current production snapshot/restore, production activation and formal upgrades/publication approval"],
+    "pending":["Android independent and formal device acceptance explicitly postponed by owner; do not install or publish protected update before approval"],
     "details":"docs/metrics-progress.md"
   },
   "coreAdminCenter": {
@@ -369,7 +370,7 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Core stage4 unreleased development on0.1.23: opt-in website analytics, growth/AI metadata, bounded runtime collector and existing alert delivery/retention guards. Only new and directly affected behavior; production remains0.1.23. No paid AI or real emails.",
+  "reason": "Core stage4 release0.1.24: opt-in website analytics, growth/AI metadata, bounded runtime collector and existing alert delivery/retention guards. Only new and directly affected behavior plus signing/upgrade/production gates; Android device and protected publication explicitly deferred. No paid AI or intentional real test emails.",
   "frontendUnit": ["src/publicAnalytics.test.ts"],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",

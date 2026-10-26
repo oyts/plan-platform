@@ -38,6 +38,7 @@ jobs:
       - run: node scripts/verify-release.mjs
       - run: python3 scripts/test-ai-mysql-acceptance.py
       - run: python3 scripts/test-runtime-telemetry.py && python3 scripts/test-planning-rollback.py
+      - run: python3 scripts/test-release-drill.py && python3 scripts/test-metrics-release.py
       - run: node --test scripts/runtime-metrics-config.test.mjs
       - run: sh -n scripts/ai-candidate.sh && sh -n scripts/configure-ai-secret.sh
       - run: node --test scripts/switch-public-entry.test.mjs

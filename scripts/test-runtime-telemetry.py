@@ -1,7 +1,15 @@
 import importlib.util,json,tempfile,time,unittest
+from unittest.mock import patch
+from types import SimpleNamespace
 from pathlib import Path
 spec=importlib.util.spec_from_file_location('runtime_collector',Path(__file__).with_name('runtime-telemetry.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class Collector(unittest.TestCase):
+ def test_fixed_local_readiness_does_not_open_public_actuator(self):
+  with patch.object(m.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=b'{"status":"UP"}')) as command:
+   self.assertTrue(m.probe());self.assertEqual(command.call_args.kwargs['timeout'],3);self.assertEqual(command.call_args.args[0],['docker','exec','plan-platform-backend-1','wget','-qO-','http://127.0.0.1:8080/actuator/health/readiness'])
+  for response in [SimpleNamespace(returncode=1,stdout=b''),SimpleNamespace(returncode=0,stdout=b'{"status":"DOWN"}'),SimpleNamespace(returncode=0,stdout=b'x'*1025)]:
+   with patch.object(m.subprocess,'run',return_value=response):self.assertFalse(m.probe())
+  with patch.object(m.subprocess,'run',side_effect=m.subprocess.TimeoutExpired('docker',3)):self.assertFalse(m.probe())
  def resources(self,_):return dict(cpuPercent=25,memoryUsedBytes=50,memoryTotalBytes=100),[100,50]
  def collect(self,path,state,now):return m.collect(path,state,now,self.resources,lambda:True)
  def test_incremental_counts_no_raw_payload_and_partial_line(self):

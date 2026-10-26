@@ -3,7 +3,7 @@
 Only the dedicated five-column plan-metrics.log is accepted. Existing raw access
 logs are never opened. Cursor/state are private and output is a read-only mount.
 """
-import argparse,datetime as dt,json,os,re,time,urllib.request,tempfile
+import argparse,datetime as dt,json,os,re,time,tempfile,subprocess
 from pathlib import Path
 ROUTES={'public','api','auth','scan','other'}
 FIELDS={'minute','requests','errors','authFailures','limited','scans','bots','durationMs','slow','htmlRequests','apiRequests','apiErrors','apiDurationMs'}
@@ -31,8 +31,11 @@ def resources(previous):
     return {'cpuPercent':used,'memoryUsedBytes':mem['MemTotal']-mem['MemAvailable'],'memoryTotalBytes':mem['MemTotal']},[total,idle]
 def probe():
     try:
-        with urllib.request.urlopen('http://127.0.0.1:43140/actuator/health/readiness',timeout=3) as r:return json.loads(r.read(1024)).get('status')=='UP'
-    except (OSError,ValueError):return False
+        # Host Nginx deliberately does not expose actuator. Probe the fixed
+        # local backend through Docker; never open a new public health route.
+        p=subprocess.run(['docker','exec','plan-platform-backend-1','wget','-qO-','http://127.0.0.1:8080/actuator/health/readiness'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,timeout=3)
+        return p.returncode==0 and len(p.stdout)<=1024 and json.loads(p.stdout).get('status')=='UP'
+    except (OSError,ValueError,subprocess.TimeoutExpired):return False
 def collect(log,state,now=None,resource_fn=resources,probe_fn=probe):
     now=time.time() if now is None else now;stamp=dt.datetime.fromtimestamp(now,dt.timezone.utc).isoformat()
     if Path(log).name!='plan-metrics.log' or Path(log).is_symlink():raise ValueError('Only dedicated sanitized log accepted')
