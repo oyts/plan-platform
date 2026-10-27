@@ -1,6 +1,6 @@
-# 0.1.24 Web／Windows交付与维护索引
+# 0.1.24三端交付与维护索引
 
-核对日期：2026年10月26日。旧[六阶段规划](next-development-roadmap.md)已随0.1.16—0.1.19交付，历史收口随0.1.20交付。新[核心功能规划](core-function-roadmap-0120-plus.md)阶段1／2／3三端已发布；阶段4 Web/API与Windows已发布0.1.24，Android延期仍0.1.23／28，阶段5／6未开始。依据[0.1.24记录](release-0124.md)与`release-0124-resume.json`，不可把分端发布冒充整阶段完结。
+核对日期：2026年10月27日。旧[六阶段规划](next-development-roadmap.md)及0.1.20历史收口已交付。新[核心功能规划](core-function-roadmap-0120-plus.md)阶段1—4已完成开发、定向验收和正式发布，当前三端统一0.1.24／Android29，阶段5／6未开始。依据[0.1.24记录](release-0124.md)与`release-0124-resume.json`，各轮证据分别保留，不把旧测试累加为新覆盖。
 
 ## 当前可以使用的版本
 
@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | Web／API | 0.1.24，Flyway V34 | [产品官网](https://plan.zijun701.cn/welcome)，官网按钮进入网页版 |
 | Windows | 0.1.24 | 官网安装包、可信可选更新源；自动下载默认关闭 |
-| Android | 0.1.23，构建28 | 私下正式APK、登录受限更新源；官网APK／二维码关闭 |
+| Android | 0.1.24，构建29 | 已验收正式APK、登录受限可选更新源；官网APK／二维码关闭 |
 | 个人备份 | schemaVersion 4，接受1—3 | 含个人模板及日周复盘；先预检、确认后恢复为新记录 |
 | 邮箱变更 | 已按维护者确认启用 | 双邮箱主动验证及最终密码确认；不会自动变更管理员邮箱 |
 | GitHub | v0.1.24已归档 | [源码与Windows附件](https://github.com/oyts/plan-platform/releases/tag/v0.1.24)；Android候选不公开 |

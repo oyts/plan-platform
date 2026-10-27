@@ -1,6 +1,6 @@
 # 计划舱0.1.24：轻量指标与运行可视化
 
-2026年10月26日，核心阶段4的**Web/API和Windows0.1.24已正式发布**，Flyway V34。维护者授权推进手机真机以外的收尾；Android安装、验收和受限源延期，继续0.1.23／28。不是三端全部发布；GitHub归档状态见机器检查点`release-0124-resume.json`。
+2026年10月26日Web/API和Windows发布，10月27日补齐Android真机和受限源：核心阶段4的**三端统一0.1.24／Android构建29**，Flyway V34。维护者分别确认独立测试、正式覆盖和受限源发布。完整结果见本页及机器检查点`release-0124-resume.json`；公开注册和官网APK继续关闭。
 
 ## 本版范围
 
@@ -10,9 +10,9 @@
 
 ## 不可变候选
 
-- `production-artifacts/client-release/0.1.24/20261026T070247Z-c6492f3a`：原Windows更新签名身份、原Android包名和证书保留；Android构建29仅本地候选。
+- `production-artifacts/client-release/0.1.24/20261026T070247Z-c6492f3a`：原Windows更新签名身份、原Android包名和证书保留；已验收正式包，没有重打或替换字节。
 - Windows EXE SHA256 `6e323bbcb832b1f13b3f7929da4d9106301f1bda4019c4b593e147eca48978c6`。
-- Android APK SHA256 `cd78c412f99f313b43b922dce8cebd339ab38da3c9c0d7b225abf81e216f0bba`。**未经本阶段真机验收，不提供朋友或更新源。**
+- Android APK SHA256 `cd78c412f99f313b43b922dce8cebd339ab38da3c9c0d7b225abf81e216f0bba`，已通过真机及受限源鉴权／哈希验收，可供现有受邀成员更新，不公开分发到官网或GitHub附件。
 - API JAR SHA256 `9bbd951547020f9a55e54f517e9d4b5e8ce2d1fede6a018cd99e64fc1a720368`。
 - 云端归档 SHA256 `a4a0d911146b1cf5ce998479c70b2db52922d9acd09c5a87b302bade1775f50f`，候选目录`/home/oyts/plan-platform/releases/0.1.24-a4a0d911`。归档不含密钥、账号、数据库或测试材料。
 
@@ -27,9 +27,9 @@
 - [x] 正式Web/API升级、指标采集及隐私边界、公网5组定向验收。
 - [x] 正式PC队列／新入口／冷重开及更新源检查；首次打开恰逢部署502，本人重新登录后冷重开保留，不冒充自动跨升级登录保留。
 - [x] Windows官网下载／可选源、公网5组签名和精确哈希核验。
-- [ ] Android独立及正式升级验收、受限源发布（维护者明确延期）。
+- [x] Android独立三组、正式升级五组、受限源四组及原生更新两组分别通过；不是将重复校验累计为新的业务覆盖。
 
-[GitHub v0.1.24](https://github.com/oyts/plan-platform/releases/tag/v0.1.24)已归档Windows安装包、更新签名和校验和；不上传APK、真实数据或签名密钥。不可变标签指向`f200fa9a487ac421c7ac0055bc9215d0d46b62ba`，后续纯资料提交不移动标签。远端CI当时仍运行中，不以本地验收冒充远端工作流成功。
+[GitHub v0.1.24](https://github.com/oyts/plan-platform/releases/tag/v0.1.24)已归档Windows安装包、更新签名和校验和；不上传APK、真实数据或签名密钥。不可变标签指向`f200fa9a487ac421c7ac0055bc9215d0d46b62ba`，后续资料／测试工具提交不移动标签。该提交的CI、Windows desktop、Android build verification均已确认成功；CI构建不等于真机。
 
 ## 回退边界
 
@@ -49,4 +49,10 @@ Windows发布run为`windows-0124-iiNeF6`，静态清单回退：`sh /home/oyts/p
 
 失败记录均保留：首次本机SSH命令引号错误只影响候选解包前步骤；公网工具第一次未显式UTF-8读取合成账号，改工具后五组通过；生产最终验证工具第一次不兼容Linux Python3.6的fromisoformat，在未建恢复库前停止，修复后v2完成62表两次恢复。没有删除失败标记或把第一轮算全过。安装／启用期间短暂502已恢复，不宣称零中断。
 
-Android完全未枚举、安装或操作，受限源仍0.1.23／28。0.1.24／29正式签名APK和独立调试包仅本地准备，不能给朋友或更新源。新增付费AI调用0、主动真实测试邮件0；不将既有后台运维邮件计为人为测试或宣称全站零邮件。
+### 2026-10-27 Android补验和正式发布
+
+- 独立0.1.24调试包SHA256 `332691043a921e581a8149305fedb123c298e3e4704756e61a39e562f140560e`：实际安装后以真实Java通道连接本机合成服务，三组验证日期范围／同源表、运行资源／阈值／滚动、AI元数据／普通成员拒绝及冷重开。已检查真实截图，无页面级横向溢出；不把脚本已写或网页手机视口当作真机通过。证据`acceptance-results/metrics/android/2026-10-27T07-26-28-165Z/`。首轮因WebView不支持默认Browser.setDownloadBehavior停在连接阶段，测试工具改为Android专用noDefaults及目标页／原生身份断言后通过，正式APK未重打。
+- 经本人保存确认，同包名同证书0.1.23／28→0.1.24／29以install -r覆盖成功，不卸载、不清数据。五组只读检查精确已安装APK、原会话／0/0队列、真实增长与官网日去重口径、鲜活运行采样／新邮件关闭、AI尝试／修复／等待，正常返回并冷重开后仍登录、队列0/0。空队列不能证明非空跨升级，覆盖成功也不冒充本轮应用内跨版本安装。正式证据`acceptance-results/native-metrics-0124/`，无密码、会话或私人计划正文输出。
+- 再获发布确认后，`production-artifacts/invited-android/0.1.24/candidate-jMXs9i`上传为`android-private/staging/android-29-426d1738`。匿名／伪凭据拒绝、公众源404、两位受邀USER的私有清单与精确APK共四组通过；后端保持Running，只重载Web代理，保留生产采集／签名／数据库。私有清单回退：`sh /home/oyts/plan-platform/android-private/staging/android-29-426d1738/rollback.sh`，只回退分发，不降客户端或数据库。
+- 手机原生更新检查两组通过：精确APK／队列保留；最新0.1.24、自动下载未勾选。第一次因失去前台而安全停止，维护者重新置前后仅补最后更新检查，未重测统计／升级或替其处理系统安全提示。
+- 本轮未操作PC、未迁移数据库、未调用收费AI、未发送真实测试邮件；只测试新增或直接受影响范围。独立测试服务已正常停止，USB转发由工具撤回，正式应用留在客户端更新页供本人使用。阶段4收口，不自动进入阶段5，不启用自动任务。
