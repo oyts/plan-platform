@@ -2,7 +2,7 @@
 
 制定日期：2026年10月23日。基线为正式Web/API、Windows 0.1.20、Android 0.1.20／构建25，Flyway V30。本文整合维护者提供的《0.1.20+.md》、当前源码事实及必要的安全／容量约束，作为接下来开发的统一入口；原稿不修改。
 
-**状态：阶段1—4已完成开发、定向验收及三端正式发布，当前0.1.24／Android29；阶段5／6未开始。** 最新依据[0.1.24发布与回退](release-0124.md)及[阶段4记录](metrics-progress.md)。前三阶段的实际结果继续见[阶段3](admin-center-progress.md)、[阶段1](ai-reliability-progress.md)、[阶段2](ai-long-planning-progress.md)。阶段1原6个真实请求严格检查5/6，另1次推荐补验通过；累计7父请求／8上游／9847输出，分别保留，不宣称线上成功率100%，没有剩余付费调用授权。过去六阶段及历史收口见[原规划](next-development-roadmap.md)和[0.1.20记录](release-0120.md)。
+**状态：阶段1—4已三端正式发布，当前0.1.24／Android29；阶段5已完成共享开发、基础Web／PC／Android定向验收和0.1.25／30签名候选，正式升级／更新路径／发布门槛待完成；阶段6未开始。** 最新见[阶段5检查点](update-experience-progress.md)，现网依据[0.1.24发布与回退](release-0124.md)及[阶段4记录](metrics-progress.md)。前三阶段的实际结果继续见[阶段3](admin-center-progress.md)、[阶段1](ai-reliability-progress.md)、[阶段2](ai-long-planning-progress.md)。阶段1原6个真实请求严格检查5/6，另1次推荐补验通过；累计7父请求／8上游／9847输出，分别保留，不宣称线上成功率100%，没有剩余付费调用授权。过去六阶段及历史收口见[原规划](next-development-roadmap.md)和[0.1.20记录](release-0120.md)。
 
 2026-10-24续做更新：长规划、外部协作、滚动／输入、Android真机补验、最终JAR MySQL补验及当时生产快照恢复通过；正式Web/API已0.1.22。分发和GitHub归档以发布记录最终状态为准，不用独立调试包替代正式包验收。
 

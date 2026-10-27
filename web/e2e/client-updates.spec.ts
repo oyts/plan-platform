@@ -35,6 +35,8 @@ test('automatic download persists explicit consent without automatic installatio
   await expect(page.getByRole('button', { name: '安装并重新打开' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('checkbox', { name: '自动下载更新（安装前仍需确认）' })).toBeChecked();
+  // Automatic startup respects the persisted 15-minute cooldown; a user check bypasses it.
+  await page.getByRole('button', { name: '检查新版本', exact: true }).click();
   await expect(page.getByRole('button', { name: '安装并重新打开' })).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { testUpdateCalls: string[] }).testUpdateCalls)).not.toContain('desktop_install_update');
 });

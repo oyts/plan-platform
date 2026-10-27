@@ -1,0 +1,63 @@
+# 核心阶段5：更新提示与用户版本说明
+
+## 2026-10-27 开发检查点
+
+### 最新收拢状态（本段优先）
+
+2026-10-27后续授权：维护者已明确同意生产备份恢复、云端升级及三端可选发布；正式双端覆盖仍需分别保存确认。已只读核对生产目录仍为`0.1.24-a4a0d911`、HTTPS0.1.24正常，磁盘剩余约19GiB。新建生产备份`plan_platform-mysql-20261027-084646.sql.gz`（沿用受限备份目录`releases/0.1.15-50bc92a/backups/`，不是仍运行0.1.15），已验证gzip及SHA256，**尚未做本次双恢复**。部署归档已复用已验收API精确字节生成，SHA256 `4be0a01f7ebfed29b8559cf97bda5e44c90bfdd53d597a3decc6953ed3ba9e80`，未上传或切换。额度已用85%，先收拢源码同步，不开始可能跨越停止线的生产切换。没有重新操作PC或手机。
+
+第五阶段共享功能与基础Web／PC／Android定向验收完成；**整个阶段尚未完成发布门槛**。正式三端仍0.1.24／29，没有生产变更。维护者最后用物理Esc停止Computer Use，本轮立即停止所有Windows输入；后续操作须重新获得可用时段，不能复用旧窗口句柄。
+
+- 最终0.1.25：前端52、浏览器28、API契约10、Rust更新策略／TLS规则5、Android更新规则7通过。Rust另1项需要真实本机HTTPS实验室而按设计跳过，不算通过。API契约首轮9/10，仅源码版本归档差异；只更新版本元数据后10/10通过。Web、desktop-web、android-web构建及PWA资源／离线安全检查通过。
+- 独立PC五组：真实连接43180、安装亮点／关闭、历史回看、API0.1.7与安装0.1.25分开、冷重开仍登录且不重复亮点。使用computer-use真实窗口，没有Windows CDP、自动输入认证或正式账号改动。最后收拢窗口时Esc停止，不能声称独立窗口已关闭。
+- 独立Android三组全部通过，正式APK哈希不变；证据`acceptance-results/update-experience/android/2026-10-27T08-22-03-294Z/report.json`。脚本已撤回自己创建的USB反向／CDP转发，没有操作正式包。此独立包无可信更新源，不能称真实下载／安装或非空队列升级通过。
+- 正式签名候选`production-artifacts/client-release/0.1.25/20261027T081918Z-39d6b279`已构建并核验原身份。Windows SHA256 `39a3b923262474e55eb18bcd0f2233668e42903d609e7bc4fd84009269d350fb`；Android `1c748869224eb470b95a528d39e3b626be87cd3369b3091024a9209b80846390`。未正式安装／上传／发布。
+- API候选`backend/target-updates/plan-platform-api.jar` SHA256 `78dfb43b0a0a2538bb1df4a3bc0ccdb0a8d9a93e8cf09ebaf2313a69738e9e73`；独立PC `de61c71b1010457043c5d22400dda19591e2bd67259252d9013c7aa0d968f71f`；独立APK `54f545a622192dd1646c0810df840cbe85528afba073673c75b832f64650a8a7`。
+- 已向维护者询问生产升级／可选源发布，**尚未收到答复**；正式双端覆盖也未获得本阶段授权。下次先核对最新答复与额度，再安排真实更新链路、合成非空队列保留、生产快照双恢复／回退守卫、正式双端升级、公网及受限源校验、GitHub源码和Windows-only归档。不得直接发布未正式验收的APK。
+- 本轮源码尚未提交推送；最后已推送基线5cbee99717c86d8e30b907abe2fa28c978527c40。先审查当前diff并只纳入明确源码／文档，不纳入忽略目录。没有付费AI或真实邮件。额度最后可靠读取为已用78%，用户要求已用90%停止、不启用自动任务。
+- 隔离服务仍由本轮exec会话78056运行，创建后两小时自动结束；独立窗口可能仍开着。不要把暂时服务退出当产品连接缺陷。需要继续时先查43180与服务进程，再用文末`--resume`保留同一合成库，不注册重复账号。
+
+当前正式三端仍为0.1.24／Android29；本地候选源码统一0.1.25／30，**尚未发布**。本阶段不是UI重构，不改变业务数据模型、Flyway V34、可信源、签名身份或Android受邀鉴权。
+
+### 已实现
+
+- 顶部弱提示增加“忽略此版本”，更新页可恢复；稍后处理保存一小时。按可信更新源、平台、目标版本／构建隔离，Android再按服务器／账号隔离。最近24个上下文，每上下文最多12个忽略目标；存储失败不静默启用自动下载。
+- 启动、成功登录、联网和回到前台共用互斥检查。正常间隔15分钟，失败从1分钟指数退避至1小时，重开保留冷却；新安装构建重新检查。手动检查跳过冷却，不并行下载／检查。离线自动检查及Android未登录不请求受限清单。
+- 已验证必更优先于忽略／稍后；普通错误不变成必更，安全出口和队列不动。本阶段不会开启生产必更。
+- 随包纯文本记录提供版本／日期、3—5条亮点及注意事项，摘要／详情／帮助历史共用。不渲染远端HTML，不改写固定下载源。缺说明、未知安装版本均不伪报升级成功。
+- 登录进入后，已知本机安装版本／构建展示一次非模态亮点，可关闭并回看。Web按已加载资源，原生按安装桥数据，不采用服务器API版本。历史覆盖核心阶段1以来的版本，不伪造更早说明。
+- PWA区分网页应用与“刷新网页版本”；刷新前确认保存输入，等待新Service Worker接管后才重载，不自动提交队列。原生安装仍走原有签名／哈希和系统确认。
+
+### 已验证（不累加为全软件回归）
+
+- 52项单元通过：clientUpdates25、releaseNotes3、PWA3、desktop6、受影响API客户端15；TypeScript通过。
+- 桌面／手机视口26项桥合约：原有12项通过；新增14项修正夹具后通过。首次缺浏览器目录未启动；配置后18通过／8失败，失败来自手机隐藏退出按钮定位和开发资源被测试拦截；修正夹具后14通过。各轮证据保留，不把桥当原生下载／安装证明。
+- 已查看更新摘要与帮助历史的真实浏览器截图，沿用Swiss白／蓝#002FA7及细线。手机视口不是Android真机。
+- 最终版本化产物、额外窄屏检查、API契约和原生规则以随后补记为准，不沿用早于最后修改的包。
+
+证据根目录`acceptance-results/update-experience/`（Git忽略）。独立Windows0.1.25已构建并依用户确认打开；本机43180连接成功，使用保留的AdminCenterFixture合成服务（测试API版本0.1.7，不能当当前生产版本）。用户正在自行登录；未覆盖正式客户端，未操作生产，没有付费AI或真实邮件。
+
+### 尚未完成
+
+1. 最终共享三种构建、原生更新规则及版本契约。
+2. 独立PC真实窗口：亮点／历史／重开；PC完成后通知Android并等待授权。目前尚未进行本阶段Android安装／操作。
+3. 真实受影响更新路径与合成非空队列保留；不把浏览器桥或手动覆盖冒充应用内升级，不清正式队列。
+4. 正式签名、生产升级及正式覆盖须对应确认；发布前保留当时备份／恢复、回退守卫及HTTPS门槛。没有新增迁移不代表可跳过备份。
+5. 验收后才发布Windows可选源、Android登录受限源及GitHub Windows-only归档。官网APK／二维码、公众注册继续关闭。
+
+### 复现与续做
+
+仓库根使用项目`.desktop-tools/node22/node-v22.23.3-win-x64`的Node22：
+
+```powershell
+node web/node_modules/vitest/vitest.mjs run --root web src/clientUpdates.test.ts src/releaseNotes.test.ts src/pwa.test.ts src/desktop.test.ts src/api/client.test.ts
+node web/node_modules/vue-tsc/bin/vue-tsc.js -b web/tsconfig.json
+$env:PLAYWRIGHT_BROWSERS_PATH = (Resolve-Path '.desktop-tools/playwright').Path
+$env:PLAN_UPDATE_UI_OUTPUT = '../acceptance-results/update-experience/browser-final'
+node web/node_modules/@playwright/test/cli.js test --config web/playwright.updates.config.ts
+node scripts/verify-release.mjs
+```
+
+只监听本机43146的浏览器夹具不启动生产。独立原生服务由本轮`scripts/start-admin-center-fixture.mjs`启动，合成库位于`acceptance-results/admin-center/2026-10-27T08-08-36-956Z`；续用时可传`--resume`，先核对端口和实际进程，不能启动第二份。凭据在该目录及`acceptance-results/admin-center/native/synthetic-login.txt`，不打印或提交。
+
+Windows仅用computer-use操作独立包，认证由本人输入；禁止用Windows CDP绕过。真实5小时剩余不超过10%时保存并通知，不创建自动任务。不推进阶段6或全站UI重构。

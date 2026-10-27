@@ -9,6 +9,7 @@ export function setupPwa(): void {
   if (isDesktop() || !('serviceWorker' in navigator)) return;
   navigator.serviceWorker.register('/sw.js').then((registered) => {
     registration = registered;
+    updateReady.value=!!registered.waiting;
     registered.addEventListener('updatefound', () => {
       const worker = registered.installing;
       worker?.addEventListener('statechange', () => { if (worker.state === 'installed' && navigator.serviceWorker.controller) updateReady.value = true; });
@@ -22,6 +23,11 @@ export function usePwaStatus() {
   onMounted(() => { window.addEventListener('beforeinstallprompt', onPrompt); window.addEventListener('online', onOnline); window.addEventListener('offline', onOffline); });
   onUnmounted(() => { window.removeEventListener('beforeinstallprompt', onPrompt); window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); });
   async function install() { const prompt = installPrompt.value; if (!prompt) return; await prompt.prompt(); await prompt.userChoice; installPrompt.value = null; }
-  function update() { registration?.waiting?.postMessage('SKIP_WAITING'); window.location.reload(); }
+  function update() {
+    if(!registration?.waiting)return;
+    if(!window.confirm('刷新网页版本会重新加载页面，请先保存未提交的输入。本机待同步队列会保留，不会自动提交。现在刷新吗？'))return;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>window.location.reload(),{once:true});
+    registration.waiting.postMessage('SKIP_WAITING');
+  }
   return { canInstall: computed(() => Boolean(installPrompt.value) && !standalone.value), standalone, updateReady, online, install, update };
 }

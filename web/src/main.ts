@@ -27,11 +27,11 @@ async function bootstrap(): Promise<void> {
   app.use(router);
   await router.isReady();
   app.mount('#app');
-  if (isDesktop() && !isAndroid()) void checkClientUpdate();
+  if (isDesktop() && !isAndroid()) void checkClientUpdate('automatic');
   if (isAndroid()) {
     const { App: androidApp } = await import('@capacitor/app');
     const openReminder=async()=>{if(!auth.user)return;const {nativeInvoke}=await import('./desktop');const path=await nativeInvoke<unknown>('reminder_take_path');if(validReminderPath(path))await router.push(path);};
-    await androidApp.addListener('appStateChange',({isActive})=>{if(isActive)void openReminder();});
+    await androidApp.addListener('appStateChange',({isActive})=>{if(isActive){void openReminder();void checkClientUpdate('automatic');}});
     window.addEventListener('plan-platform:reminder-ready',()=>{void openReminder();});
     await androidApp.addListener('backButton', ({ canGoBack }) => {
       const dialog = document.querySelector<HTMLDialogElement>('dialog[open]');
@@ -51,7 +51,7 @@ async function bootstrap(): Promise<void> {
     await auth.bootstrap();
     await suspendForQueue();
     if (auth.user && router.currentRoute.value.path === '/login') await router.replace(aiResume ?? await workspaceEntry());
-    if (isAndroid() && auth.user) void checkClientUpdate();
+    if (isAndroid() && auth.user) void checkClientUpdate('automatic');
     if(isAndroid()&&auth.user)window.dispatchEvent(new Event('plan-platform:reminder-ready'));
   }
 }

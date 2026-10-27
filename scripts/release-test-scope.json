@@ -1,5 +1,16 @@
 {
-  "version": "0.1.24",
+  "version": "0.1.25",
+  "coreUpdateExperience": {
+    "status":"stage5-basic-web-pc-android-accepted-signed0125-not-released",
+    "reason":"Bounded native lifecycle checks; scoped ignore/snooze and consent; verified required-policy precedence; bundled installed-version highlights/history; explicit PWA refresh. Native security bridge and business/database schema unchanged. Only new and directly affected contracts.",
+    "frontendUnit":["src/clientUpdates.test.ts","src/releaseNotes.test.ts","src/pwa.test.ts","src/desktop.test.ts","src/api/client.test.ts"],
+    "browser":["e2e/client-updates.spec.ts","e2e/update-experience.spec.ts"],
+    "results":{"frontendUnitPassed":52,"browserDistinctPassed":28,"backendContractPassed":10,"windowsUpdateRulePassed":5,"windowsLabTlsIntentionallySkipped":1,"androidUpdateRulePassed":7,"independentPcGroupsPassed":5,"independentAndroidGroupsPassed":3,"formalSignedCandidateVerified":true,"productionChanged":false,"paidAiCalls":0,"realTestEmails":0},
+    "evidence":["acceptance-results/update-experience/browser-configured/","acceptance-results/update-experience/browser-fixture-corrected/"],
+    "limits":"Browser bridge fixtures are not native signing, downloading, installation or data-retention evidence. First launch had missing browser runtime path; configured run18 passed/8 fixture failures; corrected14 passed, preserving all failures.",
+    "pending":["Same-identity signed formal upgrade, synthetic nonempty queue and real affected updater path","Production authorization, backup/recovery and HTTPS gates","Trusted optional feeds and GitHub source/release archive after acceptance"],
+    "details":"docs/update-experience-progress.md"
+  },
   "coreMetrics": {
     "status":"stage4-complete-three-platform0124-released",
     "reason":"Opt-in unlinked analytics, Shanghai growth, AI metadata, sanitized bounded telemetry and retention-aware rollback. Three-platform0.1.24 accepted; Android29 received scoped independent/formal/device/update-source evidence without unrelated regression.",
@@ -371,8 +382,8 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Core stage4 release0.1.24: opt-in website analytics, growth/AI metadata, bounded collector and alert/retention guards. Only new/directly affected behavior plus signing/upgrade/production gates. Three platforms accepted; Android test-tool WebView compatibility fix does not change shipped app bytes. No paid AI or intentional real test emails.",
-  "frontendUnit": ["src/publicAnalytics.test.ts"],
+  "reason": "Core stage5 candidate0.1.25: scoped persistent update choices, bounded lifecycle checking, installed-version highlights/history and confirmed PWA refresh. Security updater bridge unchanged; no business-schema change or unrelated full regression. All signing/upgrade/backup/HTTPS gates remain pending until actually accepted.",
+  "frontendUnit": ["src/clientUpdates.test.ts","src/releaseNotes.test.ts","src/pwa.test.ts","src/desktop.test.ts","src/api/client.test.ts"],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",
     "reason":"Private whole-structure PLAN/ROUTE and saved new-AI-draft templates; common copy writer, strict nested whitelist, V28, schema4 backup, manual pending replay. Typed task-time reads/writes affect structural copies directly. No unrelated full regression.",
@@ -407,12 +418,11 @@
     "mysqlFollowup":"V25 to V27 plus prior-start backfill, 47-table restore and actual 0.1.17 read compatibility passed in reflectionWorkspace; production unchanged",
     "details":"docs/native-reminders-progress.md"
   },
-  "browser": ["e2e/metrics.spec.ts","e2e/product-home-refresh.spec.ts"],
-  "browserConfig": "playwright.metrics.config.ts",
-  "browserBackendTarget": "target-metrics",
-  "windowsRustTests": [],
-  "backend": ["MetricsIntegrationTest","MetricsControllerTest","RuntimeTelemetryTest","AiUsageIntegrationTest","OperationsMailDeliveryTest","GovernanceOperationsIntegrationTest","GovernanceDisabledIntegrationTest","ApiContractTest","ApiErrorContractTest"],
-  "android": [],
+  "browser": ["e2e/client-updates.spec.ts","e2e/update-experience.spec.ts"],
+  "browserConfig": "playwright.updates.config.ts",
+  "windowsRustTests": ["update_policy","update_tls"],
+  "backend": ["ApiContractTest","ApiErrorContractTest"],
+  "android": ["cn.zijun701.plan.mobile.UpdateRulesTest"],
   "dailyExperience": {
     "status": "released-0.1.14",
     "results": {"frontendUnitPassed": 32, "backendPassed": 12, "browserDistinctPassed": 20},

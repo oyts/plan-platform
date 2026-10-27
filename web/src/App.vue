@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth';
 import PwaControl from '@/components/PwaControl.vue';
 import ConnectionBar from '@/components/ConnectionBar.vue';
 import ClientUpdateNotice from '@/components/ClientUpdateNotice.vue';
+import InstalledReleaseNotice from '@/components/InstalledReleaseNotice.vue';
 import MobileNavigation from '@/components/MobileNavigation.vue';
 import WorkspaceSwitcher from '@/components/WorkspaceSwitcher.vue';
 import LearningPrompt from '@/components/LearningPrompt.vue';
@@ -17,7 +18,7 @@ import { resetLearning } from '@/learning';
 import { workspace, bindWorkspaceContext, resetWorkspaceContext } from '@/workspace';
 import { workspaceHome } from '@/workspaceModel';
 import { checkClientUpdate, requiredClientUpdate, updateRouteAllowed } from '@/clientUpdates';
-import { isAndroid } from '@/desktop';
+import { isNativeClient } from '@/desktop';
 const auth = useAuthStore(); const router = useRouter();
 const productPage = computed(() => router.currentRoute.value.meta.landing || (router.currentRoute.value.path === '/' && !auth.user));
 const adminPage = computed(()=>router.currentRoute.value.meta.admin===true);
@@ -27,7 +28,7 @@ const reconnecting = ref(false); const pageRevision = ref(0);
 async function reconnect() { reconnecting.value = true; try { await auth.bootstrap(); pageRevision.value++; } finally { reconnecting.value = false; } }
 let noticeTimer: number | undefined;
 let updateTimer: number | undefined;
-function checkUpdates() { void checkClientUpdate(); }
+function checkUpdates() { if(document.visibilityState!=='hidden')void checkClientUpdate('automatic'); }
 function focusMain(){document.getElementById('main-content')?.focus();}
 async function logout() {
   try { await auth.logout(); }
@@ -35,15 +36,15 @@ async function logout() {
   finally { await router.replace('/login'); }
 }
 watch(() => auth.user, (user, previous) => { if (previous && !user && !router.currentRoute.value.meta.public) void router.replace('/login'); });
-watch(() => auth.user?.id, id => { if (id && isAndroid()) void checkClientUpdate(); });
+watch(() => auth.user?.id, id => { if (id && isNativeClient()) checkUpdates(); });
 function showQueueNotice(): void {
   queueNotice.value = '操作已安全保存到当前设备。联网后可在同步中心继续。';
   window.clearTimeout(noticeTimer);
   noticeTimer = window.setTimeout(() => { queueNotice.value = ''; }, 5000);
 }
 function invalidated() { auth.user = null; if (!router.currentRoute.value.meta.public) void router.replace('/login'); }
-onMounted(() => { window.addEventListener('plan-platform:offline-queued', showQueueNotice); window.addEventListener('plan-platform:session-invalidated', invalidated); window.addEventListener('online', checkUpdates); updateTimer = window.setInterval(checkUpdates, 15 * 60 * 1000); });
-onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', showQueueNotice); window.removeEventListener('plan-platform:session-invalidated', invalidated); window.removeEventListener('online', checkUpdates); window.clearTimeout(noticeTimer); window.clearInterval(updateTimer); });
+onMounted(() => { window.addEventListener('plan-platform:offline-queued', showQueueNotice); window.addEventListener('plan-platform:session-invalidated', invalidated); window.addEventListener('online', checkUpdates);document.addEventListener('visibilitychange',checkUpdates);window.addEventListener('focus',checkUpdates); updateTimer = window.setInterval(checkUpdates, 60 * 1000); });
+onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', showQueueNotice); window.removeEventListener('plan-platform:session-invalidated', invalidated); window.removeEventListener('online', checkUpdates);document.removeEventListener('visibilitychange',checkUpdates);window.removeEventListener('focus',checkUpdates); window.clearTimeout(noticeTimer); window.clearInterval(updateTimer); });
 </script>
 <template>
   <div class="app-shell">
@@ -57,6 +58,7 @@ onUnmounted(() => { window.removeEventListener('plan-platform:offline-queued', s
     <div v-if="queueNotice" class="queue-toast" role="status"><strong>已加入离线队列</strong><span>{{ queueNotice }}</span><router-link to="/sync">查看队列</router-link></div>
     <ConnectionBar v-if="auth.user && !productPage" :key="auth.user.id" :busy="reconnecting" @reconnect="reconnect" />
     <ClientUpdateNotice v-if="!productPage" />
+    <InstalledReleaseNotice v-if="auth.user&&!productPage&&!requiredClientUpdate()"/>
     <InAppReminder v-if="auth.user && !productPage && !adminPage" :key="`${auth.user.id}:${serverScope()}`"/>
     <ReflectionGuide v-if="auth.user && !productPage && !adminPage" :key="`reflection:${auth.user.id}:${serverScope()}`"/>
     <OperationsNotice v-if="auth.user?.role==='ADMIN'&&auth.operationsAvailable&&adminPage" :key="`${auth.user.id}:${serverScope()}`"/>
