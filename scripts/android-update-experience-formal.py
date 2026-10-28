@@ -11,6 +11,8 @@ ops,u,ui=b.ops,b.u,b.ui
 ui.LABELS.update({'帮助与版本','当前设备与服务器','版本说明与历史','本版更新亮点','知道了','客户端连接与更新'})
 FOLDER=ROOT/'acceptance-results/native-update-experience-0125'
 SHA='1c748869224eb470b95a528d39e3b626be87cd3369b3091024a9209b80846390'
+BEFORE_VERSION,BEFORE_CODE='0.1.24',29
+VERSION,CODE='0.1.25',30
 
 def reveal(d,text):
     for _ in range(20):
@@ -22,7 +24,7 @@ def reveal(d,text):
 def main():
     p=argparse.ArgumentParser();p.add_argument('--serial',required=True)
     p.add_argument('--phase',choices=['before','after','update-check'],required=True);a=p.parse_args()
-    d=b.AccountReadOnlyDevice(a.serial);version,code=('0.1.24',29) if a.phase=='before' else ('0.1.25',30)
+    d=b.AccountReadOnlyDevice(a.serial);version,code=(BEFORE_VERSION,BEFORE_CODE) if a.phase=='before' else (VERSION,CODE)
     u.verify_version(d.adb('shell','dumpsys','package',ui.PACKAGE),version,code);d.foreground()
     u.wait(d,lambda n:ops.present(n,'工作模式') and ops.present(n,'更多'),'Existing authenticated workspace')
     FOLDER.mkdir(parents=True,exist_ok=True)
@@ -47,12 +49,12 @@ def main():
             u.wait(d,lambda n:ops.present(n,'当前已是最新版本。'),'Protected current optional update')
             boxes=[n for n in ops.reveal(d,'自动下载更新（安装前仍需确认）') if n.get('text')=='自动下载更新（安装前仍需确认）']
             assert len(boxes)==1 and boxes[0].get('checked')=='false'
-            report['cases'].append('Native protected0.1.25 source reports latest; automatic download unchecked')
+            report['cases'].append('Native protected'+VERSION+' source reports latest; automatic download unchecked')
         else:
-            b.go(d,'客户端');reveal(d,'0.1.25 / 构建 30')
+            b.go(d,'客户端');reveal(d,VERSION+' / 构建 '+str(CODE))
             boxes=[n for n in ops.reveal(d,'自动下载更新（安装前仍需确认）') if n.get('text')=='自动下载更新（安装前仍需确认）']
             assert len(boxes)==1 and boxes[0].get('checked')=='false'
-            report['cases'].append('Actual installed25/30 and unchecked automatic download')
+            report['cases'].append('Actual installed'+VERSION+'/'+str(CODE)+' and unchecked automatic download')
             b.go(d,'帮助与版本');reveal(d,'版本说明与历史')
             report['cases'].append('Installed release history reachable without paid request or business writes')
             assert b.sync(d)==counts

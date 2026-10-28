@@ -6,6 +6,8 @@ import datetime as dt,hashlib,importlib.util,json,os,re,subprocess
 from pathlib import Path,PurePosixPath
 spec=importlib.util.spec_from_file_location('update_snapshot',Path(__file__).with_name('roadmap-release-drill.py'))
 drill=importlib.util.module_from_spec(spec);spec.loader.exec_module(drill)
+EXPECTED_VERSION='0.1.25'
+EXPECTED_RELEASE='0.1.25-4be0a01f'
 
 def runtime_facts(value,now):
     stamp=value.get('observedAt')
@@ -27,10 +29,10 @@ def backup_location(value):
 
 def main():
     root=Path('/home/oyts/plan-platform');release=(root/'current').resolve()
-    drill.require(release==root/'releases/0.1.25-4be0a01f','Expected accepted0.1.25 release.')
+    drill.require(release==root/('releases/'+EXPECTED_RELEASE),'Expected accepted release.')
     os.umask(0o077);out=release/'post-release-verification.json'
     drill.require(not out.exists(),'Existing proof retained; inspect before any follow-up.')
-    report=dict(status='FAIL',version='0.1.25',productionBusinessWrites=0,nativeDeviceTested=False,paidAiCalls=0,realTestEmails=0)
+    report=dict(status='FAIL',version=EXPECTED_VERSION,productionBusinessWrites=0,nativeDeviceTested=False,paidAiCalls=0,realTestEmails=0)
     command=drill.command
     mysql=json.loads(command(['docker','inspect','plan-platform-mysql-1']))[0]
     key=next(s.split('=',1)[1] for s in mysql['Config']['Env'] if s.startswith('MYSQL_ROOT_PASSWORD='))
@@ -38,7 +40,7 @@ def main():
     def sql(q):return command(['docker','exec','-i','-e','MYSQL_PWD','plan-platform-mysql-1','mysql','-uroot','-N'],q.encode(),env)
     try:
         health=json.loads(command(['curl','--max-time','10','-fsS','https://plan.zijun701.cn/api/health']))
-        drill.require(health.get('version')=='0.1.25' and health.get('ok'),'Public health mismatch.')
+        drill.require(health.get('version')==EXPECTED_VERSION and health.get('ok'),'Public health mismatch.')
         backend=json.loads(command(['docker','inspect','plan-platform-backend-1']))[0]
         values=dict(v.split('=',1) for v in backend['Config']['Env'] if '=' in v)
         drill.require(all(values.get(k)=='true' for k in ['METRICS_ENABLED','TELEMETRY_ENABLED','AI_ENABLED','EMAIL_CHANGE_ENABLED','AI_REPAIR_ENABLED','MEMBER_GOVERNANCE_ENABLED'])

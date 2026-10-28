@@ -8,7 +8,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 if(process.argv.length!==2)throw Error('No device, signing or destination overrides allowed');
 const version=JSON.parse(await readFile(join(root,'web/package.json'),'utf8')).version;
 if(version!=='0.1.26')throw Error('Review candidate scope for a later version');
-const out=join(root,'acceptance-results/core-freeze/native-candidate-0126');
+const out=join(root,'acceptance-results/core-freeze/native-candidate-0126-r2');
 const exe=join(root,'.desktop-tools/native-regression/plan-regression.exe'),apk=join(out,'android/PlanCabin-0.1.26-debug.apk'),api=join(root,'backend/target-core-freeze/plan-platform-api.jar');
 const sha=async p=>createHash('sha256').update(await readFile(p)).digest('hex');
 await mkdir(join(out,'windows'),{recursive:true});

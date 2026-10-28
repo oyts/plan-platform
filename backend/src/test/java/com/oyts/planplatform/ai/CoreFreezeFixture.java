@@ -28,12 +28,26 @@ public class CoreFreezeFixture {
     };}
     @Bean org.springframework.boot.ApplicationRunner seed(UserAccountRepository users,org.springframework.security.crypto.password.PasswordEncoder encoder,ObjectMapper json){return args->{
         Path out=Path.of(System.getProperty("plan.core.fixture.directory"));var values=new LinkedHashMap<String,Object>();
+        if(Boolean.getBoolean("plan.core.fixture.resume")){verifyResume(users,encoder,json,out);return;}
         for(String role:List.of("admin","member")){String email="core-freeze-"+role+"-"+UUID.randomUUID()+"@example.test",password="Synthetic-"+UUID.randomUUID()+"!";var u=new UserAccount(email,encoder.encode(password),"核心冻结合成"+role);if(role.equals("admin"))u.makeAdmin();users.saveAndFlush(u);values.put(role,Map.of("email",email,"password",password,"id",u.getId()));}
         Files.writeString(out.resolve("synthetic-login.json"),json.writeValueAsString(values),StandardOpenOption.CREATE_NEW);
     };}
+    static void verifyResume(UserAccountRepository users,org.springframework.security.crypto.password.PasswordEncoder encoder,ObjectMapper json,Path out)throws Exception{
+        var original=json.readTree(Files.readString(out.resolve("synthetic-login.json")));
+        for(String role:List.of("admin","member")){
+            var row=original.path(role);String email=row.path("email").asText();
+            if(!email.matches("core-freeze-"+role+"-[a-f0-9-]+@example\\.test"))throw new IllegalStateException("Retained synthetic identity required");
+            var user=users.findById(row.path("id").asText()).orElseThrow(()->new IllegalStateException("Retained synthetic user missing"));
+            if(!email.equals(user.getEmail())||!(role.equals("admin")?"ADMIN":"USER").equals(user.getRole())||!encoder.matches(row.path("password").asText(),user.getPasswordHash()))throw new IllegalStateException("Retained synthetic identity mismatch");
+        }
+    }
     public static void main(String[]args)throws Exception{
-        if(args.length!=2||!args[1].matches("\\d+\\.\\d+\\.\\d+"))throw new IllegalArgumentException("Isolated directory and version required");
+        boolean resume=args.length==3&&args[2].equals("--resume");
+        if((args.length!=2&&!resume)||!args[1].matches("\\d+\\.\\d+\\.\\d+"))throw new IllegalArgumentException("Isolated directory and version required");
         Path out=Path.of(args[0]).toRealPath(),base=Path.of("acceptance-results/core-freeze").toRealPath();if(!out.startsWith(base)||out.equals(base))throw new IllegalArgumentException("Core-freeze directory required");
+        boolean credentials=Files.isRegularFile(out.resolve("synthetic-login.json")),database=Files.isRegularFile(out.resolve("synthetic-db.mv.db"));
+        if(resume?!(credentials&&database):(credentials||database))throw new IllegalArgumentException("Explicit resume of a retained complete fixture required");
+        System.setProperty("plan.core.fixture.resume",Boolean.toString(resume));
         System.setProperty("plan.core.fixture.directory",out.toString());var context=new AtomicReference<ConfigurableApplicationContext>();
         Thread parent=new Thread(()->{try{while(System.in.read()!=-1){}var c=context.get();if(c!=null)c.close();else System.exit(0);}catch(java.io.IOException ended){System.exit(0);}},"synthetic-parent-lifetime");parent.setDaemon(true);parent.start();
         context.set(new SpringApplicationBuilder(PlanPlatformApplication.class,CoreFreezeFixture.class).run(

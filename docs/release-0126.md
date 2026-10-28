@@ -15,7 +15,15 @@
 3. 升级Web/API并确认健康、登录与受影响路径；正式双端本人保存授权后覆盖、只读登录／队列与冷重开。
 4. 发布验收通过的Windows公开可选源与Android登录受限源，真实检查最新版本且自动下载未勾选；GitHub源码及Windows-only附件归档。
 
-公众注册、官网APK／二维码及必更继续关闭。不发真实邮件、不调用付费模型、不自动提交真实队列。此文不宣称生产切换或任何真机操作已经发生。
+公众注册、官网APK／二维码及必更继续关闭。不发真实邮件、不调用付费模型、不自动提交真实队列。生产切换和正式安装尚未执行；独立双端已补验，见下文。
+
+## 最终修复候选和独立验收
+
+最终候选`production-artifacts/client-release/0.1.26/20261028T140932Z-9ed9476a`包含CF-008修复。Windows更新签名及长期公钥验证通过，SHA256 `e8bbbb6c5757fa0f6bc3fc1460bad02eb0f0bb0d726c736c9c442569ad0fedf9`；正式Android包名／证书／31构建／私有更新源及SHA256 `4767453195c758865cb0a1e2ef5e2c7f53b6164ed5028f6ec67c091420597313`验证通过。没有新增Authenticode认证。
+
+独立r2同源码Windows6组、Android4组通过，分别见`acceptance-results/core-freeze/pc-r2-observations.json`及`android-2026-10-28T14-08-05-921Z/report.json`。往周页面重载保留日期和本机文字；冷启动默认返回记忆工作区，按所选周链接可再读草稿，不承诺自动回到任意上次工具页。Android使用故障代理关闭全部现存TCP连接后确认离线保存禁用，不把移除USB转发但仍有长连接的结果当成断网证明。未操作正式计划或提交真实队列。
+
+Web归档SHA256 `012dfda43e3de0fb86761ebb784c10a9217200e878712fb25a3f5c79c3df7895`，复用已验收API JAR `da8d50fbe22bac2ebf6ce9f84b5ce1bfa405476ab3e2d374f8c2462cc6434d22`，仅重建最终Web资源。ECS候选`/home/oyts/plan-platform/releases/0.1.26-012dfda4`，恢复演练及正式门槛见机器续做记录。
 
 ## 已完成但现已过期的候选打包（禁止发布）
 

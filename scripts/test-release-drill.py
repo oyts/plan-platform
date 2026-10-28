@@ -19,6 +19,7 @@ class SnapshotGuards(unittest.TestCase):
         self.assertEqual(m.selected_profile('admin-center'),('0.1.23','0.1.22',32,33))
         self.assertEqual(m.selected_profile('metrics'),('0.1.24','0.1.23',33,34))
         self.assertEqual(m.selected_profile('updates'),('0.1.25','0.1.24',34,34))
+        self.assertEqual(m.selected_profile('core-freeze'),('0.1.26','0.1.25',34,34))
         with self.assertRaises(RuntimeError):m.selected_profile('unknown')
     def backup(self, folder, body):
         p=Path(folder)/'synthetic.sql.gz'

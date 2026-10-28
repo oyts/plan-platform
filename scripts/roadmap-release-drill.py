@@ -18,7 +18,7 @@ def selected_profile(profile):
                 'templates': ('0.1.19','0.1.18',27,28), 'historical-closure': ('0.1.20','0.1.19',28,30),
                 'ai-reliability': ('0.1.21','0.1.20',30,31), 'ai-long': ('0.1.22','0.1.21',31,32),
                 'admin-center': ('0.1.23','0.1.22',32,33), 'metrics': ('0.1.24','0.1.23',33,34),
-                'updates': ('0.1.25','0.1.24',34,34)}
+                'updates': ('0.1.25','0.1.24',34,34), 'core-freeze': ('0.1.26','0.1.25',34,34)}
     require(profile in profiles, 'Unknown migration profile.')
     return profiles[profile]
 
@@ -63,7 +63,7 @@ def snapshot_restore(backup, sql, environment):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--directory', required=True)
-    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench', 'reflection', 'templates', 'historical-closure', 'ai-reliability', 'ai-long', 'admin-center', 'metrics', 'updates'], default='roadmap')
+    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench', 'reflection', 'templates', 'historical-closure', 'ai-reliability', 'ai-long', 'admin-center', 'metrics', 'updates', 'core-freeze'], default='roadmap')
     parser.add_argument('--archive-sha256')
     parser.add_argument('--api-sha256')
     args = parser.parse_args()
@@ -76,7 +76,7 @@ def main():
     long_planning = args.profile == 'ai-long'
     admin_center = args.profile == 'admin-center'
     metrics = args.profile == 'metrics'
-    updates = args.profile == 'updates'
+    updates = args.profile in ('updates', 'core-freeze')
     new_version, old_version, source_schema, target_schema = selected_profile(args.profile)
     if workbench or reflection or templates or closure or reliability or long_planning or admin_center or metrics or updates:
         require(all(re.fullmatch('[a-f0-9]{64}', value or '') for value in [args.archive_sha256, args.api_sha256]), 'Accepted archive and API hashes required.')
