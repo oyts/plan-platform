@@ -6,7 +6,8 @@ use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, fs, path::PathBuf, sync::Arc, time::{Duration, SystemTime, UNIX_EPOCH}};
 use url::Url;
 
-const DEFAULT_SERVER: &str = if cfg!(feature = "native-regression") { "http://127.0.0.1:43137" } else { "https://plan.zijun701.cn" };
+const DEFAULT_SERVER: &str = if cfg!(feature = "updater-probe") { "http://127.0.0.1:43187" }
+    else if cfg!(feature = "native-regression") { "http://127.0.0.1:43137" } else { "https://plan.zijun701.cn" };
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,8 +72,12 @@ fn now() -> u64 { SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default
 
 fn credential_entry(server: &Url) -> Result<Entry, String> {
     let id = format!("{:x}", Sha256::digest(server.as_str().as_bytes()));
-    let service = if cfg!(feature = "native-regression") { "PlanCabin.Regression.RefreshSession" } else { "PlanCabin.RefreshSession" };
-    Entry::new(service, &id).map_err(|_| "无法打开 Windows 凭据管理器。".into())
+    Entry::new(credential_service(), &id).map_err(|_| "无法打开 Windows 凭据管理器。".into())
+}
+fn credential_service() -> &'static str {
+    if cfg!(feature = "updater-probe") { "PlanCabin.UpdateProbe.RefreshSession" }
+    else if cfg!(feature = "native-regression") { "PlanCabin.Regression.RefreshSession" }
+    else { "PlanCabin.RefreshSession" }
 }
 
 impl DesktopState {
@@ -190,6 +195,13 @@ pub async fn probe(value: &str) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn probe_credentials_and_default_server_are_isolated() {
+        #[cfg(feature = "updater-probe")]
+        { assert_eq!(credential_service(), "PlanCabin.UpdateProbe.RefreshSession"); assert_eq!(DEFAULT_SERVER, "http://127.0.0.1:43187"); }
+        #[cfg(all(not(feature = "updater-probe"), not(feature = "native-regression")))]
+        { assert_eq!(credential_service(), "PlanCabin.RefreshSession"); assert_eq!(DEFAULT_SERVER, "https://plan.zijun701.cn"); }
+    }
     #[tokio::test]
     async fn feedback_request_correlation_uses_only_allowed_headers() {
         use std::{io::{Read, Write}, net::TcpListener};

@@ -131,6 +131,11 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_updater::Builder::new().pubkey(option_env!("PLAN_DESKTOP_UPDATE_PUBKEY").unwrap()).build());
     }
     builder.setup(|app| {
+        #[cfg(feature = "updater-probe")]
+        if app.config().identifier != "cn.zijun701.plan.desktop.updateprobe"
+            || !updates_enabled() || update_tls::test_certificate()?.is_none() {
+            return Err("Update probe requires isolated identity and signed local HTTPS updates.".into());
+        }
         let path = app.path().app_config_dir()?.join("desktop.json");
         app.manage(Mutex::new(DesktopState::load(path).map_err(std::io::Error::other)?));
         app.manage(PendingUpdate(Mutex::new(PreparedUpdate::default())));

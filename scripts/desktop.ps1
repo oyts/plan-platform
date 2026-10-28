@@ -1,14 +1,16 @@
 param(
-    [ValidateSet('check', 'dev', 'build', 'test', 'regression', 'notification-probe', 'stable-trial')][string]$Action = 'check',
+    [ValidateSet('check', 'dev', 'build', 'test', 'regression', 'notification-probe', 'stable-trial', 'update-probe')][string]$Action = 'check',
     [string]$UpdateUrl = '',
     [string]$PublicKeyPath = '',
     [string]$TestCertificatePath = '',
     [string]$TestVersion = '',
     [string]$ArtifactDirectory = '',
     [string]$NativeTestFilter = '',
-    [switch]$IncludeLabTlsTest
+    [switch]$IncludeLabTlsTest,
+    [switch]$UpdateProbeTest
 )
 $ErrorActionPreference = 'Stop'
+if ($UpdateProbeTest -and ($Action -ne 'test' -or -not $NativeTestFilter -or -not $IncludeLabTlsTest)) { throw 'Probe unit tests require an explicit test filter and local TLS fixture.' }
 $publicKeyFile = if ($PublicKeyPath) { (Resolve-Path -LiteralPath $PublicKeyPath).Path } else { '' }
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
@@ -16,11 +18,15 @@ $portableNode = Join-Path $projectRoot '.desktop-tools/node22/node-v22.23.3-win-
 if (Test-Path -LiteralPath "$portableNode/node.exe") { $env:PATH = "$portableNode;$env:PATH" }
 Remove-Item Env:PLAN_DESKTOP_TEST_UPDATE_CERT -ErrorAction SilentlyContinue
 if ($TestCertificatePath) {
-    if ($Action -ne 'build' -or $UpdateUrl -ne 'https://127.0.0.1:43133/windows/latest.json') { throw 'Test certificates are limited to local updater lab builds.' }
+    if ($Action -notin @('build','update-probe') -or $UpdateUrl -ne 'https://127.0.0.1:43133/windows/latest.json') { throw 'Test certificates are limited to local updater lab builds.' }
     $labOutputPrefix = [IO.Path]::GetFullPath((Join-Path $projectRoot 'client-update-artifacts/local')) + [IO.Path]::DirectorySeparatorChar
     if (-not $ArtifactDirectory -or -not [IO.Path]::GetFullPath($ArtifactDirectory).StartsWith($labOutputPrefix, [StringComparison]::OrdinalIgnoreCase)) { throw 'Lab builds must use an isolated local artifact directory.' }
 }
 if ($TestVersion -and (-not $TestCertificatePath -or $TestVersion -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$')) { throw 'Version overrides require a local test certificate and x.y.z version.' }
+if ($Action -eq 'update-probe') {
+    $probeKey = [IO.Path]::GetFullPath((Join-Path $projectRoot '.desktop-tools/test-signing/desktop-test.key.pub'))
+    if (-not $TestCertificatePath -or -not $TestVersion -or $publicKeyFile -ne $probeKey) { throw 'Isolated update probe requires local TLS, an explicit version and the existing TEST signing identity.' }
+}
 
 $portableCargo = Join-Path $projectRoot '.desktop-tools/cargo'
 if (Test-Path -LiteralPath "$portableCargo/bin/cargo.exe") {
@@ -75,7 +81,10 @@ if (-not (Test-Path -LiteralPath 'node_modules/@tauri-apps/cli')) {
 }
 if ($Action -eq 'test') {
     if ($NativeTestFilter) {
-        & cargo test --manifest-path src-tauri/Cargo.toml --locked $NativeTestFilter
+        $testArguments=@('test','--manifest-path','src-tauri/Cargo.toml','--locked')
+        if($UpdateProbeTest){$testArguments+=@('--features','updater-probe')}
+        $testArguments+=$NativeTestFilter
+        & cargo @testArguments
         if ($LASTEXITCODE -ne 0) { throw 'Selected native tests failed.' }
         exit 0
     }
@@ -142,6 +151,12 @@ if ($UpdateUrl -or $PublicKeyPath) {
     if ($TestVersion) {
         $configObject = $updaterConfig | ConvertFrom-Json
         $configObject | Add-Member -NotePropertyName version -NotePropertyValue $TestVersion
+        if ($Action -eq 'update-probe') {
+            $configObject | Add-Member -NotePropertyName productName -NotePropertyValue 'Plan Cabin Update Probe'
+            $configObject | Add-Member -NotePropertyName identifier -NotePropertyValue 'cn.zijun701.plan.desktop.updateprobe'
+            $configObject | Add-Member -NotePropertyName app -NotePropertyValue @{ windows=@(@{label='main';create=$false;title='Plan Cabin Update Probe';width=1280;height=860;minWidth=800;minHeight=600}) }
+            $configObject.bundle | Add-Member -NotePropertyName windows -NotePropertyValue @{nsis=@{displayLanguageSelector=$false}}
+        }
         $updaterConfig = $configObject | ConvertTo-Json -Depth 5 -Compress
     }
     $generatedConfigDir = Join-Path $projectRoot 'web/src-tauri/gen'
@@ -154,13 +169,15 @@ if ($UpdateUrl -or $PublicKeyPath) {
     Remove-Item Env:PLAN_DESKTOP_UPDATE_PUBKEY -ErrorAction SilentlyContinue
     Remove-Item Env:TAURI_CONFIG -ErrorAction SilentlyContinue
 }
+if ($Action -eq 'update-probe') { $tauriArguments += @('--features', 'updater-probe') }
 $tauriArguments += @('--', '--locked')
 & npm.cmd run desktop:build -- @tauriArguments
 if ($LASTEXITCODE -ne 0) { throw 'Desktop installer build failed.' }
 $artifactDirectory = if ($ArtifactDirectory) { [IO.Path]::GetFullPath($ArtifactDirectory) } else { Join-Path $projectRoot 'desktop-artifacts' }
 New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
 $builtVersion = if ($TestVersion) { $TestVersion } else { (Get-Content src-tauri/tauri.conf.json -Raw -Encoding UTF8 | ConvertFrom-Json).version }
-$installers = Get-ChildItem -LiteralPath 'src-tauri/target/release/bundle/nsis' -Filter "Plan Cabin_${builtVersion}_x64-setup.exe"
+$productName = if ($Action -eq 'update-probe') { 'Plan Cabin Update Probe' } else { 'Plan Cabin' }
+$installers = Get-ChildItem -LiteralPath 'src-tauri/target/release/bundle/nsis' -Filter "${productName}_${builtVersion}_x64-setup.exe"
 if (-not $installers) { throw 'Build succeeded but no Windows installer was found.' }
 foreach ($installer in $installers) {
     Copy-Item -LiteralPath $installer.FullName -Destination $artifactDirectory -Force
