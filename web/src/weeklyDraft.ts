@@ -11,7 +11,7 @@ export function weeklyNativeResumePath(hash:string):string|null{
     if(url.origin!=='https://native.invalid'||url.pathname!=='/weekly-review'||url.hash)return null;
     if([...url.searchParams.keys()].some(key=>key!=='date')||url.searchParams.getAll('date').length>1)return null;
     const date=url.searchParams.get('date');
-    if(date!==null&&weeklyReviewSelection(date,'')!==date)return null;
+    if(date!==null&&(!date||weeklyReviewSelection(date,'')!==date))return null;
     return '/weekly-review'+(date===null?'':'?date='+date);
   }catch{return null;}
 }
