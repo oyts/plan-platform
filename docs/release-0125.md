@@ -1,15 +1,15 @@
-# 计划舱0.1.25：更新体验（Web／Windows已发布，Android待真机）
+# 计划舱0.1.25：更新体验（三端验收与发布）
 
 ## 当前实际交付
 
-2026-10-28最新：**Web/API及Windows官网／可选源已发布0.1.25，Android正式及登录受限源仍0.1.24／29**。Windows实际应用内更新、合成非空队列、正式覆盖／冷重开和发布后更新检查已通过；Android本轮由维护者选择稍后测试，没有枚举或操作手机。Android 0.1.25／30正式签名候选保留，GitHub不可变v0.1.25归档等待该门槛，当前最新标签仍v0.1.24。
+2026-10-28最新：**Web/API、Windows官网／可选源和Android正式／登录受限源均为0.1.25／Android30**。双端实际应用内更新及合成非空队列、正式覆盖／原空队列／冷重开和发布后更新检查均已通过。GitHub归档是三端验收后执行的最后步骤，以[同名Release](https://github.com/oyts/plan-platform/releases/tag/v0.1.25)实际状态为准；不附APK。
 
 第五阶段包括有界自动检查与失败退避、按更新源／平台／版本及Android账号隔离的忽略／稍后、安装版本亮点／历史，以及PWA刷新前确认。不能把Windows或手机网页结果代替Android实际更新／升级证据。公众注册、官网APK／二维码和生产必更均未开放，自动下载默认关闭。首次独立Windows试包凭据隔离失误及修正经过保留在[阶段检查点](update-experience-progress.md)。
 
 ## 不可变产物
 
 - 已冻结正式候选的共享业务源码提交`031ce0c`，版本统一0.1.25／30；后续增加发布工具、测试、文档及默认不启用的`updater-probe`专用验收特性，不重制正式安装包。该特性隔离本机API和凭据、启动时拒绝非测试身份／无本机TLS，禁止WebView调试；正式候选未包含该特性。
-- 正式候选`production-artifacts/client-release/0.1.25/20261027T081918Z-39d6b279`。Windows SHA256 `39a3b923262474e55eb18bcd0f2233668e42903d609e7bc4fd84009269d350fb`；Android `1c748869224eb470b95a528d39e3b626be87cd3369b3091024a9209b80846390`。原身份、Windows更新签名和Android证书已核验；Windows精确字节已公开，APK未分发。
+- 正式候选`production-artifacts/client-release/0.1.25/20261027T081918Z-39d6b279`。Windows SHA256 `39a3b923262474e55eb18bcd0f2233668e42903d609e7bc4fd84009269d350fb`；Android `1c748869224eb470b95a528d39e3b626be87cd3369b3091024a9209b80846390`。原身份、Windows更新签名和Android证书已核验；Windows精确字节公开，APK只在登录受限源发布。
 - API JAR `78dfb43b0a0a2538bb1df4a3bc0ccdb0a8d9a93e8cf09ebaf2313a69738e9e73`；部署归档 `4be0a01f7ebfed29b8559cf97bda5e44c90bfdd53d597a3decc6953ed3ba9e80`，服务器目录`/home/oyts/plan-platform/releases/0.1.25-4be0a01f`。
 - 本轮没有修改共享业务源码或重建该API和EXE／APK字节。0.1.25新镜像由原归档在ECS本地构建，不拉取新基础镜像；旧镜像、目录、卷和备份保留。
 
@@ -46,20 +46,27 @@
 
 公网五组通过：健康、注册关闭及HTTPS跳转；no-store可选清单；两条Windows下载路径实际EXE、签名与哈希；桌面／手机网页官网按钮；Android公开下载／二维码仍关闭。证据`acceptance-results/windows-public-cloud/2026-10-28T05-49-33-094Z-2b204ecd/report.json`。正式Windows随后实际点击检查，显示最新0.1.25，自动下载未勾选；之后停止PC输入，电脑交还本人。
 
-## Android验收准备（不是手机通过）
+## Android验收准备（本段只记录构建，不替代下文真机结果）
 
 新建隔离调试身份`cn.zijun701.plan.mobile.updateprobe`，名称“计划舱更新验收”，不覆盖正式版或旧回归包。0.1.25／30起点与0.1.26／31目标同测试证书，位于`client-update-artifacts/local/stage5-android/{bootstrap,target}`；真实aapt／apksigner及字节核对通过。**两包都是本机测试包，不得分发朋友、上传官网或受限正式源。** 正式0.1.25／30候选仍为上文冻结字节。
 
 测试构建要求`PLAN_NATIVE_REGRESSION=1`、显式版本、固定loopback HTTPS和测试CA；正式release及非隔离身份拒绝。CA仅用于测试更新器，不修改系统或业务HTTP信任。4项负向构建／身份保护、7项既有Android更新规则及3项本机真实TLS／APK字节／路径保护通过；52项受影响前端用例随两包构建重复通过，不累计为104项。Windows实验室6项TLS补验通过；先前因合法新增Android路径而失效的404断言已改为未知路径，旧失败证据保留。首次Gradle缓存权限失败后，以正常本机权限重试构建成功，没有清缓存或放宽ACL。
 
-元数据`client-update-artifacts/local/stage5-android/metadata.json`；TLS证据`acceptance-results/update-experience/android-probe-preflight/1793167106118.json`；构建守卫`test-android-update-probe-guards.mjs`。这只验证本机传输与构建，不是Android真机、系统安装或正式登录受限鉴权证明。本机测试源有意不要求登录，正式通道仍必须登录。没有枚举、安装或控制手机。
+元数据`client-update-artifacts/local/stage5-android/metadata.json`；TLS证据`acceptance-results/update-experience/android-probe-preflight/1793167106118.json`；构建守卫`test-android-update-probe-guards.mjs`。这只验证本机传输与构建，不是Android真机、系统安装或正式登录受限鉴权证明。本机测试源有意不要求登录，正式通道仍必须登录。该准备窗口没有操作手机；随后真机结果如下。
 
-## 剩余收口（阶段6尚未开始）
+## Android实际更新、正式升级和受限发布（已完成）
 
-1. 等维护者确认手机可用后，先枚举唯一实际设备，用隔离身份补本阶段更新提示／持久选择、必更优先／坏哈希拒装、重开及真实下载→本人系统确认安装→合成非空队列保留。锁屏／其他应用前台／系统安全提示立即交还本人，不自动绕过。
-2. Android正式覆盖须再次保存确认；核对实际旧版本、同包名／证书／冻结APK、原登录与队列，升级后只读检查原计划、冷重开。不能用手动覆盖替代上一步应用内链路，不提交真实队列。
-3. 通过后发布Android登录受限可选源，补鉴权、账号隔离、哈希／缓存与正式手机实际检查。官网APK／二维码及公众注册继续关闭。
-4. 最后创建不可变`v0.1.25`和Windows-only GitHub Release，不附APK／测试资料；之后才可称阶段5完整交付、进入阶段6。无需重装已验收PC或重复本次无迁移的生产切换。
+维护者确认连接／独立安装及正式保存覆盖后，枚举唯一授权设备。独立更新身份25／30→26／31由真实Java检查、下载、大小／SHA／包身份／证书校验，本人授权安装来源及确认系统安装；没有使用ADB推目标包替代应用内安装。七组最终定向检查通过：忽略与亮点冷重开、真实断网新增合成1/0队列并保留0次尝试、必更优先及安全出口、坏SHA拒装、稍后／503持久退避（11→11请求）、实际升级后登录／同名合成待办／1/0与0次尝试、再次冷重开及安装版本历史。正式APK在独立验收期间哈希不变。证据`acceptance-results/update-experience/android-probe/2026-10-28T06-28-33-880Z`。
+
+两次早期停止分别为vivo密码保险箱（本人处理）及点击后毫秒级强停未保留偏好。工具随后先确认“已忽略”界面并留1.5秒WebView写入／生命周期稳定时间，再强停冷重开通过；旧失败记录保留，不称为已修复业务缺陷，不声称崩溃／断电时LocalStorage绝不丢失。测试源匿名不能证明正式账号隔离，账号／源偏好由既有定向单测及下文真实受限两账号核对分别支撑。未读正式会话存储或自动填写正式认证。
+
+正式升级前24／29仍登录且队列0/0，本人保存授权后同包名同证书覆盖25／30，精确APK字节一致。五组只读检查通过：亮点明确关闭、原登录／原0/0与签名APK、实际安装25／30且自动下载未勾选、帮助版本历史、冷重开原会话／队列与亮点不重复。没有证明正式非空队列或逐份私人计划内容，合成非空证据单独保留。证据`acceptance-results/native-update-experience-0125/after-20261028T063611795607Z.json`。
+
+私有阶段`production-artifacts/invited-android/0.1.25/candidate-VhGNkF`已激活到`android-private/staging/android-30-cbaf7bb4`，最低支持构建1，仍可选更新；保留旧APK、清单和回退脚本。实际Compose显示原后端Running，仅更新私有源并重载Nginx，无数据库迁移或全服务切换。四组HTTPS通过：未登录／无效令牌对清单和APK均401、公开旧路径／APK404且官网QR和注册关闭、两个受邀普通账号各自accountId／private no-store清单／完整APK哈希通过。证据`acceptance-results/invited-android/2026-10-28T06-36-51-319Z-e9e399b3/report.json`。
+
+正式手机随后实际检查最新25／30、自动下载未勾选、原0/0未提交，两组通过，证据`acceptance-results/native-update-experience-0125/update-check-20261028T063757793227Z.json`。测试CDP转发及本轮43133／43187反向转发已移除，测试更新夹具正常停止，合成队列仍在独立包、不提交。没有新增付费AI／真实邮件，没有公开APK、开启注册／必更或启动阶段6。
+
+阶段5产品与三端发布门槛齐备；GitHub最后归档状态以Release页为准。无需重装已验收PC或重复本次无迁移的生产切换。下一阶段为另行启动的核心冻结／综合回归及UI交接，不提前进行全站重设计。
 
 ## 回退准备（本轮未执行）
 
@@ -79,4 +86,4 @@ ln -s "$previous" "$root/current.new"
 mv -Tf "$root/current.new" "$root/current"
 ```
 
-旧镜像启动兼容已在隔离库验证，没有实际回退现网。上述是Web/API入口回退，不会撤回现已发布的Windows25文件。静态分发另保留在`client-public/releases/windows-0125-QG4pVi`中的发布前指针与配置；若需回退先按该run的脚本说明核对当前指针和保留的旧文件，不能删除已下载包或盲目重跑旧激活。Android清单未变化。不要将V33→V34旧演练再次跑在已V34生产上。
+旧镜像启动兼容已在隔离库验证，没有实际回退现网。上述是Web/API入口回退，不会撤回现已发布的Windows25文件。静态分发另保留在`client-public/releases/windows-0125-QG4pVi`中的发布前指针与配置；Android私有源可在核对当前清单后用`android-private/staging/android-30-cbaf7bb4/rollback.sh`恢复前次配置，不降级已安装客户端。不能删除已下载包、旧恢复点或盲目重跑旧激活。不要将V33→V34旧演练再次跑在已V34生产上。

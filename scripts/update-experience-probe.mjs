@@ -76,7 +76,7 @@ const server=createServer({pfx:readFileSync(resolve(tls,'server.p12')),passphras
  res.writeHead(404);res.end();
 });
 await new Promise((ok,bad)=>{server.once('error',bad);server.listen(43133,'127.0.0.1',ok)});save();
-mkdirSync(resolve(controlFile,'..'),{recursive:true});writeFileSync(controlFile,JSON.stringify({id:0,command:'idle'}),{mode:0o600});let lastId=0;
+mkdirSync(resolve(controlFile,'..'),{recursive:true});writeFileSync(controlFile,JSON.stringify({id:0,command:'idle',reportFile:resolve(out,'transport-report.json')}),{mode:0o600});let lastId=0;
 const polling=setInterval(()=>{try{const value=JSON.parse(readFileSync(controlFile,'utf8'));if(value.id===lastId)return;if(!Number.isSafeInteger(value.id)||!allowed.includes(value.command))return;lastId=value.id;const cmd=value.command;if(cmd==='stop'){void stop();return;}if(['online','offline'].includes(cmd)){online=cmd==='online';gate.setOnline(online);}else scenario=cmd;report.commands.push({at:new Date().toISOString(),command:cmd});save();console.log(JSON.stringify({scenario,online}));}catch{/* Atomic caller retry; never accept arbitrary input. */}},250);
 async function stop(){if(stopping)return;stopping=true;clearTimeout(ttl);clearInterval(polling);await gate.close();await new Promise(ok=>server.close(ok));report.status='STOPPED';save();}
 const ttl=setTimeout(()=>void stop(),7200000);for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>void stop());
