@@ -1,0 +1,351 @@
+{
+  "schema": 1,
+  "version": "0.1.26",
+  "scope": "Source-derived route/view/auth inventory, not runtime permission proof",
+  "routes": [
+    {
+      "path": "/desktop",
+      "component": "@/views/DesktopView.vue",
+      "redirect": null,
+      "public": true,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/login",
+      "component": "@/views/LoginView.vue",
+      "redirect": null,
+      "public": true,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/register",
+      "component": "@/views/RegisterView.vue",
+      "redirect": null,
+      "public": true,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/reset-password",
+      "component": "@/views/ResetPasswordView.vue",
+      "redirect": null,
+      "public": true,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/",
+      "component": "@/views/HomeEntryView.vue",
+      "redirect": null,
+      "public": true,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/welcome",
+      "component": "@/views/ProductHomeView.vue",
+      "redirect": null,
+      "public": true,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/help",
+      "component": "@/views/HelpView.vue",
+      "redirect": null,
+      "public": true,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/help/demo",
+      "component": "@/views/DemoView.vue",
+      "redirect": null,
+      "public": true,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/todos",
+      "component": "@/views/TodosView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/ai",
+      "component": "@/views/AiPlanningView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/overview",
+      "component": "@/views/DailyOverviewView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/reminders",
+      "component": "@/views/RemindersView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/weekly-review",
+      "component": "@/views/WeeklyReviewView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/reflection",
+      "component": "@/views/ReflectionView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/feedback",
+      "component": "@/views/FeedbackView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/organize",
+      "component": "@/views/OrganizeView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/templates",
+      "component": "@/views/PersonalTemplatesView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/offline",
+      "component": "@/views/OfflineView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/operations",
+      "component": null,
+      "redirect": "/admin/operations",
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/schedule",
+      "component": "@/views/ScheduleView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/plans",
+      "component": "@/views/PlansView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/plans/:id",
+      "component": "@/views/PlanDetailView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/plans/:id/studio",
+      "component": "@/views/PlanStudioView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/stats",
+      "component": "@/views/StatsView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/reviews",
+      "component": "@/views/ReviewView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/records",
+      "component": "@/views/RecordsView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/exports",
+      "component": "@/views/ExportsView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/members",
+      "component": null,
+      "redirect": "/admin/members",
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/admin",
+      "component": "@/views/AdminLayout.vue",
+      "redirect": null,
+      "public": false,
+      "admin": true,
+      "layout": true
+    },
+    {
+      "path": "/admin",
+      "component": "@/views/AdminOverviewView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": true,
+      "layout": false
+    },
+    {
+      "path": "/admin/members",
+      "component": "@/views/MembersView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": true,
+      "layout": false
+    },
+    {
+      "path": "/admin/ai",
+      "component": "@/views/AdminAiView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": true,
+      "layout": false
+    },
+    {
+      "path": "/admin/operations",
+      "component": "@/views/OperationsView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": true,
+      "layout": false
+    },
+    {
+      "path": "/admin/feedback",
+      "component": "@/views/FeedbackView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": true,
+      "layout": false
+    },
+    {
+      "path": "/verify-email",
+      "component": "@/views/VerifyEmailView.vue",
+      "redirect": null,
+      "public": true,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/change-email",
+      "component": "@/views/EmailChangeVerifyView.vue",
+      "redirect": null,
+      "public": true,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/mainlines",
+      "component": "@/views/MainlinesView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/routes",
+      "component": "@/views/RouteHomeView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/route-progress",
+      "component": "@/views/RouteProgressView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/route-records",
+      "component": "@/views/RecordsView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/sync",
+      "component": "@/views/SyncView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/settings",
+      "component": "@/views/SettingsView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    },
+    {
+      "path": "/learn/:lesson?",
+      "component": "@/views/LearningView.vue",
+      "redirect": null,
+      "public": false,
+      "admin": false,
+      "layout": false
+    }
+  ]
+}

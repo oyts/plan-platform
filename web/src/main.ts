@@ -12,6 +12,7 @@ import { initializeClientUpdates, checkClientUpdate } from './clientUpdates';
 import { workspace, workspaceEntry } from './workspace';
 import { workspaceHome } from './workspaceModel';
 import { aiNativeResumePath } from './aiPlanning';
+import { weeklyNativeResumePath } from './weeklyDraft';
 import {validReminderPath} from './reminders';
 import {onQueueChange,queueCount} from './offlineQueue';
 import {currentQueueOwner} from './api/client';
@@ -20,7 +21,7 @@ const pinia = createPinia();
 app.use(pinia);
 async function bootstrap(): Promise<void> {
   await initializeDesktop();
-  const aiResume = isDesktop() ? aiNativeResumePath(location.hash) : null;
+  const nativeResume = isDesktop() ? aiNativeResumePath(location.hash) ?? weeklyNativeResumePath(location.hash) : null;
   await initializeClientUpdates();
   const auth = useAuthStore(pinia);
   if (!isDesktop()) await auth.bootstrap();
@@ -50,7 +51,7 @@ async function bootstrap(): Promise<void> {
     window.addEventListener('plan-platform:session-invalidated',()=>{void import('./desktop').then(m=>m.nativeInvoke('reminder_clear')).catch(()=>undefined);});
     await auth.bootstrap();
     await suspendForQueue();
-    if (auth.user && router.currentRoute.value.path === '/login') await router.replace(aiResume ?? await workspaceEntry());
+    if (auth.user && router.currentRoute.value.path === '/login') await router.replace(nativeResume ?? await workspaceEntry());
     if (isAndroid() && auth.user) void checkClientUpdate('automatic');
     if(isAndroid()&&auth.user)window.dispatchEvent(new Event('plan-platform:reminder-ready'));
   }

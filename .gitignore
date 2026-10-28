@@ -36,6 +36,7 @@ backend/target-historical/
 backend/target-closure-release/
 backend/target-ai-reliability/
 backend/target-ai-long/
+backend/target-core-freeze/
 android-artifacts/
 .android-signing/
 *.keystore

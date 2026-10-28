@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import { api, apiMessage, currentQueueOwner, serverScope } from '@/api/client';
 import { cacheResponse } from '@/offlineCache';
 import { requiresConnection } from '@/connectionState';
@@ -8,9 +8,10 @@ import { localDate, shiftDate } from '@/todos';
 import { mondayOf, recordedTime, type WeeklyReview, type WeekSummary } from '@/dailyExperience';
 import type { PageResponse } from '@/types';
 import {readPrivateDraft,writePrivateDraft,deletePrivateDraft} from '@/privateDrafts';
-import {parseWeeklyDraft,type WeeklyLocalDraft} from '@/weeklyDraft';
+import {parseWeeklyDraft,weeklyReviewSelection,type WeeklyLocalDraft} from '@/weeklyDraft';
 const owner=currentQueueOwner()??'',scope=serverScope();let active=true;const inContext=()=>active&&owner===currentQueueOwner()&&scope===serverScope();
-const selected=ref(localDate()), start=ref(mondayOf(localDate()));
+const route=useRoute(),router=useRouter();
+const selected=ref(weeklyReviewSelection(route.query.date,localDate())), start=ref(mondayOf(selected.value));
 const summary=ref<WeekSummary|null>(null), current=ref<WeeklyReview|null>(null), history=ref<PageResponse<WeeklyReview>|null>(null), historyPage=ref(0);
 const loading=ref(false), saving=ref(false), error=ref(''), notice=ref('');
 const draft=reactive({wins:'',blockers:'',nextFocus:''}); const baseline=ref(JSON.stringify(draft));
@@ -36,7 +37,7 @@ async function load() {
 }
 async function loadHistory(){try{history.value=(await api.get<PageResponse<WeeklyReview>>('/weekly/reviews',{params:{page:historyPage.value,size:10}})).data;}catch(e){error.value=apiMessage(e);}}
 function mayLeave(){return !currentQueueOwner() || !saving.value&&!localSaving.value && (!dirty.value||JSON.stringify(draft)===localClean.value || confirm('周复盘还有未保存到本机或云端的修改。确定离开吗？'));}
-async function choose(value=selected.value){if(!mayLeave()){selected.value=start.value;return;}try{start.value=mondayOf(value);selected.value=start.value;current.value=null;summary.value=null;baseVersion.value=null;localDraft.value=null;localClean.value='';Object.assign(draft,{wins:'',blockers:'',nextFocus:''});clean();await load();}catch(e){error.value=apiMessage(e);}}
+async function choose(value=selected.value){try{const week=mondayOf(value);if(route.query.date!==week){await router.replace({path:'/weekly-review',query:{...route.query,date:week}});if(route.query.date!==week)selected.value=start.value;return;}if(!mayLeave()){selected.value=start.value;return;}start.value=week;selected.value=week;current.value=null;summary.value=null;baseVersion.value=null;localDraft.value=null;localClean.value='';Object.assign(draft,{wins:'',blockers:'',nextFocus:''});clean();await load();}catch(e){error.value=apiMessage(e);}}
 async function moveWeek(delta:number){await choose(shiftDate(start.value,delta*7));}
 async function save(){
   if(!current.value||saving.value||needsReview.value||storageError.value)return;
@@ -58,6 +59,7 @@ function adoptLatest(){if(!current.value||!confirm('已比较下方云端内容�
 async function historyMove(delta:number){historyPage.value+=delta;await loadHistory();}
 function beforeUnload(event:BeforeUnloadEvent){if((dirty.value&&JSON.stringify(draft)!==localClean.value)||saving.value||localSaving.value){event.preventDefault();event.returnValue='';}}
 onBeforeRouteLeave(mayLeave);
+onBeforeRouteUpdate(mayLeave);
 onMounted(()=>{void load();void loadHistory();window.addEventListener('beforeunload',beforeUnload);});
 onUnmounted(()=>{active=false;requestNumber++;window.removeEventListener('beforeunload',beforeUnload);});
 </script>

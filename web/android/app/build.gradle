@@ -23,8 +23,8 @@ android {
         manifestPlaceholders = [planAppLabel: updateProbe ? '计划舱更新验收' : (nativeRegression ? '计划舱回归测试' : '@string/app_name')]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode Integer.parseInt(System.getenv('PLAN_ANDROID_TEST_VERSION_CODE') ?: '30')
-        versionName System.getenv('PLAN_ANDROID_TEST_VERSION') ?: "0.1.25"
+        versionCode Integer.parseInt(System.getenv('PLAN_ANDROID_TEST_VERSION_CODE') ?: '31')
+        versionName System.getenv('PLAN_ANDROID_TEST_VERSION') ?: "0.1.26"
         buildConfigField 'String', 'PLAN_UPDATE_URL', groovy.json.JsonOutput.toJson(nativeRegression && !updateProbe ? '' : (System.getenv('PLAN_ANDROID_UPDATE_URL') ?: 'https://plan.zijun701.cn/api/client-updates/android/latest'))
         buildConfigField 'boolean', 'PLAN_UPDATE_PROBE', updateProbe.toString()
         buildConfigField 'String', 'PLAN_TEST_UPDATE_CERT', groovy.json.JsonOutput.toJson(System.getenv('PLAN_ANDROID_TEST_UPDATE_CERT') ?: '')

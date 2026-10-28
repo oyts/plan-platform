@@ -1,0 +1,34 @@
+{
+  "schema":1,
+  "baseline":{"version":"0.1.25","androidCode":30,"flyway":34,"releaseTag":"v0.1.25"},
+  "scope":"UI redesign input only, not a new UI or an importable user backup",
+  "protectedIdentities":["Windows cn.zijun701.plan.desktop","Android cn.zijun701.plan.app","existing platform credential namespace","server-and-owner IndexedDB scope","API entity IDs and optimistic versions","offline operation idempotency keys","AI session/draft/revision/adjustment binding","personal backup schema4 reading1-3","existing signing identities and trusted update sources"],
+  "pageStates":[
+    {"state":"empty","rule":"Explain the mode and first action without fabricating tasks or statistics"},
+    {"state":"loading","rule":"Keep previous input; cancel/ignore stale reads after account/server/object changes"},
+    {"state":"error","rule":"Keep input and explain retry scope; do not label every401/404/schema error as TLS"},
+    {"state":"offline-cached","rule":"Show cache age/scope; recent identity is limited to24hours, missing snapshot is not an empty successful response"},
+    {"state":"offline-pending","rule":"Local is not uploaded; keep ordering/idempotency, no implicit replay or queue clearing"},
+    {"state":"conflict409","rule":"Keep local draft and following operations; show available base/local/cloud and require manual confirmation"},
+    {"state":"ai-pending","rule":"Separate queue/run/repair/unknown; no paid automatic offline replay or unknown-result retry"},
+    {"state":"readonly-protected","rule":"Completed history, timers, expired snapshots and role restrictions must not be editable by a visual shortcut"},
+    {"state":"update-optional","rule":"Respect ignore/snooze scope and default-off download; installation always confirmed"},
+    {"state":"update-required","rule":"Verified policy only; preserve export/sync/settings exits and all local data"},
+    {"state":"system-handoff","rule":"Show share/save/install permission/cancel outcomes; OS security and credentials remain owner-controlled"}
+  ],
+  "deepLinks":[
+    {"path":"/weekly-review","query":["date"],"rule":"Selected historical week survives reload/offline reopen; query changes retain unsaved-input confirmation"},
+    {"path":"/ai","query":["mode","target","session"],"rule":"PLAN/ROUTE/TODO mode, owner-checked selected object or persisted session; link grants no write permission"},
+    {"path":"/schedule","query":["plan","date","task"],"rule":"Keep selected plan/date/task focus; task ownership checked by API"},
+    {"path":"/mainlines","query":["line"],"rule":"Restore selected route without forcing a deadline or changing execution mode"},
+    {"path":"/todos","query":["date","focus"],"rule":"Keep date and focused private todo"},
+    {"path":"/help","hash":"release-history","rule":"Native hash routing and in-page fragment must remain distinguishable"},
+    {"path":"/learn/:lesson?","rule":"Keep lesson IDs, local private progress and no real business writes during practice"},
+    {"path":"/change-email","hash":"request side token","rule":"Verification secrets stay in fragment; no analytics/referrer/log export"},
+    {"path":"/verify-email","rule":"Explicit owner confirmation; link visit alone must not silently change identity"}
+  ],
+  "compatibilityAliases":[{"path":"/members","redirect":"/admin/members"},{"path":"/operations","redirect":"/admin/operations"}],
+  "navigation":{"modes":["plan","route","todo"],"perOwnerServer":true,"adminSeparate":true,"requiredUpdateExits":["/desktop","/sync","/exports","/settings","/login"]},
+  "platformLimits":{"web":"No installed identity or guaranteed closed-browser reminder; SW shell and private data cache are separate","windows":"Credential Manager and Tauri requests, native save/update/system notification; no blanket Authenticode claim","android":"Keystore and Java requests; private APK feed, system install/share/file permissions and OEM background restrictions"},
+  "outOfScope":["new logo or visual assets","whole-site restyling","public registration or APK downloads","1.0 naming","team or public template market","new provider or local large model"]
+}

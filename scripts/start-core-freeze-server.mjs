@@ -1,0 +1,17 @@
+// Only owned loopback fixture processes. Explicit control channel precedes Windows teardown.
+import {spawn}from'node:child_process';import{readFileSync,createWriteStream,existsSync,realpathSync,mkdirSync}from'node:fs';
+import{resolve,join,relative,delimiter,isAbsolute}from'node:path';import{fileURLToPath}from'node:url';
+import{assertPortsFree}from'./native-regression-support.mjs';import{fixtureControl}from'./metrics-fixture-control.mjs';
+const root=fileURLToPath(new URL('../',import.meta.url)),role=process.argv[2];if(!['api','preview','reliability','long','admin','metrics'].includes(role)||process.argv.length!==3)throw Error('Explicit known fixture role required');
+const out=realpathSync(process.env.PLAN_CORE_RUN_DIRECTORY||''),base=realpathSync(join(root,'acceptance-results/core-freeze')),part=relative(base,out);if(!part||part.startsWith('..')||isAbsolute(part)||!/^\d{4}-\d{2}-\d{2}T[\d-]+Z-(browser(?:-(?:followup|reliability|long|long-followup|admin|admin-followup|metrics|ui))?|native)$/.test(part))throw Error('Existing isolated core-freeze run directory required');
+const port=({api:43131,reliability:43171,long:43174,admin:43180,metrics:43180,preview:43130})[role];await assertPortsFree([port]);const log=createWriteStream(join(out,role+'-service.log'),{flags:'wx'});
+let child;
+if(role!=='preview'){
+ const target=join(root,'backend/target-core-freeze'),cp=[join(target,'test-classes'),join(target,'classes'),readFileSync(join(target,'classpath.txt'),'utf8').trim()].join(delimiter),version=JSON.parse(readFileSync(join(root,'web/package.json'),'utf8')).version;
+ let main='com.oyts.planplatform.ai.CoreFreezeFixture',args=[out,version];
+ if(role!=='api'){const folder=({reliability:'ai-reliability',long:'ai-long',admin:'admin-center',metrics:'admin-center'})[role],fixture=join(root,'acceptance-results',folder,part.split('Z-')[0]+'Z');mkdirSync(fixture,{recursive:true});main='com.oyts.planplatform.ai.CoreFreezeFixtureLauncher';args=[role,fixture];}
+ child=spawn(join(process.env.JAVA_HOME||'E:/biancheng/JDK21','bin/java.exe'),['-Xmx768m','-Duser.timezone=Asia/Shanghai','-cp',cp,main,...args],{cwd:root,windowsHide:true,stdio:['pipe','pipe','pipe']});
+}else{const kind=process.env.PLAN_CORE_BROWSER_KIND,config=({reliability:'vite.reliability.config.ts',long:'vite.ai-long.config.ts',admin:'vite.admin.config.ts',metrics:'vite.admin.config.ts'})[kind]||'vite.config.ts';child=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--config',config,'--host','127.0.0.1','--port','43130','--strictPort'],{cwd:join(root,'web'),env:{...process.env,PLAN_ACCEPTANCE_API:'1'},windowsHide:true,stdio:['pipe','pipe','pipe']});}
+child.stdout.pipe(log);child.stderr.pipe(log);let stopped=false,forced;const ttl=setTimeout(stop,7200000);
+function stop(){if(stopped)return;stopped=true;clearTimeout(ttl);if(child.exitCode===null){if(role!=='preview')child.stdin.end();else child.kill();forced=setTimeout(()=>child.kill(),10000);forced.unref();}}
+const control=await fixtureControl(join(out,(role==='preview'?'preview':'api')+'-control.json'),stop);for(const s of ['SIGINT','SIGTERM'])process.on(s,stop);child.on('error',e=>{console.error('Isolated '+role+' failed: '+e.message);stop();process.exitCode=1;});child.on('exit',code=>{clearTimeout(ttl);clearTimeout(forced);control.close();log.end();process.exitCode=code??0;});console.log('Core-freeze '+role+' readying on loopback'+port+'; owner-controlled fixture, no production.');

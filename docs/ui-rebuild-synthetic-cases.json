@@ -1,0 +1,12 @@
+{
+  "schema":1,"synthetic":true,"importableBackup":false,"referenceDate":"2026-11-02","networkCalls":false,
+  "scenarios":[
+    {"id":"plan-regular","mode":"PLAN","name":"零基础Java学习合成周期","startDate":"2026-11-02","endDate":"2026-11-29","restDays":[7],"items":[{"localId":"plan_open","title":"变量与输入练习","status":"NOT_STARTED","plannedMinutes":30,"version":2},{"localId":"plan_done","title":"已经完成的合成练习","status":"COMPLETED","plannedMinutes":20,"actualSeconds":1300,"protected":true},{"localId":"plan_deferred","title":"周日补做的合成任务","date":"2026-11-07","deferTo":"2026-11-08","plannedMinutes":15}]},
+    {"id":"route-flexible","mode":"ROUTE","name":"弹性吉他学习合成路线","endDate":null,"executionMode":"FLEXIBLE","paused":false,"stages":["认识乐器","单音与节奏","和弦与歌曲"],"items":[{"localId":"route_base","title":"认识吉他","status":"COMPLETED","stage":0,"prerequisites":[]},{"localId":"route_chord","title":"练习第一个和弦","status":"NOT_STARTED","stage":2,"prerequisites":["route_base"]}]},
+    {"id":"todo-small","mode":"TODO","name":"当日零散事项合成集","items":[{"localId":"todo_open","title":"整理三条面试问题","done":false,"dueDate":"2026-11-02","plannedMinutes":0},{"localId":"todo_done","title":"带上水杯","done":true,"dueDate":"2026-11-02","plannedMinutes":0}]},
+    {"id":"conflict-edit","state":"conflict409","base":{"title":"合成原始标题","version":1},"local":{"title":"合成本机修改","version":1},"cloud":{"title":"合成另一端修改","version":2},"followingOperationRetained":true,"automaticMerge":false},
+    {"id":"ai-partial","state":"ai-pending","batches":[{"from":1,"to":10,"complete":true},{"from":11,"to":20,"complete":false}],"canApply":false,"paidRequests":0},
+    {"id":"long-content","name":"长标题折行和一百项分页使用数据生成器扩展","generatedItemPrefix":"仅用于设计的合成事项","sourceItems":100,"expectedNoHorizontalOverflow":true},
+    {"id":"admin-empty","state":"empty","role":"ADMIN","registered":0,"pv":null,"uvEstimated":null,"runtimeFresh":false,"rule":"Unknown is not zero; never fabricate activity or healthy telemetry"}
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "version": "0.1.26",
+  "stage": 6,
+  "purpose": "One core-chain regression before UI redesign, not repeated per-stage full testing",
+  "backendTarget": "target-core-freeze",
+  "backend": ["AuthPlanIntegrationTest","RestDaysIntegrationTest","RouteStagesIntegrationTest","TodoIntegrationTest","PersonalDataIntegrationTest","PersonalTemplateIntegrationTest","OrchestrationIntegrationTest","OfflineSnapshotIntegrationTest","NativeReminderIntegrationTest","ReflectionIntegrationTest","AiAdjustmentIntegrationTest","AiCollaborationIntegrationTest","AiLongPlanningIntegrationTest","AiIntentIntegrationTest","AiRepairIntegrationTest","AiQuotaIntegrationTest","AiRuntimeIntegrationTest","EmailChangeIntegrationTest","AccountRecoveryIntegrationTest","InvitationControlIntegrationTest","GovernanceOperationsIntegrationTest","MetricsIntegrationTest","AndroidUpdateIntegrationTest","ApiContractTest","ApiErrorContractTest"],
+  "frontend": ["src/workspace.test.ts","src/restDays.test.ts","src/routeStages.test.ts","src/todos.test.ts","src/personalTemplates.test.ts","src/personalData.test.ts","src/privateDrafts.test.ts","src/offlineCache.test.ts","src/offlineQueue.test.ts","src/queueSync.test.ts","src/syncComparison.test.ts","src/api/offlineClient.test.ts","src/api/nativeOffline.test.ts","src/stores/auth.test.ts","src/aiPlanning.test.ts","src/aiAdjustment.test.ts","src/aiCollaboration.test.ts","src/aiWorkbench.test.ts","src/aiNativeResume.test.ts","src/aiTransport.test.ts","src/registration.test.ts","src/adminCenter.test.ts","src/publicAnalytics.test.ts","src/clientUpdates.test.ts","src/releaseNotes.test.ts","src/pwa.test.ts","src/reminders.test.ts","src/reflection.test.ts"],
+  "browserCore": ["workspaces.spec.ts","route-stages.spec.ts","product-todos.spec.ts","personal-templates.spec.ts","personal-data.spec.ts","offline-experience.spec.ts","stable-trial.spec.ts"],
+  "browserSpecialized": ["playwright.reliability.config.ts","playwright.ai-long.config.ts","playwright.admin.config.ts","playwright.metrics.config.ts","playwright.updates.config.ts","playwright.historical.config.ts"],
+  "safety": {"paidAiRequests":0,"realEmails":0,"productionWrites":false,"deviceOperationsRequireNewOwnerReadiness":true,"formalInstallationAuthorizedByScope":false,"automaticTasksEnabled":false},
+  "coreChains": [
+    {"id":"PLAN","name":"周期计划 休息日 执行 计时 历史保护","routes":["/plans","/plans/:id","/plans/:id/studio","/schedule","/stats","/records"]},
+    {"id":"ROUTE","name":"目标路线 阶段 依赖 自由推进 暂停","routes":["/routes","/mainlines","/route-progress","/route-records"]},
+    {"id":"TODO","name":"独立今日待办 查询 编辑 完成 回收","routes":["/todos"]},
+    {"id":"AI","name":"三模式新建 已有调整 有界修复 长规划 外部往返","routes":["/ai"]},
+    {"id":"DATA","name":"模板 私有备份 只读预检 新副本恢复","routes":["/templates","/exports","/organize"]},
+    {"id":"OFFLINE","name":"账号服务器隔离 缓存 本机草稿 人工同步 409","routes":["/offline","/sync"]},
+    {"id":"ACCOUNT","name":"邀请 认证 找回 双邮箱验证 会话撤销","routes":["/login","/register","/reset-password","/verify-email","/change-email","/settings"]},
+    {"id":"REVIEW","name":"今日与提醒 日周复盘 事实与AI分析","routes":["/overview","/reminders","/weekly-review","/reflection","/reviews"]},
+    {"id":"ADMIN","name":"独立管理 成员治理 热配置 统计 脱敏反馈","routes":["/admin","/admin/members","/admin/ai","/admin/operations","/admin/feedback"]},
+    {"id":"UPDATE","name":"可信源 可选更新 必更优先 用户确认 数据保留","routes":["/desktop","/help"]},
+    {"id":"HELP","name":"官网 教学 本地合成演示 反馈","routes":["/","/welcome","/learn/:lesson?","/help/demo","/feedback"]}
+  ]
+}

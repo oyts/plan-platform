@@ -1,5 +1,6 @@
 {
-  "version": "0.1.25",
+  "version": "0.1.26",
+  "coreFreeze":{"status":"shared-passed-native-in-progress","baselineVersion":"0.1.25","candidateVersion":"0.1.26","androidCode":31,"scope":"scripts/core-freeze-scope.json","reason":"Once-only core-chain regression before redesign. Minimal historical-week reload/unsaved-input fix; no visual redesign, new API/schema, paid provider, real mail or automatic tasks. Device operations require fresh owner readiness. Current source is not yet deployed.","initialBackendPassed":191,"androidUpdateRetestPassed":5,"backendDistinctPassed":196,"frontendAfterWeekFixPassed":159,"initialBrowserPassed":57,"initialBrowserFailed":3,"affectedBrowserFollowupPassed":14,"distinctCoreBrowserCases":60,"allBrowserDistinctPassed":168,"aiReliabilityPassed":6,"longPlanningDistinctPassed":12,"adminDistinctPassed":26,"metricsPassed":6,"aiFilesUpdatesUiPassed":58,"inventoryTestsPassed":4,"sourceRouteRecords":43,"formalSignatureGuardsPassed":7,"formalCandidatesVerified":true,"independentNativeAccepted":false,"productionChanged":false,"stopAtRemainingPercent":20,"details":"docs/core-freeze-progress.md"},
   "coreUpdateExperience": {
     "status":"stage5-complete-three-platform0125-published-and-archived",
     "reason":"Bounded lifecycle checks, scoped ignore/snooze, required precedence, bundled highlights/history and explicit PWA refresh. Formal candidate updater policy/business/database schema unchanged; opt-in debug-only local update-probe identity/TLS isolation and release guards added for real native acceptance. Only new and directly affected contracts.",
@@ -391,8 +392,8 @@
       "signed release and production confirmation"
     ]
   },
-  "reason": "Core stage5 0.1.25 complete: scoped preferences/lifecycle, highlights/history and confirmed PWA refresh. Formal updater policy/business schema unchanged; debug-only probes test actual native transport/install. Three-platform scoped acceptance, synthetic nonempty retention, separate formal empty queues, signatures, backups, public/private feeds and immutable Windows-only GitHub archive accepted. Stage6 not started. No unrelated full regression.",
-  "frontendUnit": ["src/clientUpdates.test.ts","src/releaseNotes.test.ts","src/pwa.test.ts","src/desktop.test.ts","src/api/client.test.ts"],
+  "reason": "Stage6 once-only core-chain regression and UI handoff in progress. Candidate0.1.26 fixes historical weekly selection on reopen and protects unsaved same-route navigation. No API/schema, formal identity or visual redesign. Current production remains0.1.25; independent native, signed release, fresh backup/restore and formal retention gates remain pending. Never treat source completion as release acceptance.",
+  "frontendUnit": ["src/weeklyDraft.test.ts","src/releaseNotes.test.ts","src/router/scroll.test.ts"],
   "personalTemplateLibrary": {
     "status":"unreleased-stage5-on-0.1.18-baseline",
     "reason":"Private whole-structure PLAN/ROUTE and saved new-AI-draft templates; common copy writer, strict nested whitelist, V28, schema4 backup, manual pending replay. Typed task-time reads/writes affect structural copies directly. No unrelated full regression.",

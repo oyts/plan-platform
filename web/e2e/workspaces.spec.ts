@@ -16,7 +16,9 @@ async function login(page:Page,user:Account) {
   await page.getByRole('button',{name:'登录',exact:true}).click(); await expect(page.locator('.site-header .brand')).toBeVisible();
 }
 async function logout(page:Page) {
-  const more = page.getByRole('button',{name:'更多',exact:true}); if(await more.isVisible()) await more.click();
+  // Desktop keeps logout in the header; opening its modal would cover that button.
+  const headerLogout=page.locator('.site-header .account-button');
+  if(!await headerLogout.isVisible()){const more=page.getByRole('button',{name:'更多',exact:true});await more.click();}
   await page.getByRole('button',{name:'模式验收账号 · 退出',exact:true}).click(); await expect(page.getByRole('heading',{name:'登录计划平台'})).toBeVisible();
 }
 async function seed(request:APIRequestContext,user:Account) {
