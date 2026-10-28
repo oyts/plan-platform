@@ -2,6 +2,7 @@ param([ValidateSet('check','build','test','release')][string]$Action = 'build', 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
+if ($env:PLAN_ANDROID_UPDATE_PROBE -eq '1' -and ($Action -eq 'release' -or $env:PLAN_NATIVE_REGRESSION -ne '1' -or -not $env:PLAN_ANDROID_TEST_UPDATE_CERT -or $env:PLAN_ANDROID_UPDATE_URL -ne 'https://127.0.0.1:43133/android/latest.json' -or -not $env:PLAN_ANDROID_TEST_VERSION -or -not $env:PLAN_ANDROID_TEST_VERSION_CODE)) { throw 'Update probe requires isolated debug identity, explicit versions and fixed local TLS.' }
 . (Join-Path $PSScriptRoot 'release-test-scope.ps1')
 $affectedTests = if ($TestScope -eq 'affected') { Get-ReleaseTestScope } else { $null }
 if ($env:PLAN_ANDROID_TEST_UPDATE_CERT) {
@@ -59,7 +60,7 @@ if ($env:HTTPS_PROXY) {
 Write-Host "Node and Java are ready. Android SDK: $env:ANDROID_HOME"
 if ($Action -eq 'check') { exit 0 }
 if ($Action -eq 'release') {
-    if ($env:PLAN_NATIVE_REGRESSION -or $env:PLAN_ANDROID_TEST_UPDATE_CERT -or $env:PLAN_ANDROID_TEST_VERSION -or $env:PLAN_ANDROID_TEST_VERSION_CODE) { throw 'Formal release refuses regression, lab TLS or test version overrides.' }
+    if ($env:PLAN_NATIVE_REGRESSION -or $env:PLAN_ANDROID_UPDATE_PROBE -or $env:PLAN_ANDROID_TEST_UPDATE_CERT -or $env:PLAN_ANDROID_TEST_VERSION -or $env:PLAN_ANDROID_TEST_VERSION_CODE) { throw 'Formal release refuses regression, lab TLS or test version overrides.' }
     $env:PLAN_PUBLIC_RELEASE = '1'
     foreach ($name in @('PLAN_ANDROID_KEYSTORE','PLAN_ANDROID_STORE_PASSWORD','PLAN_ANDROID_KEY_ALIAS','PLAN_ANDROID_KEY_PASSWORD')) {
         if (-not [Environment]::GetEnvironmentVariable($name)) { throw "Set $name before building a signed release APK. Never commit signing passwords." }

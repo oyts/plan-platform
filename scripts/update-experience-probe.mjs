@@ -9,7 +9,7 @@ import {tamperWindowsSignature} from './update-lab.mjs';
 const base=resolve('client-update-artifacts/local/stage5-pc-isolated'),tls=resolve('.desktop-tools/update-lab/tls');
 const out=resolve('acceptance-results/update-experience/pc-lab',new Date().toISOString().replace(/[:.]/g,'-'));
 const controlFile=resolve('.desktop-tools/update-experience-probe/control.json');
-const allowed=['idle','optional','required','bad-signature','unavailable','online','offline','stop'];
+const allowed=['idle','optional','required','bad-signature','bad-hash','unavailable','future','online','offline','stop'];
 if(process.argv[2]==='--control'){
  const command=process.argv[3];if(process.argv.length!==4||!allowed.includes(command)||!existsSync(controlFile))throw Error('Expected an allowed command for the running isolated probe.');
  const value=JSON.parse(readFileSync(controlFile,'utf8'));value.command=command;value.id=Date.now();writeFileSync(controlFile,JSON.stringify(value));console.log('Isolated probe command queued: '+command);process.exit(0);
@@ -19,33 +19,57 @@ const ca=new X509Certificate(readFileSync(resolve(tls,'ca.pem')));
 if(Date.parse(ca.validTo)<Date.now()+86400000)throw Error('Lab CA expired/expiring. Never disable TLS verification.');
 const pub=readFileSync(resolve('.desktop-tools/test-signing/desktop-test.key.pub'),'utf8');
 const entries={};
-for(const [role,version] of [['bootstrap','0.1.24'],['target','0.1.25']]){
- const file=resolve(base,role,`Plan Cabin Update Probe_${version}_x64-setup.exe`),body=readFileSync(file),sig=readFileSync(file+'.sig','utf8').trim();
+for(const [role,version] of [['bootstrap','0.1.24'],['target','0.1.25'],['future','0.1.26']]){
+ const file=resolve(base,role,`Plan Cabin Update Probe_${version}_x64-setup.exe`);if(role==='future'&&!existsSync(file))continue;
+ const body=readFileSync(file),sig=readFileSync(file+'.sig','utf8').trim();
  verifyUpdaterSignature(body,pub,sig);entries[role]={version,file,sig,size:body.length,sha256:createHash('sha256').update(body).digest('hex')};
+}
+const androidMetadata=resolve('client-update-artifacts/local/stage5-android/metadata.json');
+const android=existsSync(androidMetadata)?JSON.parse(readFileSync(androidMetadata,'utf8')):null;
+if(android){
+ if(android.schema!==1||android.packageName!=='cn.zijun701.plan.mobile.updateprobe'||android.bootstrap.signer!==android.target.signer)throw Error('Invalid isolated Android catalog.');
+ for(const [role,version,code] of [['bootstrap','0.1.25',30],['target','0.1.26',31]]){
+  const entry=android[role],expected=resolve('client-update-artifacts/local/stage5-android',role,`PlanCabin-${version}-debug.apk`);
+  if(entry.file!==expected||entry.version!==version||entry.versionCode!==code||createHash('sha256').update(readFileSync(expected)).digest('hex')!==entry.sha256||readFileSync(expected).length!==entry.size)throw Error('Android probe artifact changed.');
+ }
 }
 await assertPortsFree([43133,43187]);mkdirSync(out,{recursive:true});
 let scenario='idle',online=true,stopping=false;
 const report={schema:1,status:'RUNNING',startedAt:new Date().toISOString(),productionChanged:false,nativeApplicationDriven:false,
- identity:'cn.zijun701.plan.desktop.updateprobe',bootstrap:entries.bootstrap,target:entries.target,requests:[],commands:[]};
+ identity:'cn.zijun701.plan.desktop.updateprobe',bootstrap:{...entries.bootstrap},target:{...entries.target},requests:[],commands:[]};
+if(entries.future)report.future={...entries.future};
+if(android)report.android={...android,sourceRequiresLogin:false,formalPackage:false};
 // Signature is public but unnecessary in evidence. Never capture API bodies or headers.
-for(const e of [report.bootstrap,report.target])delete e.sig;
-const signature=readFileSync(entries.target.file+'.sig','utf8').trim();
+for(const e of [report.bootstrap,report.target,report.future].filter(Boolean))delete e.sig;
 function save(){writeFileSync(resolve(out,'transport-report.json'),JSON.stringify(report,null,2));}
 const gate=await createFaultProxy(43187,43180);
 const server=createServer({pfx:readFileSync(resolve(tls,'server.p12')),passphrase:readFileSync(resolve(tls,'password.txt'),'utf8'),minVersion:'TLSv1.2'},(req,res)=>{
  res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
  const path=req.url?.split('?')[0];
- const kind=path==='/windows/latest.json'?'manifest':path==='/health'?'health':path===`/artifacts/${encodeURIComponent(basename(entries.target.file))}`?'artifact':'unknown';
+ const active=scenario==='future'?entries.future:entries.target;
+ if(!active){res.writeHead(503);res.end();return;}
+ if(path==='/android/latest.json'||android&&path===`/artifacts/android/${encodeURIComponent(basename(android.target.file))}`){
+  const manifest=path==='/android/latest.json';report.requests.push({at:new Date().toISOString(),kind:manifest?'android-manifest':'android-artifact',scenario});save();
+  if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);res.end();return;}
+  if(!android||scenario==='unavailable'){res.writeHead(503);res.end();return;}
+  if(manifest){
+   if(scenario==='idle'){res.writeHead(204);res.end();return;}
+   const e=android.target;res.writeHead(200,{'Content-Type':'application/json'});res.end(req.method==='HEAD'?undefined:JSON.stringify({version:e.version,versionCode:e.versionCode,minimumSupportedVersionCode:scenario==='required'?e.versionCode:1,notes:'本机Android更新验收；仅隔离测试身份，不是正式发布。',url:`https://127.0.0.1:43133/artifacts/android/${encodeURIComponent(basename(e.file))}`,size:e.size,sha256:scenario==='bad-hash'?'0'.repeat(64):e.sha256}));return;
+  }
+  const e=android.target;if(createHash('sha256').update(readFileSync(e.file)).digest('hex')!==e.sha256){res.writeHead(409);res.end();return;}
+  res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Length':e.size});if(req.method==='HEAD'){res.end();return;}createReadStream(e.file).pipe(res);return;
+ }
+ const kind=path==='/windows/latest.json'?'manifest':path==='/health'?'health':path===`/artifacts/${encodeURIComponent(basename(active.file))}`?'artifact':'unknown';
  report.requests.push({at:new Date().toISOString(),kind,scenario});if(report.requests.length>500)report.requests.shift();save();
  if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);res.end();return;}
  if(kind==='health'){res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({service:'stage5-isolated-update-probe',scenario,online}));return;}
  if(kind==='manifest'){
   if(scenario==='idle'){res.writeHead(204);res.end();return;}
   if(scenario==='unavailable'){res.writeHead(503);res.end();return;}
-  res.writeHead(200,{'Content-Type':'application/json'});res.end(req.method==='HEAD'?undefined:JSON.stringify({version:entries.target.version,minimumSupportedVersion:scenario==='required'?entries.target.version:'0.0.0',notes:'本机隔离更新验收：仅合成数据，不是正式发布。',pub_date:'2026-10-28T00:00:00Z',platforms:{'windows-x86_64':{url:`https://127.0.0.1:43133/artifacts/${encodeURIComponent(basename(entries.target.file))}`,signature:scenario==='bad-signature'?tamperWindowsSignature(signature):signature}}}));return;
+  res.writeHead(200,{'Content-Type':'application/json'});res.end(req.method==='HEAD'?undefined:JSON.stringify({version:active.version,minimumSupportedVersion:scenario==='required'?active.version:'0.0.0',notes:'本机隔离更新验收：仅合成数据，不是正式发布。',pub_date:'2026-10-28T00:00:00Z',platforms:{'windows-x86_64':{url:`https://127.0.0.1:43133/artifacts/${encodeURIComponent(basename(active.file))}`,signature:scenario==='bad-signature'?tamperWindowsSignature(active.sig):active.sig}}}));return;
  }
  if(kind==='artifact'){
-  const e=entries.target;if(createHash('sha256').update(readFileSync(e.file)).digest('hex')!==e.sha256){res.writeHead(409);res.end();return;}
+  const e=active;if(createHash('sha256').update(readFileSync(e.file)).digest('hex')!==e.sha256){res.writeHead(409);res.end();return;}
   res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Length':e.size});if(req.method==='HEAD'){res.end();return;}
   createReadStream(e.file).pipe(res);return;
  }

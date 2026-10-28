@@ -1,8 +1,10 @@
 apply plugin: 'com.android.application'
 
 def nativeRegression = System.getenv('PLAN_NATIVE_REGRESSION') == '1'
+def updateProbe = System.getenv('PLAN_ANDROID_UPDATE_PROBE') == '1'
 def publicRelease = System.getenv('PLAN_PUBLIC_RELEASE') == '1'
 if (nativeRegression && publicRelease) throw new GradleException('Regression and public release identities cannot be combined.')
+if (updateProbe && (!nativeRegression || publicRelease || !System.getenv('PLAN_ANDROID_TEST_UPDATE_CERT') || System.getenv('PLAN_ANDROID_UPDATE_URL') != 'https://127.0.0.1:43133/android/latest.json' || !System.getenv('PLAN_ANDROID_TEST_VERSION') || !System.getenv('PLAN_ANDROID_TEST_VERSION_CODE'))) throw new GradleException('Update probe requires isolated regression/debug identity, explicit versions and fixed local TLS.')
 if (publicRelease && ['PLAN_ANDROID_TEST_UPDATE_CERT','PLAN_ANDROID_TEST_VERSION','PLAN_ANDROID_TEST_VERSION_CODE'].any { System.getenv(it) }) throw new GradleException('Formal release cannot include lab trust or test version overrides.')
 if (publicRelease && System.getenv('PLAN_ANDROID_UPDATE_URL') && System.getenv('PLAN_ANDROID_UPDATE_URL') != 'https://plan.zijun701.cn/api/client-updates/android/latest') throw new GradleException('Formal invited Android builds require the protected update endpoint.')
 if (nativeRegression && gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) throw new GradleException('Regression packages are debug-only.')
@@ -17,13 +19,14 @@ android {
     namespace = "cn.zijun701.plan.mobile"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId publicRelease ? "cn.zijun701.plan.app" : (nativeRegression ? "cn.zijun701.plan.mobile.regression" : "cn.zijun701.plan.mobile")
-        manifestPlaceholders = [planAppLabel: nativeRegression ? '计划舱回归测试' : '@string/app_name']
+        applicationId publicRelease ? "cn.zijun701.plan.app" : (nativeRegression ? (updateProbe ? "cn.zijun701.plan.mobile.updateprobe" : "cn.zijun701.plan.mobile.regression") : "cn.zijun701.plan.mobile")
+        manifestPlaceholders = [planAppLabel: updateProbe ? '计划舱更新验收' : (nativeRegression ? '计划舱回归测试' : '@string/app_name')]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode Integer.parseInt(System.getenv('PLAN_ANDROID_TEST_VERSION_CODE') ?: '30')
         versionName System.getenv('PLAN_ANDROID_TEST_VERSION') ?: "0.1.25"
-        buildConfigField 'String', 'PLAN_UPDATE_URL', groovy.json.JsonOutput.toJson(nativeRegression ? '' : (System.getenv('PLAN_ANDROID_UPDATE_URL') ?: 'https://plan.zijun701.cn/api/client-updates/android/latest'))
+        buildConfigField 'String', 'PLAN_UPDATE_URL', groovy.json.JsonOutput.toJson(nativeRegression && !updateProbe ? '' : (System.getenv('PLAN_ANDROID_UPDATE_URL') ?: 'https://plan.zijun701.cn/api/client-updates/android/latest'))
+        buildConfigField 'boolean', 'PLAN_UPDATE_PROBE', updateProbe.toString()
         buildConfigField 'String', 'PLAN_TEST_UPDATE_CERT', groovy.json.JsonOutput.toJson(System.getenv('PLAN_ANDROID_TEST_UPDATE_CERT') ?: '')
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

@@ -1,0 +1,14 @@
+// Local TLS transport checks only. Does not enumerate, install or drive a phone.
+import {request} from 'node:https';import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';import {resolve} from 'node:path';import {createHash} from 'node:crypto';import assert from 'node:assert/strict';
+const ca=readFileSync('.desktop-tools/update-lab/tls/ca.pem'),meta=JSON.parse(readFileSync('client-update-artifacts/local/stage5-android/metadata.json','utf8'));
+const report={status:'FAIL',nativeDeviceTested:false,productionChanged:false,sourceRequiresLogin:false,cases:[]};
+function get(path,method='GET'){return new Promise((ok,bad)=>{const req=request({hostname:'127.0.0.1',port:43133,path,method,ca,agent:false,timeout:10000},res=>{const chunks=[];res.on('data',b=>chunks.push(b));res.on('end',()=>ok({status:res.statusCode,headers:res.headers,body:Buffer.concat(chunks)}));res.on('error',bad)});req.on('error',bad);req.on('timeout',()=>req.destroy(Error('Local probe timeout')));req.end();});}
+async function check(name,fn){const c={name,status:'FAIL'};report.cases.push(c);await fn();c.status='PASS';console.log('[PASS] '+name);}
+try{
+ let manifest;
+ await check('Exact same-signer isolated Android metadata over trusted TLS',async()=>{assert.equal(meta.packageName,'cn.zijun701.plan.mobile.updateprobe');assert.equal(meta.bootstrap.signer,meta.target.signer);const r=await get('/android/latest.json');assert.equal(r.status,200);assert.equal(r.headers['cache-control'],'no-store');manifest=JSON.parse(r.body);assert.equal(manifest.version,meta.target.version);assert.equal(manifest.versionCode,31);assert.equal(manifest.minimumSupportedVersionCode,1);assert.equal(manifest.sha256,meta.target.sha256);assert.equal(manifest.size,meta.target.size);assert.equal(new URL(manifest.url).origin,'https://127.0.0.1:43133');});
+ await check('Exact APK download bytes and size, without a device install',async()=>{const r=await get(new URL(manifest.url).pathname);assert.equal(r.status,200);assert.equal(Number(r.headers['content-length']),meta.target.size);assert.equal(r.body.length,meta.target.size);assert.equal(createHash('sha256').update(r.body).digest('hex'),meta.target.sha256);});
+ await check('No APK path traversal or mutation',async()=>{assert.equal((await get('/artifacts/android/../metadata.json')).status,404);assert.equal((await get('/android/latest.json','POST')).status,405);assert.equal((await get('/api/client-updates/android/latest')).status,404);});
+ report.status='PASS';
+}catch(e){report.error=e.message;process.exitCode=1;console.error('Stopped: '+e.message);}
+finally{const dir=resolve('acceptance-results/update-experience/android-probe-preflight');mkdirSync(dir,{recursive:true});const file=resolve(dir,Date.now()+'.json');writeFileSync(file,JSON.stringify(report,null,2));console.log('Evidence: '+file);}

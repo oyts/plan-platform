@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {spawnSync} from 'node:child_process';
+import {inspectApk} from './update-lab.mjs';
+function refuses(action,env){const r=spawnSync('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-File','scripts/android.ps1','-Action',action],{encoding:'utf8',windowsHide:true,env:{...process.env,PLAN_NATIVE_REGRESSION:'',PLAN_ANDROID_TEST_UPDATE_CERT:'',PLAN_ANDROID_UPDATE_PROBE:'1',PLAN_ANDROID_TEST_VERSION:'',PLAN_ANDROID_TEST_VERSION_CODE:'',PLAN_ANDROID_UPDATE_URL:'',...env}});assert.notEqual(r.status,0);assert.match(r.stdout+r.stderr,/Update probe requires isolated debug identity, explicit versions and fixed local TLS/);}
+test('Android update probe refuses missing isolation/TLS/version',()=>refuses('build',{}));
+test('Android update probe refuses formal release',()=>refuses('release',{PLAN_NATIVE_REGRESSION:'1',PLAN_ANDROID_TEST_UPDATE_CERT:'synthetic-marker',PLAN_ANDROID_TEST_VERSION:'0.1.25',PLAN_ANDROID_TEST_VERSION_CODE:'30',PLAN_ANDROID_UPDATE_URL:'https://127.0.0.1:43133/android/latest.json'}));
+test('Android update probe refuses remote TLS source',()=>refuses('build',{PLAN_NATIVE_REGRESSION:'1',PLAN_ANDROID_TEST_UPDATE_CERT:'synthetic-marker',PLAN_ANDROID_TEST_VERSION:'0.1.25',PLAN_ANDROID_TEST_VERSION_CODE:'30',PLAN_ANDROID_UPDATE_URL:'https://example.test/android/latest.json'}));
+test('APK lab inspector cannot accept formal package identity',()=>assert.throws(()=>inspectApk('not-read.apk','cn.zijun701.plan.app'),/explicitly isolated test package/));

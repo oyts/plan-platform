@@ -1,5 +1,29 @@
 # 核心阶段5：更新提示与用户版本说明
 
+## 2026-10-28 最新：Web／Windows已发布，Android等待本人准备
+
+本节优先于下面按时间保留的旧检查点。维护者本轮允许PC验收、选择“手机稍后再测”。已完成PC剩余边界和Windows官网／可选分发，未枚举或操作手机；不能将阶段5整体标为完成。阶段6未开始，自动任务关闭，付费AI和真实测试邮件均0。
+
+### 本窗口已完成
+
+- 独立PC三组新增边界：真实签名测试版本0.1.26不受旧0.1.25忽略影响；稍后处理跨冷重开保留；503后立即冷重开清单请求计数仍3，持久退避生效，原合成1项操作未重放。未来26包只构建、校验，未安装。证据`acceptance-results/update-experience/pc-lab/2026-10-28T05-43-49-379Z/edge-ui-observations.json`。
+- 之前的六组实际PC更新及1/0／0次尝试跨升级保留、正式629文件原样与原登录／计划／0/0／冷重开已通过，本窗口不重复安装或操作真实计划。
+- Windows最终准备目录`production-artifacts/windows-public-release/0.1.25/20261028T054829537Z-gAtUdc`，静态发布`windows-0125-QG4pVi`实际上传、比对并激活；归档SHA256 `e5dd7e6d751bedf8bf5ee2b5c98b27a8e0afaf5dda2d6256a957d0a802d32915`。仅Web静态容器重建，保留脱敏采集和原私有分发；不重复迁移／生产数据库演练。旧安装文件和回退指针保留。
+- 公网五组通过，证据`acceptance-results/windows-public-cloud/2026-10-28T05-49-33-094Z-2b204ecd/report.json`；正式PC发布后实际检查显示最新0.1.25，自动下载未勾选。PC已交还维护者，后续输入需重新确认可用时段。
+- Android本机隔离更新包两份构建完成，实际包名`cn.zijun701.plan.mobile.updateprobe`、标签“计划舱更新验收”，版本25／30→26／31，同调试证书；固定本机API／TLS，正式release不允许该开关。正式25／30候选未重制，哈希仍`1c748869224eb470b95a528d39e3b626be87cd3369b3091024a9209b80846390`，不能将两个测试包给朋友。
+- Android4项构建／身份负向保护、7项更新规则、3项真实TLS／APK字节检查通过；前端52项随构建重复执行，不累加不同用例。旧update-lab辅助工具7项及Windows实验室6项相关检查通过，没有重跑旧业务全量回归。首次Gradle缓存权限失败后正常本机权限重试成功，不改ACL／清缓存；新增Android合法路由使原404断言失败，改测未知路径后6项通过，保留失败报告。
+
+### 准确续做
+
+1. 等维护者主动确认手机连接、解锁、允许安装独立测试身份。不要因设备偶然在线就启动测试；不复用Windows句柄或PC操作授权。Android正式覆盖仍未获本轮确认。
+2. 先核对额度、端口和受管API状态。原合成库`acceptance-results/admin-center/2026-10-27T08-08-36-956Z`仍保留；本窗口API exec67331最多两小时自动结束，不能保证下轮仍活着。它报告0.1.7是夹具版本，不是正式网站版本。已运行的两份更新夹具分别正常`--control stop`，不把已停夹具当产品断网。
+3. **不要重构建已冻结正式包或覆盖现有测试产物**。本机Android包与元数据位于`client-update-artifacts/local/stage5-android/metadata.json`；`prepare-android-update-probe.mjs`拒绝覆盖既有元数据，不盲目重跑。原测试APK保留，安装前再核对实际字节、包身份和证书。
+4. API43180可用且43133／43187空闲后，以仓库Node运行`node scripts/update-experience-probe.mjs`。另一个终端运行`node scripts/update-experience-probe.mjs --control optional`；可用控制仅`idle|optional|required|bad-signature|bad-hash|unavailable|future|online|offline|stop`，后续用`--control stop`正常停止。Android目标固定测试26／31，`future`只为Windows后续版本案例准备。
+5. 可先复核`node scripts/verify-android-update-probe.mjs`（只传输、无设备）。本机源匿名是测试边界，不是正式受限鉴权证明；真实Java下载／校验／本人系统确认安装及合成非空队列、账号范围仍待手机补验。旧`android-update-experience.mjs`按原回归身份定位，不能不加核对直接跑在新身份上。
+6. 最后正式Android25／30保留升级、受限源发布／鉴权／原生检查通过，再创建`v0.1.25`和Windows-only GitHub Release。Windows不重装，Web/API不重切，旧包／备份／候选不删除。
+
+本机TLS预检证据`acceptance-results/update-experience/android-probe-preflight/1793167106118.json`，最终Windows TLS补验`acceptance-results/update-experience/pc-lab/tls-guards-1793167120508.json`。只有Android手机门槛时安全交回维护者，不因尚有额度而制造新业务或自动续做。
+
 ## 2026-10-28 交付与延期检查点
 
 ### 同日续做：PC原生更新验收进行中（本段优先）

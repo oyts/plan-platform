@@ -18,7 +18,7 @@ try{
  });
  await check('Untrusted CA refused',async()=>{await assert.rejects(()=>get('/health',{ca:undefined}));});
  await check('Wrong TLS hostname refused',async()=>{await assert.rejects(()=>get('/health',{servername:'localhost'}));});
- await check('No private files or path traversal exposed',async()=>{for(const p of ['/tls/password.txt','/.desktop-tools/update-lab/tls/server.p12','/artifacts/../ca.pem','/android/latest.json'])assert.equal((await get(p)).status,404);});
+ await check('No private files or path traversal exposed',async()=>{for(const p of ['/tls/password.txt','/.desktop-tools/update-lab/tls/server.p12','/artifacts/../ca.pem','/android/unknown.json'])assert.equal((await get(p)).status,404);});
  await check('Updater server refuses mutation',async()=>{assert.equal((await get('/windows/latest.json',{method:'POST'})).status,405);});
  await check('Real Rust transport outage gate reaches isolated API only',async()=>{const r=await fetch('http://127.0.0.1:43187/api/health');assert.equal(r.status,200);assert.equal((await r.json()).service,'plan-platform-api');});
  report.status='PASS';

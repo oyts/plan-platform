@@ -60,14 +60,15 @@ export function prepareTls() {
   return cert;
 }
 
-function inspectApk(apk) {
+export function inspectApk(apk, expectedPackage = 'cn.zijun701.plan.mobile') {
+  if (!['cn.zijun701.plan.mobile','cn.zijun701.plan.mobile.updateprobe'].includes(expectedPackage)) throw new Error('Expected an explicitly isolated test package.');
   const tools = resolve(process.env.ANDROID_HOME || resolve(projectRoot, '.desktop-tools/android-sdk'), 'build-tools/36.0.0');
   const temp = mkdtempSync(resolve(tmpdir(), 'plan-lab-apk-')), copy = resolve(temp, 'client.apk');
   let badging;
   try { copyFileSync(apk, copy); badging = execFileSync(resolve(tools, 'aapt.exe'), ['dump', 'badging', copy], { encoding: 'utf8' }); }
   finally { if (existsSync(copy)) unlinkSync(copy); rmdirSync(temp); }
   const match = badging.match(/^package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'/m);
-  if (!match || match[1] !== 'cn.zijun701.plan.mobile') throw new Error('Wrong APK identity.');
+  if (!match || match[1] !== expectedPackage) throw new Error('Wrong APK identity.');
   const signed = execFileSync(resolve(javaHome, 'bin/java.exe'), ['-jar', resolve(tools, 'lib/apksigner.jar'), 'verify', '--print-certs', apk], { encoding: 'utf8' });
   const signer = signed.match(/Signer #1 certificate SHA-256 digest: ([a-f0-9]+)/i)?.[1];
   if (!signer) throw new Error('Cannot verify APK signer.');

@@ -1,4 +1,4 @@
-param([ValidateSet('bootstrap','target','both')][string]$Role='both')
+param([ValidateSet('bootstrap','target','both','future')][string]$Role='both')
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
@@ -11,7 +11,8 @@ $saved=@{}
 foreach($name in @('TAURI_SIGNING_PRIVATE_KEY','TAURI_SIGNING_PRIVATE_KEY_PASSWORD')){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
 try {
     $env:TAURI_SIGNING_PRIVATE_KEY=$key;$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD=''
-    foreach($entry in @(@{role='bootstrap';version='0.1.24'},@{role='target';version='0.1.25'})){
+    foreach($entry in @(@{role='bootstrap';version='0.1.24'},@{role='target';version='0.1.25'},@{role='future';version='0.1.26'})){
+        if($Role -eq 'both' -and $entry.role -eq 'future'){continue}
         if($Role -ne 'both' -and $Role -ne $entry.role){continue}
         $out=Join-Path $projectRoot ('client-update-artifacts/local/stage5-pc-isolated/'+$entry.role)
         if(Test-Path -LiteralPath $out){throw "Immutable probe output already exists; inspect before rebuilding: $out"}
