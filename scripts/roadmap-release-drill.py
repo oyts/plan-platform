@@ -17,7 +17,8 @@ def selected_profile(profile):
                 'ai-workbench': ('0.1.17','0.1.16',24,25), 'reflection': ('0.1.18','0.1.17',25,27),
                 'templates': ('0.1.19','0.1.18',27,28), 'historical-closure': ('0.1.20','0.1.19',28,30),
                 'ai-reliability': ('0.1.21','0.1.20',30,31), 'ai-long': ('0.1.22','0.1.21',31,32),
-                'admin-center': ('0.1.23','0.1.22',32,33), 'metrics': ('0.1.24','0.1.23',33,34)}
+                'admin-center': ('0.1.23','0.1.22',32,33), 'metrics': ('0.1.24','0.1.23',33,34),
+                'updates': ('0.1.25','0.1.24',34,34)}
     require(profile in profiles, 'Unknown migration profile.')
     return profiles[profile]
 
@@ -62,7 +63,7 @@ def snapshot_restore(backup, sql, environment):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--directory', required=True)
-    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench', 'reflection', 'templates', 'historical-closure', 'ai-reliability', 'ai-long', 'admin-center', 'metrics'], default='roadmap')
+    parser.add_argument('--profile', choices=['roadmap', 'mail-operations', 'ai-workbench', 'reflection', 'templates', 'historical-closure', 'ai-reliability', 'ai-long', 'admin-center', 'metrics', 'updates'], default='roadmap')
     parser.add_argument('--archive-sha256')
     parser.add_argument('--api-sha256')
     args = parser.parse_args()
@@ -75,15 +76,16 @@ def main():
     long_planning = args.profile == 'ai-long'
     admin_center = args.profile == 'admin-center'
     metrics = args.profile == 'metrics'
+    updates = args.profile == 'updates'
     new_version, old_version, source_schema, target_schema = selected_profile(args.profile)
-    if workbench or reflection or templates or closure or reliability or long_planning or admin_center or metrics:
+    if workbench or reflection or templates or closure or reliability or long_planning or admin_center or metrics or updates:
         require(all(re.fullmatch('[a-f0-9]{64}', value or '') for value in [args.archive_sha256, args.api_sha256]), 'Accepted archive and API hashes required.')
     release = Path(args.directory).resolve()
     require(re.fullmatch(r'/home/[a-zA-Z0-9_-]+/plan-platform/releases/' + re.escape(new_version) + r'-[a-f0-9]+', str(release)), 'Expected selected managed release.')
     root = release.parent.parent
     previous = (root / 'current').resolve()
     require(previous.parent == release.parent and previous != release, 'An existing previous release is required.')
-    if workbench or reflection or templates or closure or reliability or long_planning or admin_center or metrics:
+    if workbench or reflection or templates or closure or reliability or long_planning or admin_center or metrics or updates:
         require(hashlib.sha256((release / 'release.tar.gz').read_bytes()).hexdigest() == args.archive_sha256, 'Accepted archive differs.')
         require(hashlib.sha256((release / 'backend/api.jar').read_bytes()).hexdigest() == args.api_sha256, 'Accepted API differs.')
     if mail:
@@ -130,7 +132,7 @@ def main():
                 and re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+-[a-f0-9]+', backup.parent.parent.name)
                 and re.fullmatch(r'plan_platform-mysql-[0-9]{8}-[0-9]{6}\.sql\.gz', backup.name)
                 and backup.is_file(), 'Unexpected backup path.')
-        if reflection or templates or closure or reliability or long_planning or admin_center or metrics:
+        if reflection or templates or closure or reliability or long_planning or admin_center or metrics or updates:
             database, restore_proof = snapshot_restore(backup, sql, environment)
             report['snapshotRestore'] = restore_proof
         else:
@@ -143,6 +145,8 @@ def main():
         tables = sql("SELECT table_name FROM information_schema.tables WHERE table_schema='" + database + "' ORDER BY table_name;").splitlines()
         require(all(re.fullmatch(r'[a-z0-9_]+', t) for t in tables), 'Invalid table name.')
         columns = {}
+        # Updates retains the original full-column row hashing for the three
+        # core tables as well; no column is omitted and V34 does not change.
         # Compare every original field for tables extended by V26/V27, rather
         # than comparing a whole-table checksum whose column layout changes.
         projected = ['operations_mail_delivery'] if metrics else ['ai_jobs'] if admin_center else ['ai_sessions'] if long_planning else ['ai_quota_requests','ai_sessions','ai_jobs'] if reliability else (['task_progress', 'weekly_reviews', 'restored_weekly_reviews', 'ai_sessions'] if reflection else ([] if mail or workbench or templates or closure else ['users', 'task_templates', 'mainlines']))
@@ -201,7 +205,9 @@ def main():
         boot('plan-platform-api:' + new_version, '', new_version)
         require(version(database) == target_schema, 'Target migration missing.')
         require(before == fingerprints(), 'Existing private business fields changed during migration.')
-        if metrics:
+        if updates:
+            require(source_schema == target_schema == 34, 'Updates release must not migrate the data schema.')
+        elif metrics:
             for table in ['web_metric_days','web_metric_visitors','web_metric_events']:
                 require(sql('SELECT COUNT(*) FROM '+database+'.'+table+';')=='0','Unexpected analytics backfill.')
             require(sql('SELECT COUNT(*) FROM '+database+'.operations_mail_delivery WHERE metric_summary IS NOT NULL;')=='0','Existing mail summaries changed.')

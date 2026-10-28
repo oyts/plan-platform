@@ -1,14 +1,17 @@
 {
   "version": "0.1.25",
   "coreUpdateExperience": {
-    "status":"stage5-basic-web-pc-android-accepted-signed0125-not-released",
+    "status":"stage5-non-device-complete-web0125-live-native-deferred-to-stage6",
     "reason":"Bounded native lifecycle checks; scoped ignore/snooze and consent; verified required-policy precedence; bundled installed-version highlights/history; explicit PWA refresh. Native security bridge and business/database schema unchanged. Only new and directly affected contracts.",
     "frontendUnit":["src/clientUpdates.test.ts","src/releaseNotes.test.ts","src/pwa.test.ts","src/desktop.test.ts","src/api/client.test.ts"],
     "browser":["e2e/client-updates.spec.ts","e2e/update-experience.spec.ts"],
     "results":{"frontendUnitPassed":52,"browserDistinctPassed":28,"backendContractPassed":10,"windowsUpdateRulePassed":5,"windowsLabTlsIntentionallySkipped":1,"androidUpdateRulePassed":7,"independentPcGroupsPassed":5,"independentAndroidGroupsPassed":3,"formalSignedCandidateVerified":true,"productionChanged":false,"paidAiCalls":0,"realTestEmails":0},
+    "resultScope":"The results object above is the Oct27 candidate checkpoint, not rerun or formal native upgrade evidence. See release0125 for Oct28 production and non-device verification.",
+    "releaseScripts":["scripts/test-update-experience-release.py","scripts/test-release-drill.py","scripts/test-update-production-verification.py","scripts/test-pwa-update-refresh.mjs","scripts/public-update-experience-acceptance.py"],
+    "release0125":{"status":"non-device-scope-complete","productionWebVersion":"0.1.25","productionWindowsVersion":"0.1.24","productionAndroidVersion":"0.1.24","productionAndroidBuild":29,"flywayVersion":34,"activationGuardPassed":6,"snapshotGuardPassed":5,"postVerificationGuardPassed":4,"realPwaGroupsPassed":4,"httpsGroupsPassed":5,"preUpgradeSnapshotTablesRestoredTwice":62,"originalBusinessTablesProtected":61,"postUpgradeSnapshotTablesRestoredTwice":62,"postUpgradeOssRoundtripVerified":true,"nativePublicFeedBytesUnchanged":true,"nativeApplicationOperationsThisTurn":false,"nativeFormalUpgradeAccepted":false,"nativeFeedsPublished":false,"githubVersionReleasePublished":false,"paidAiCalls":0,"realTestEmails":0,"details":"docs/release-0125.md","evidence":["acceptance-results/update-experience/production/pre-upgrade-drill.json","acceptance-results/update-experience/production/post-release-verification.json","acceptance-results/update-experience/pwa/2026-10-28T00-34-41-121Z/report.json","acceptance-results/public-web/20261028-004144-a516ae/report.json"]},
     "evidence":["acceptance-results/update-experience/browser-configured/","acceptance-results/update-experience/browser-fixture-corrected/"],
     "limits":"Browser bridge fixtures are not native signing, downloading, installation or data-retention evidence. First launch had missing browser runtime path; configured run18 passed/8 fixture failures; corrected14 passed, preserving all failures.",
-    "pending":["Same-identity signed formal upgrade, synthetic nonempty queue and real affected updater path","Production authorization, backup/recovery and HTTPS gates","Trusted optional feeds and GitHub source/release archive after acceptance"],
+    "pending":["Deferred by maintainer to stage6 prerequisite: PC/Android device and same-identity formal upgrade acceptance","Deferred: synthetic nonempty queue and real affected native updater path","Trusted optional native feeds and immutable GitHub Windows-only release archive after acceptance"],
     "details":"docs/update-experience-progress.md"
   },
   "coreMetrics": {
