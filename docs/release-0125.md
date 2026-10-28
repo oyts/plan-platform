@@ -2,7 +2,7 @@
 
 ## 当前实际交付
 
-2026-10-28最新：**Web/API、Windows官网／可选源和Android正式／登录受限源均为0.1.25／Android30**。双端实际应用内更新及合成非空队列、正式覆盖／原空队列／冷重开和发布后更新检查均已通过。GitHub归档是三端验收后执行的最后步骤，以[同名Release](https://github.com/oyts/plan-platform/releases/tag/v0.1.25)实际状态为准；不附APK。
+2026-10-28最新：**Web/API、Windows官网／可选源和Android正式／登录受限源均为0.1.25／Android30**。双端实际应用内更新及合成非空队列、正式覆盖／原空队列／冷重开和发布后更新检查均已通过。[GitHub v0.1.25](https://github.com/oyts/plan-platform/releases/tag/v0.1.25)已完成不可变归档；不附APK，阶段5结束。
 
 第五阶段包括有界自动检查与失败退避、按更新源／平台／版本及Android账号隔离的忽略／稍后、安装版本亮点／历史，以及PWA刷新前确认。不能把Windows或手机网页结果代替Android实际更新／升级证据。公众注册、官网APK／二维码和生产必更均未开放，自动下载默认关闭。首次独立Windows试包凭据隔离失误及修正经过保留在[阶段检查点](update-experience-progress.md)。
 
@@ -66,7 +66,9 @@
 
 正式手机随后实际检查最新25／30、自动下载未勾选、原0/0未提交，两组通过，证据`acceptance-results/native-update-experience-0125/update-check-20261028T063757793227Z.json`。测试CDP转发及本轮43133／43187反向转发已移除，测试更新夹具正常停止，合成队列仍在独立包、不提交。没有新增付费AI／真实邮件，没有公开APK、开启注册／必更或启动阶段6。
 
-阶段5产品与三端发布门槛齐备；GitHub最后归档状态以Release页为准。无需重装已验收PC或重复本次无迁移的生产切换。下一阶段为另行启动的核心冻结／综合回归及UI交接，不提前进行全站重设计。
+阶段5产品与三端发布门槛齐备；GitHub不可变`v0.1.25`指向`a7aa731a8e26c734e3c8c454c873e6ece734de81`，已发布附件`Plan.Cabin_0.1.25_x64-setup.exe`、对应`.sig`和`SHA256SUMS.txt`，上传API逐项digest核验通过，不含APK或私密资料。GitHub将原文件名空格规范为点，字节和签名不变。证据`acceptance-results/update-experience/github-0125-publication.json`，后续资料收口提交不移动标签、不重新打包。
+
+第五阶段全部约定工作完成。无需重装已验收PC或重复本次无迁移的生产切换。下一阶段为另行启动的核心冻结／综合回归及UI交接，不提前进行全站重设计。
 
 ## 回退准备（本轮未执行）
 

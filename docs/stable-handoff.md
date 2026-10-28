@@ -12,7 +12,7 @@
 | 独立更新测试包 | Android0.1.26／31，非正式版 | 仅合成验收身份；不得给朋友或推正式源，不替代正式25／30安装包 |
 | 个人备份 | schemaVersion 4，接受1—3 | 含个人模板及日周复盘；先预检、确认后恢复为新记录 |
 | 邮箱变更 | 已按维护者确认启用 | 双邮箱主动验证及最终密码确认；不会自动变更管理员邮箱 |
-| GitHub | 0.1.25三端已验收，归档状态以Release为准 | [源码与Windows附件](https://github.com/oyts/plan-platform/releases/tag/v0.1.25)；不上传APK附件 |
+| GitHub | v0.1.25已归档，标签a7aa731 | [源码与Windows附件](https://github.com/oyts/plan-platform/releases/tag/v0.1.25)；无APK附件，标签不移动 |
 
 正式标签保持不可变；后续纯资料提交可以领先于标签，不移动标签、不重新制作安装包。Windows的更新签名不等于提供了Authenticode发布者证书。
 

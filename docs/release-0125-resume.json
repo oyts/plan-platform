@@ -1,6 +1,6 @@
 {
   "version":"0.1.25","androidVersionCode":30,
-  "status":"stage5-three-platform0125-accepted-published-github-archive-pending",
+  "status":"stage5-complete-three-platform0125-published-and-archived",
   "productionVersion":"0.1.25","productionWindowsVersion":"0.1.25","productionAndroidVersion":"0.1.25","productionAndroidVersionCode":30,
   "productionChanged":true,"productionAuthorized":true,
   "formalWindowsOverwriteAuthorized":true,"formalAndroidOverwriteAuthorized":true,
@@ -15,7 +15,7 @@
   "pcProbeAwaiting":null,
   "pcProbeEdgeGroupsPassed":3,"pcProbeEdgeEvidence":"acceptance-results/update-experience/pc-lab/2026-10-28T05-43-49-379Z/edge-ui-observations.json",
   "computerUseStoppedByUser":false,
-  "sourcePushed":true,"acceptedSourceCommit":"031ce0c","lastPushedBaseline":"fcb27fd","releaseToolingPush":"included-in-this-checkpoint-commit",
+  "sourcePushed":true,"acceptedSourceCommit":"031ce0c","lastPushedBaseline":"a7aa731","releaseToolingPush":"included-in-this-checkpoint-commit",
   "candidate":"production-artifacts/client-release/0.1.25/20261027T081918Z-39d6b279",
   "windowsSha256":"39a3b923262474e55eb18bcd0f2233668e42903d609e7bc4fd84009269d350fb",
   "androidSha256":"1c748869224eb470b95a528d39e3b626be87cd3369b3091024a9209b80846390",
@@ -35,7 +35,8 @@
   "postUpgradeRestoredTablesTwice":62,"postUpgradeOssRoundtripVerified":true,
   "postUpgradeProof":"/home/oyts/plan-platform/releases/0.1.25-4be0a01f/post-release-verification.json",
   "publicHttpsGroupsPassed":5,"realPwaRefreshGroupsPassed":4,"nativePublicFeedBytesUnchanged":false,"previousNativePublicFeedBytesUnchangedBeforeWindowsPublication":true,"oldWindowsInstallerBytesRetained":true,"androidPrivateFeedStillVersion":"0.1.25",
-  "githubReleasePublished":false,"windows0125Published":true,"android0125Published":true,
+  "githubReleasePublished":true,"windows0125Published":true,"android0125Published":true,
+  "githubTag":"v0.1.25","githubTagCommit":"a7aa731a8e26c734e3c8c454c873e6ece734de81","githubReleaseUrl":"https://github.com/oyts/plan-platform/releases/tag/v0.1.25","githubAssets":["Plan.Cabin_0.1.25_x64-setup.exe","Plan.Cabin_0.1.25_x64-setup.exe.sig","SHA256SUMS.txt"],"githubApkAttached":false,"githubEvidence":"acceptance-results/update-experience/github-0125-publication.json",
   "windowsPublicStage":"production-artifacts/windows-public-release/0.1.25/20261028T054829537Z-gAtUdc",
   "windowsStaticRelease":"windows-0125-QG4pVi","windowsStaticArchiveSha256":"e5dd7e6d751bedf8bf5ee2b5c98b27a8e0afaf5dda2d6256a957d0a802d32915",
   "windowsPublicGroupsPassed":5,"windowsPublicEvidence":"acceptance-results/windows-public-cloud/2026-10-28T05-49-33-094Z-2b204ecd/report.json",
@@ -50,6 +51,6 @@
   "fixture":"acceptance-results/admin-center/2026-10-27T08-08-36-956Z",
   "fixturePort":43180,"fixtureExecSession":67331,"fixtureSessionHistoricalExpired":false,"fixtureHasTwoHourTtl":true,"fixtureReportedVersion":"0.1.7",
   "paidAiCalls":0,"realTestEmails":0,
-  "remaining":["Commit/push final sanitized acceptance and create immutable v0.1.25 Windows-only GitHub release; no APK/test/private attachments","Save final archive proof; stop stage5 without entering stage6 or repeating accepted installations"],
+  "remaining":[],"stage6Started":false,
   "details":"docs/update-experience-progress.md"
 }
