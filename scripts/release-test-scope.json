@@ -1,6 +1,21 @@
 {
   "version": "0.1.26",
-  "coreFreeze":{"status":"web26-healthy-independent-native-passed-formal-retention-pending","baselineVersion":"0.1.25","candidateVersion":"0.1.26","androidCode":31,"scope":"scripts/core-freeze-scope.json","reason":"Once-only core-chain regression before redesign. Minimal historical-week reload/unsaved-input fix; no visual redesign, new API/schema, paid provider, real mail or automatic tasks. Rebuilt independent native tests pass. Web26 is deployed; formal native retention and feeds remain pending, requiring fresh owner readiness.","initialBackendPassed":191,"androidUpdateRetestPassed":5,"backendDistinctPassed":196,"frontendAfterWeekFixPassed":159,"initialBrowserPassed":57,"initialBrowserFailed":3,"affectedBrowserFollowupPassed":14,"distinctCoreBrowserCases":60,"allBrowserDistinctPassed":168,"aiReliabilityPassed":6,"longPlanningDistinctPassed":12,"adminDistinctPassed":26,"metricsPassed":6,"aiFilesUpdatesUiPassed":58,"inventoryTestsPassed":4,"sourceRouteRecords":43,"formalSignatureGuardsPassed":7,"formalCandidatesVerified":true,"independentNativeAccepted":true,"independentPcGroupsPassed":6,"independentAndroidGroupsPassed":4,"productionChanged":true,"productionSnapshotTablesRestoredTwice":62,"postUpgradeTablesRestoredTwice":62,"postUpgradeOssRoundtripVerified":true,"httpsGroupsPassed":5,"formalWindowsAccepted":false,"formalAndroidAccepted":false,"stopAtRemainingPercent":20,"details":"docs/core-freeze-progress.md"},
+  "coreFreeze":{
+    "status":"three-platform0126-published-freeze-accepted-github-archive-pending",
+    "baselineVersion":"0.1.25","candidateVersion":"0.1.26","androidCode":31,"scope":"scripts/core-freeze-scope.json",
+    "reason":"Once-only agreed core-chain regression before redesign. Minimal historical-week reload/unsaved-input and native auth-resume fixes; no visual redesign, new API/schema, paid provider, real mail or automatic tasks. Final rebuilt native bytes and three-platform distribution accepted. GitHub archive tracked separately.",
+    "initialBackendPassed":191,"androidUpdateRetestPassed":5,"backendDistinctPassed":196,"frontendAfterWeekFixPassed":159,
+    "lastNativeResumeAffectedUnitPassed":6,"lastBuildAffectedFrontendPassed":18,"finalByteSharedScope":"Earlier core regression plus targeted6 resume tests and rebuilt native followup; do not claim all previous tests rerun on final bytes",
+    "initialBrowserPassed":57,"initialBrowserFailed":3,"affectedBrowserFollowupPassed":14,"distinctCoreBrowserCases":60,"allBrowserDistinctPassed":168,
+    "aiReliabilityPassed":6,"longPlanningDistinctPassed":12,"adminDistinctPassed":26,"metricsPassed":6,"aiFilesUpdatesUiPassed":58,
+    "inventoryTestsPassed":4,"sourceRouteRecords":43,"formalSignatureGuardsPassed":7,"formalCandidatesVerified":true,
+    "independentNativeAccepted":true,"independentPcGroupsPassed":6,"independentAndroidGroupsPassed":4,
+    "productionChanged":true,"productionSnapshotTablesRestoredTwice":62,"postUpgradeTablesRestoredTwice":62,"postUpgradeOssRoundtripVerified":true,"httpsGroupsPassed":5,
+    "formalWindowsAccepted":true,"formalAndroidAccepted":true,"formalWindowsQueue":[0,0],"formalAndroidQueue":[0,0],
+    "formalWindowsLoginRetained":true,"formalAndroidOwnerReloginRequired":true,"formalAndroidColdReopenAfterOwnerLoginAccepted":true,"formalNonemptyQueueProven":false,
+    "windowsPublicGroupsPassed":5,"androidProtectedGroupsPassed":4,"androidDeviceUpdateGroupsPassed":2,"formalWindowsActualLatestCheckAccepted":true,"automaticDownloadChecked":false,
+    "paidAiCalls":0,"realTestEmails":0,"stopAtRemainingPercent":20,"details":"docs/core-freeze-progress.md"
+  },
   "coreUpdateExperience": {
     "status":"stage5-complete-three-platform0125-published-and-archived",
     "reason":"Bounded lifecycle checks, scoped ignore/snooze, required precedence, bundled highlights/history and explicit PWA refresh. Formal candidate updater policy/business/database schema unchanged; opt-in debug-only local update-probe identity/TLS isolation and release guards added for real native acceptance. Only new and directly affected contracts.",

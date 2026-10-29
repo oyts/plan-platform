@@ -1,6 +1,6 @@
 {
   "schema":1,
-  "baseline":{"version":"0.1.25","androidCode":30,"flyway":34,"releaseTag":"v0.1.25"},
+  "baseline":{"version":"0.1.26","androidCode":31,"flyway":34,"releaseTag":"v0.1.26"},
   "scope":"UI redesign input only, not a new UI or an importable user backup",
   "protectedIdentities":["Windows cn.zijun701.plan.desktop","Android cn.zijun701.plan.app","existing platform credential namespace","server-and-owner IndexedDB scope","API entity IDs and optimistic versions","offline operation idempotency keys","AI session/draft/revision/adjustment binding","personal backup schema4 reading1-3","existing signing identities and trusted update sources"],
   "pageStates":[
