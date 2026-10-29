@@ -1,9 +1,9 @@
 {
   "version": "0.1.26",
   "coreFreeze":{
-    "status":"three-platform0126-published-freeze-accepted-github-archive-pending",
+    "status":"stage6-complete-three-platform0126-published-and-archived",
     "baselineVersion":"0.1.25","candidateVersion":"0.1.26","androidCode":31,"scope":"scripts/core-freeze-scope.json",
-    "reason":"Once-only agreed core-chain regression before redesign. Minimal historical-week reload/unsaved-input and native auth-resume fixes; no visual redesign, new API/schema, paid provider, real mail or automatic tasks. Final rebuilt native bytes and three-platform distribution accepted. GitHub archive tracked separately.",
+    "reason":"Once-only agreed core-chain regression before redesign. Minimal historical-week reload/unsaved-input and native auth-resume fixes; no visual redesign, new API/schema, paid provider, real mail or automatic tasks. Final rebuilt native bytes, three-platform distribution and immutable GitHub Windows-only archive accepted.",
     "initialBackendPassed":191,"androidUpdateRetestPassed":5,"backendDistinctPassed":196,"frontendAfterWeekFixPassed":159,
     "lastNativeResumeAffectedUnitPassed":6,"lastBuildAffectedFrontendPassed":18,"finalByteSharedScope":"Earlier core regression plus targeted6 resume tests and rebuilt native followup; do not claim all previous tests rerun on final bytes",
     "initialBrowserPassed":57,"initialBrowserFailed":3,"affectedBrowserFollowupPassed":14,"distinctCoreBrowserCases":60,"allBrowserDistinctPassed":168,
@@ -14,6 +14,7 @@
     "formalWindowsAccepted":true,"formalAndroidAccepted":true,"formalWindowsQueue":[0,0],"formalAndroidQueue":[0,0],
     "formalWindowsLoginRetained":true,"formalAndroidOwnerReloginRequired":true,"formalAndroidColdReopenAfterOwnerLoginAccepted":true,"formalNonemptyQueueProven":false,
     "windowsPublicGroupsPassed":5,"androidProtectedGroupsPassed":4,"androidDeviceUpdateGroupsPassed":2,"formalWindowsActualLatestCheckAccepted":true,"automaticDownloadChecked":false,
+    "githubVersionReleasePublished":true,"githubTagCommit":"3f71b4bfedc9feb8a4693dc5f120acb15ade5b95","githubWindowsOnlyAssets":true,
     "paidAiCalls":0,"realTestEmails":0,"stopAtRemainingPercent":20,"details":"docs/core-freeze-progress.md"
   },
   "coreUpdateExperience": {

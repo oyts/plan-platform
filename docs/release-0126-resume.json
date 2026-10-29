@@ -1,6 +1,6 @@
 {
   "version":"0.1.26","androidVersionCode":31,"stage":6,
-  "status":"three-platform0126-accepted-published-awaiting-github-archive",
+  "status":"stage6-complete-three-platform0126-published-and-archived",
   "productionVersion":"0.1.26","productionWindowsVersion":"0.1.26","productionAndroidVersion":"0.1.26","productionAndroidVersionCode":31,
   "productionChanged":true,"releaseAfterAcceptanceAuthorized":true,
   "formalWindowsOverwriteAuthorized":true,"formalAndroidOverwriteAuthorized":true,
@@ -38,7 +38,9 @@
   "postUpgradeBackup":"/home/oyts/plan-platform/releases/0.1.15-50bc92a/backups/plan_platform-mysql-20261028-142838.sql.gz",
   "postUpgradeBackupSha256":"99c45ef989b70b7ea1f751ec7b058d6fd1840febc3dcdbe850641797559a82fb",
   "postUpgradeRestoredDatabase":"plan_restore_20261028_142841","postUpgradeTablesRestoredTwice":62,"postUpgradeOssRoundtripVerified":true,"postUpgradeRollbackGuardAccepted":true,
-  "formalWindowsAccepted":true,"formalAndroidAccepted":true,"windowsSourcePublished":true,"androidSourcePublished":true,"githubReleasePublished":false,
+  "formalWindowsAccepted":true,"formalAndroidAccepted":true,"windowsSourcePublished":true,"androidSourcePublished":true,"githubReleasePublished":true,
+  "githubReleaseUrl":"https://github.com/oyts/plan-platform/releases/tag/v0.1.26","githubTagCommit":"3f71b4bfedc9feb8a4693dc5f120acb15ade5b95","githubWindowsOnlyAssets":true,
+  "githubEvidence":"acceptance-results/core-freeze/github-0126-publication.json","freezeDecision":"ACCEPTED_FOR_UI_PLANNING",
   "formalWindowsQueue":[0,0],"formalAndroidAfterQueue":[0,0],"formalWindowsColdReopenVerified":true,
   "windowsPostPublicationCheckAccepted":true,"androidPostPublicationCheckAccepted":true,"windowsPublicGroupsPassed":5,"androidProtectedGroupsPassed":4,"androidDeviceUpdateGroupsPassed":2,
   "windowsPublicStage":"production-artifacts/windows-public-release/0.1.26/20261029T010549319Z-QjcGgi","windowsStaticRelease":"windows-0126-ZQqZB8","windowsStaticArchiveSha256":"8ef90d7084e3384a395accc0a3c20c0ceab7e2ed08a7315793547f217af65333",
@@ -48,7 +50,7 @@
   "publicRegistrationEnabled":false,"publicApkEnabled":false,"mandatoryUpdateEnabled":false,"automaticDownloadDefault":false,
   "androidPreparedStage":"production-artifacts/invited-android/0.1.26/candidate-B5yWLa",
   "publicHttpsEvidence":"acceptance-results/public-web/20261028-142818-c1a3bb/report.json",
-  "paidAiCalls":0,"realEmails":0,"automationEnabled":false,"stopAtFiveHourRemainingPercent":20,"lastReliableFiveHourUsedPercent":23,
-  "next":["Review and commit final freeze/publication documentation; no more device tests or installers required","Create immutable v0.1.26 tag and publish GitHub Windows-only attachments from the exact accepted Windows stage","Record actual archive result and finish stage6; no new visual redesign without a separate plan"],
+  "paidAiCalls":0,"realEmails":0,"automationEnabled":false,"stopAtFiveHourRemainingPercent":20,"lastReliableFiveHourUsedPercent":30,
+  "next":[],"remainingStage6Work":[],"future":"Separate user-approved UI redesign planning; no more device tests, production rollout or core feature expansion for this completed phase",
   "details":"docs/core-freeze-progress.md"
 }

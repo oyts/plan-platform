@@ -2,7 +2,7 @@
 
 制定日期：2026年10月23日。基线为正式Web/API、Windows 0.1.20、Android 0.1.20／构建25，Flyway V30。本文整合维护者提供的《0.1.20+.md》、当前源码事实及必要的安全／容量约束，作为接下来开发的统一入口；原稿不修改。
 
-**2026年10月29日状态：阶段1—5已交付，第六阶段一次约定核心综合回归、缺陷修复、三端0.1.26／Android31发布及UI交接已通过冻结门槛，GitHub26归档正在收尾。** 公开注册、官网APK和二维码仍关闭，不启动新视觉设计或1.0命名。最终实际状态见[阶段6检查点](core-freeze-progress.md)和[0.1.26记录](release-0126.md)。阶段1—5分别见[可靠性](ai-reliability-progress.md)、[长规划](ai-long-planning-progress.md)、[管理中心](admin-center-progress.md)、[统计](metrics-progress.md)、[更新体验](update-experience-progress.md)。阶段1原6个真实请求严格检查5/6，另1次推荐补验通过；累计7父请求／8上游／9847输出，分别保留，不宣称线上成功率100%，没有剩余付费调用授权。过去六阶段及历史收口见[原规划](next-development-roadmap.md)和[0.1.20记录](release-0120.md)。
+**2026年10月29日状态：六阶段全部完成。** 第六阶段一次约定核心综合回归、缺陷修复、三端0.1.26／Android31发布及UI交接已通过冻结门槛，[GitHub26](https://github.com/oyts/plan-platform/releases/tag/v0.1.26)不可变归档完成。公开注册、官网APK和二维码仍关闭，不启动新视觉设计或1.0命名。最终实际状态见[阶段6检查点](core-freeze-progress.md)和[0.1.26记录](release-0126.md)。阶段1—5分别见[可靠性](ai-reliability-progress.md)、[长规划](ai-long-planning-progress.md)、[管理中心](admin-center-progress.md)、[统计](metrics-progress.md)、[更新体验](update-experience-progress.md)。阶段1原6个真实请求严格检查5/6，另1次推荐补验通过；累计7父请求／8上游／9847输出，分别保留，不宣称线上成功率100%，没有剩余付费调用授权。过去六阶段及历史收口见[原规划](next-development-roadmap.md)和[0.1.20记录](release-0120.md)。
 
 2026-10-24续做更新：长规划、外部协作、滚动／输入、Android真机补验、最终JAR MySQL补验及当时生产快照恢复通过；正式Web/API已0.1.22。分发和GitHub归档以发布记录最终状态为准，不用独立调试包替代正式包验收。
 

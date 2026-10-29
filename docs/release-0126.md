@@ -39,6 +39,12 @@ Windows静态发布`client-public/releases/windows-0126-ZQqZB8`保留旧不可�
 
 Android私有发布`android-private/staging/android-31-0f5a9dd7`完成4组鉴权与精确字节检查：匿名／无效凭据拒绝、公共APK和二维码仍关闭、两名受邀普通账号的账号绑定清单及APK哈希。证据`acceptance-results/invited-android/2026-10-29T01-06-15-199Z-7b6c9245/report.json`。正式手机再补2组受限源检查，最新26且自动下载未勾选，0/0队列不变；见`native-core-freeze-0126/update-check-20261029T010753047949Z.json`。
 
+## 不可变归档与阶段结论
+
+GitHub `v0.1.26`已公开归档，标签指向`3f71b4bfedc9feb8a4693dc5f120acb15ade5b95`。附件为`Plan.Cabin_0.1.26_x64-setup.exe`、对应`.sig`及`SHA256SUMS.txt`，上传API的大小和digest逐项核验通过；GitHub将空格规范为点，字节不变，没有APK、数据库、凭据或测试原文。证据`acceptance-results/core-freeze/github-0126-publication.json`。后续纯资料提交不移动该标签，不重制已发布包。
+
+本轮六阶段完成，约定核心功能可作为下一大阶段UI重构的业务基线；没有本轮范围内未关闭的P0／P1或阻断核心流程的P2。路由、状态、深链、身份和数据保护要求见[UI交接](ui-rebuild-handoff.md)。这不是“所有设备永无BUG”、1.0、公开APP上架或备案完成的声明，也不自动启动视觉重构。
+
 ## 回退和后续维护
 
 当前正式目录`/home/oyts/plan-platform/releases/0.1.26-012dfda4`，上一版本`0.1.25-4be0a01f`、旧容器／镜像／卷和全部备份保留。Web/API回退必须先通过generation、long-planning、admin-runtime、metrics四项会话代次能力守卫，再以既有`production-compose.sh`启动上一套Web/API并确认健康，最后切换current；不降级或覆盖真实数据库。独立演练已验证兼容，本轮未实际回退现网。
