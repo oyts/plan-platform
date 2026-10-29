@@ -2,9 +2,9 @@
 
 一个支持周期计划、目标路线、今日待办和任务计时的开源多用户平台。项目由原本的纯前端“计划控制台”重构而来，面向 Java 学习、个人部署和跨设备任务管理。
 
-当前正式 **Web/API、Windows官网／可选更新源、Android登录受限源均为0.1.25，Android构建30**，Flyway V34。阶段5三端定向验收与发布门槛已通过，包括双端真实应用内更新、合成非空队列保留、正式升级／冷重开及发布后检查；生产备份双恢复／OSS核验也已通过，见[0.1.25发布记录](docs/release-0125.md)。更新可选、自动下载默认关闭，官网APK／二维码与公开注册仍关闭；既有AI、邮件和成员治理配置保留。GitHub归档以[同名Release](https://github.com/oyts/plan-platform/releases/tag/v0.1.25)的实际状态为准。
+当前 **Web/API已健康升级0.1.26；Windows官网／可选源和Android受限源仍为0.1.25／构建30**，Flyway V34。本机正式双端已覆盖26候选，保留验收和新源发布尚未完成；用户实体Esc停止电脑控制后已保存[0.1.26续做状态](docs/release-0126-resume.json)。阶段5的三端交付仍见[0.1.25记录](docs/release-0125.md)。更新可选、自动下载默认关闭，官网APK／二维码与公开注册仍关闭，AI／邮件／成员治理配置保留。GitHub最后已归档版本仍为[0.1.25](https://github.com/oyts/plan-platform/releases/tag/v0.1.25)。
 
-后续开发统一看[0.1.20之后的核心功能规划](docs/core-function-roadmap-0120-plus.md)：阶段1—5已发布，阶段6正在进行核心综合回归和[UI重构交接](docs/ui-rebuild-handoff.md)，尚未冻结或开始视觉重构。往周复盘修复的0.1.26仅为候选，正式三端仍0.1.25；实际完成与待验收项见[检查点](docs/core-freeze-progress.md)。旧六阶段规划继续作为已交付历史保留。
+后续开发统一看[0.1.20之后的核心功能规划](docs/core-function-roadmap-0120-plus.md)：阶段1—5已发布，阶段6正在进行核心综合回归和[UI重构交接](docs/ui-rebuild-handoff.md)，尚未冻结或开始视觉重构。往周复盘修复已部署Web/API0.1.26，正式原生候选已安装但保留验收和更新源发布待完成；实际状态见[检查点](docs/core-freeze-progress.md)。旧六阶段规划继续作为已交付历史保留。
 
 核心阶段1—4已分别随0.1.21—0.1.24完成开发、定向验收和三端发布。[阶段4实际结果](docs/metrics-progress.md)包含Android独立三组、正式升级五组、受限源四组和原生更新两组；各轮不累加为新业务覆盖。已验收正式APK可供现有受邀成员使用，独立调试包不得替代正式包。[阶段5更新体验](docs/update-experience-progress.md)现已三端交付；独立身份中的版本26不是正式发布，不能分发朋友。阶段6正在收口，实际状态见上方检查点。
 
