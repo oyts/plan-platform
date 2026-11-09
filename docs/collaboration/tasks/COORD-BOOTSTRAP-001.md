@@ -1,6 +1,6 @@
 # COORD BOOTSTRAP 001 协作体系搭建
 
-日期：2026年11月9日。负责人code；接收controller。状态：completed_pending_controller_review。
+日期：2026年11月9日。负责人code；接收controller。状态：accepted。
 
 ## 目标与授权
 
@@ -23,3 +23,5 @@
 代码侧回执`../handoffs/code.md`；总控核对后更新状态。本任务的初次文件登记由code暂代，搭建完成后共享文件写权回归controller。
 
 2026年11月9日搭建交接：两个新聊天已创建，五角色ID／标题／父工作目录已由应用清单核对；UI、总控、IP、周志均已各自完成限定初始化。JSON、登记引用、文档链接与差异检查通过，范围为协作资料，不是业务验收。证据见`../bootstrap-validation.json`及各模块回执。共享文件写权现交回总控，不再由code并发更新。
+
+2026年11月9日总控验收：已核对提交`2fb85f1`、五角色登记、校验证据及五份分离回执，接受协作搭建交付。bootstrap保持ready，开始已授权的`UI-PLAN-001`规划；本验收不批准UI实现、IP整包采用或生产发布。
