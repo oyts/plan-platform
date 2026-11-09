@@ -1,0 +1,19 @@
+{
+  "schemaVersion":1,
+  "project":"Plan Cabin",
+  "projectId":"814ca528-ee5a-42e2-b39a-69849b4e2999",
+  "workspace":"E:/Ai/假期计划",
+  "repository":"E:/Ai/假期计划/plan-platform",
+  "bootstrap":{"state":"ready","ownerRole":"controller","readyForController":true},
+  "authority":{"recordedDate":"2026-11-09","source":"Human requested this setup and explicitly approved existing IP/journal initialization and bidirectional scoped coordination with controller","controllerModuleMessagingAuthorized":true,"newChatLifecycleNeedsHumanConfirmation":true,"automaticModelChangesAuthorized":false,"automationEnabled":false},
+  "roles":[
+    {"role":"controller","threadId":"01a1c040-5bc7-7382-ad11-adf722289512","title":"Plan Cabin项目总控","state":"initialized","handoff":"handoffs/controller.md"},
+    {"role":"code","threadId":"019f89ce-fc67-76e3-ab67-9d62ce841834","title":"Plan Cabin项目开发","state":"existing_preserved","handoff":"handoffs/code.md"},
+    {"role":"ui","threadId":"01a1c040-03f8-7ce1-80b5-6f29934efacb","title":"Plan Cabin UI开发","state":"initialized","handoff":"handoffs/ui.md"},
+    {"role":"ip","threadId":"01a185c1-0f94-7d91-8298-b8db80bd3c07","title":"计划舱双灵IP规划","state":"initialized_preserved","handoff":"handoffs/ip.md"},
+    {"role":"journal","threadId":"01a172ae-faf1-7992-8812-9194d8579432","title":"实习周志","state":"initialized_preserved","handoff":"handoffs/journal.md"}
+  ],
+  "routing":{"controllerMayMessage":["code","ui","ip","journal"],"modulesMayReportTo":["controller"],"bootstrapCodeMayInitialize":["controller","ui","ip","journal"],"allowUnregisteredTargets":false,"acknowledgeAcknowledgements":false},
+  "execution":{"planningUsesSharedFiles":true,"parallelCodeRequiresIsolationOrSerialHandoff":true,"currentWorktreesCreatedByThisSetup":0,"activeExclusiveFileAssignments":[{"taskId":"UI-PLAN-001","path":"docs/ui-design/ui-rebuild-plan.md","ownerRole":"controller","scope":"planning_only"}]},
+  "tasks":["tasks/COORD-BOOTSTRAP-001.md","tasks/UI-PLAN-001.md"]
+}

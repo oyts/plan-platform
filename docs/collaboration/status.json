@@ -1,0 +1,17 @@
+{
+  "schemaVersion":1,
+  "updatedDate":"2026-11-09",
+  "ownerRole":"controller",
+  "bootstrapState":"ready",
+  "currentObjective":"先完成五聊天协作体系，再由总控提出UI重构规划待用户确认",
+  "software":{"version":"0.1.26","androidVersionCode":31,"flywayVersion":34,"historicalReleaseAccepted":true,"releaseEvidence":"docs/release-0126.md","sourceHeadAtBootstrap":"5c21bfd","liveHealthCheckedThisSetup":false,"scope":"历史核心六阶段已交付，本轮没有重测生产或开始UI实现"},
+  "ip":{"version":"2.13","names":{"red":"棠露","blue":"澄翎","group":"星下同路"},"developmentComplete":true,"namesConfirmed":true,"finalWholePackUserApproval":false,"softwareIntegrated":false,"entry":"docs/ip-design/ip-final-adoption-index-v2.13.json","evidence":"docs/ip-design/project-phase-one-delivery-v2.13.txt","next":"用户最终审阅；只按具体反馈修订，不重复开发IP子阶段"},
+  "ui":{"planning":"ready_for_controller","implementation":"not_started","userApprovedPlan":false,"task":"UI-PLAN-001","allowedNow":"总控只做规划和待决策项；不改代码、不生图"},
+  "journal":{"lastObservedDeliveredWeeks":[1,2,3,4],"scope":"读取已有聊天记录得知，不将重新整理的历史周次当成自然日开发统计；本人掌握由用户确认","newEntryRequested":false},
+  "tasks":[{"id":"COORD-BOOTSTRAP-001","owner":"code","state":"completed_pending_controller_review"},{"id":"UI-PLAN-001","owner":"controller","state":"ready"}],
+  "decisionsNeeded":["IP整包最终采用范围","UI重构方案与执行范围由总控提案后用户确认"],
+  "next":"五角色已登记并初始化；总控接手共享文件，核对搭建回执后启动UI-PLAN-001，规划待用户确认",
+  "modelPolicy":"model-policy.md",
+  "usage":{"sharedAcrossChats":true,"defaultStopAtRemainingPercentForNewTasks":20,"humanTaskSpecificThresholdOverrides":true,"autoReschedule":false},
+  "changeBoundary":"本状态不授权生产、原生安装、新付费服务或自动模型切换"
+}

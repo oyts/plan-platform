@@ -2,6 +2,8 @@
 
 一个支持周期计划、目标路线、今日待办和任务计时的开源多用户平台。项目由原本的纯前端“计划控制台”重构而来，面向 Java 学习、个人部署和跨设备任务管理。
 
+项目协作入口：[总控、专业聊天与交接规则](docs/collaboration/README.md)。共享进度、任务卡和模型建议统一在该目录维护；它不改变产品版本，也不表示UI重构实现已启动。
+
 当前 **Web/API、Windows官网／可选源和Android登录受限源均为0.1.26／Android构建31**，Flyway V34。核心冻结及三端发布验收通过，详见[0.1.26发布记录](docs/release-0126.md)。正式PC原登录／任务和双端0/0队列、冷重开已核对；Android本轮由本人重新登录后验收，不称升级全程免登录。更新可选、自动下载默认关闭，官网APK／二维码与公开注册仍关闭，AI／邮件／成员治理配置保留。[GitHub v0.1.26](https://github.com/oyts/plan-platform/releases/tag/v0.1.26)已归档源码与Windows附件，不含APK。
 
 后续开发统一看[0.1.20之后的核心功能规划](docs/core-function-roadmap-0120-plus.md)：六阶段已完成，核心回归、阻塞缺陷修复、发布归档与[UI重构交接](docs/ui-rebuild-handoff.md)已达到冻结门槛。尚未开始视觉重构，下一大阶段需另立设计与兼容计划；实际结果和保留边界见[检查点](docs/core-freeze-progress.md)。旧六阶段规划继续作为已交付历史保留。

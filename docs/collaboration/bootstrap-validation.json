@@ -1,0 +1,21 @@
+{
+  "schemaVersion":1,
+  "date":"2026-11-09",
+  "taskId":"COORD-BOOTSTRAP-001",
+  "scope":"collaboration_setup_only_not_product_acceptance",
+  "checks":{
+    "registryAndStatusJsonParsed":true,
+    "fiveUniqueRealThreadIds":true,
+    "titlesProjectAndCwdMatchedAppList":true,
+    "threeExistingThreadsPreserved":true,
+    "fourModuleInitializationTurnsCompleted":true,
+    "taskAndHandoffPathsExist":true,
+    "localMarkdownLinksExist":true,
+    "diffWhitespaceCheckPassed":true,
+    "restrictedSecretPatternScanNoMatches":true,
+    "readOnlyIndependentReviewNoHighImpactGaps":true
+  },
+  "notPerformed":["business_regression","production_health_check","UI_implementation","image_generation","installation","deployment","model_configuration_change","worktree_creation"],
+  "approvalBoundaries":{"ipWholePackAdopted":false,"uiImplementationApproved":false,"chatLifecycleChangesNeedHumanConfirmation":true,"automationsEnabled":false},
+  "evidence":["registry.json","handoffs/controller.md","handoffs/ui.md","handoffs/ip.md","handoffs/journal.md","handoffs/code.md"]
+}
